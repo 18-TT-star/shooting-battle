@@ -1,0 +1,60 @@
+import pygame
+import sys
+
+# 初期化
+pygame.init()
+
+# 画面サイズ
+WIDTH, HEIGHT = 480, 640
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("お試しシューティング")
+
+# 色
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+
+# 自機
+player = pygame.Rect(WIDTH//2 - 25, HEIGHT - 60, 50, 30)
+player_speed = 5
+
+# 弾
+bullets = []
+bullet_speed = 7
+
+clock = pygame.time.Clock()
+
+while True:
+    # イベント処理
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            sys.exit()
+
+        # スペースキーで弾発射
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_SPACE:
+                bullet = pygame.Rect(player.centerx - 5, player.top - 10, 10, 20)
+                bullets.append(bullet)
+
+    # キー入力（移動）
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_LEFT] and player.left > 0:
+        player.x -= player_speed
+    if keys[pygame.K_RIGHT] and player.right < WIDTH:
+        player.x += player_speed
+
+    # 弾の移動
+    for bullet in bullets:
+        bullet.y -= bullet_speed
+    bullets = [b for b in bullets if b.bottom > 0]
+
+    # 描画
+    screen.fill(BLACK)
+    pygame.draw.rect(screen, WHITE, player)
+    for bullet in bullets:
+        pygame.draw.rect(screen, WHITE, bullet)
+    pygame.display.flip()
+
+    # FPS（60に固定）
+    clock.tick(60)
+
