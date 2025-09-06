@@ -25,29 +25,67 @@ boss_list = [
     {"name": "Boss C", "radius": 30, "hp": 20, "color": (0, 255, 0)}
 ]
 selected_boss = 0
+
+# レベル選択メニュー
+level_list = [
+    {"level": 10, "boss": None},
+    {"level": 1, "boss": boss_list[0]},
+    {"level": 2, "boss": None},
+    {"level": 3, "boss": None},
+    {"level": 4, "boss": None},
+    {"level": 5, "boss": None},
+    {"level": 6, "boss": None},
+    {"level": 7, "boss": None},
+    {"level": 8, "boss": None},
+    {"level": 9, "boss": None},
+]
+selected_level = 1
 menu_mode = True
 
 def draw_menu():
     screen.fill(BLACK)
     font = pygame.font.SysFont(None, 60)
-    title = font.render("BOSS SELECT", True, WHITE)
-    screen.blit(title, (WIDTH//2 - title.get_width()//2, 100))
+    title = font.render("LEVEL SELECT", True, WHITE)
+    screen.blit(title, (WIDTH//2 - title.get_width()//2, 60))
     font2 = pygame.font.SysFont(None, 40)
-    for i, boss in enumerate(boss_list):
-        color = boss["color"] if i == selected_boss else GRAY
-        text = font2.render(boss["name"], True, color)
-        x = WIDTH//2 - text.get_width()//2
-        y = 220 + i*60
-        screen.blit(text, (x, y))
-    font3 = pygame.font.SysFont(None, 30)
-    info = font3.render("Use ↑↓ to select, Enter to start", True, WHITE)
-    screen.blit(info, (WIDTH//2 - info.get_width()//2, HEIGHT-80))
+    # レベル10（最上部、赤色）
+    level10_color = RED if selected_level == 0 else (180, 50, 50)
+    level10 = font2.render("LEVEL 10", True, level10_color)
+    screen.blit(level10, (WIDTH//2 - level10.get_width()//2, 130))
+    # レベル9〜1（下から上に並べる）
+    for i in range(9, 0, -1):
+        color = WHITE if selected_level == i else GRAY
+        level_text = font2.render(f"LEVEL {i}", True, color)
+        y = 180 + (9-i)*45
+        screen.blit(level_text, (WIDTH//2 - level_text.get_width()//2, y))
+    # 操作方法説明
+    font3 = pygame.font.SysFont(None, 24)
+    op1 = font3.render("[Arrow keys] Select Level", True, WHITE)
+    op2 = font3.render("[Enter] Confirm", True, WHITE)
+    screen.blit(op1, (WIDTH//2 - op1.get_width()//2, HEIGHT-70))
+    screen.blit(op2, (WIDTH//2 - op2.get_width()//2, HEIGHT-40))
+    pygame.display.flip()
+
+def draw_end_menu(result):
+    screen.fill(BLACK)
+    font = pygame.font.SysFont(None, 60)
+    if result == "win":
+        text = font.render("GAME CLEAR!", True, (0,255,0))
+    else:
+        text = font.render("GAME OVER", True, RED)
+    text_rect = text.get_rect(center=(WIDTH//2, HEIGHT//2-60))
+    screen.blit(text, text_rect)
+    font2 = pygame.font.SysFont(None, 40)
+    menu_text = font2.render("1: Menu   2: Retry   3: Quit", True, WHITE)
+    menu_rect = menu_text.get_rect(center=(WIDTH//2, HEIGHT//2+30))
+    screen.blit(menu_text, menu_rect)
     pygame.display.flip()
 
 # ゲームループ
 clock = pygame.time.Clock()
 
 retry = False
+waiting_for_space = False
 while True:
     if menu_mode:
         draw_menu()
@@ -57,37 +95,56 @@ while True:
                 sys.exit()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_UP:
-                    selected_boss = (selected_boss - 1) % len(boss_list)
+                    selected_level = (selected_level + 1) % 10
                 if event.key == pygame.K_DOWN:
-                    selected_boss = (selected_boss + 1) % len(boss_list)
+                    selected_level = (selected_level - 1) % 10
                 if event.key == pygame.K_RETURN:
-                    # 選択したボスでゲーム開始
-                    boss_radius = boss_list[selected_boss]["radius"]
-                    boss_hp = boss_list[selected_boss]["hp"]
-                    boss_color = boss_list[selected_boss]["color"]
-                    boss_x = WIDTH // 2
-                    boss_y = 60
-                    boss_alive = True
-                    boss_speed = 4
-                    boss_dir = 1
-                    boss_state = "track"
-                    boss_attack_timer = 0
-                    boss_origin_x = boss_x
-                    boss_origin_y = boss_y
-                    player_lives = 3
-                    player_invincible = False
-                    player_invincible_timer = 0
-                    explosion_timer = 0
-                    explosion_pos = None
-                    bullets = []
-                    boss_explosion_timer = 0
-                    boss_explosion_pos = []
-                    retry = False
-                    # プレイヤー初期化
-                    player = pygame.Rect(WIDTH//2 - 15, HEIGHT - 40, 30, 15)
-                    player_speed = 5
-                    bullet_speed = 7
-                    menu_mode = False
+                    # レベル選択でボスがいる場合のみ開始
+                    boss_info = level_list[selected_level]["boss"]
+                    if boss_info:
+                        boss_radius = boss_info["radius"]
+                        boss_hp = boss_info["hp"]
+                        boss_color = boss_info["color"]
+                        boss_x = WIDTH // 2
+                        boss_y = 60
+                        boss_alive = True
+                        boss_speed = 4
+                        boss_dir = 1
+                        boss_state = "track"
+                        boss_attack_timer = 0
+                        boss_origin_x = boss_x
+                        boss_origin_y = boss_y
+                        player_lives = 3
+                        player_invincible = False
+                        player_invincible_timer = 0
+                        explosion_timer = 0
+                        explosion_pos = None
+                        bullets = []
+                        boss_explosion_timer = 0
+                        boss_explosion_pos = []
+                        retry = False
+                        player = pygame.Rect(WIDTH//2 - 15, HEIGHT - 40, 30, 15)
+                        player_speed = 5
+                        bullet_speed = 7
+                        menu_mode = False
+                        waiting_for_space = True
+        continue
+
+    if waiting_for_space:
+        screen.fill(BLACK)
+        font = pygame.font.SysFont(None, 50)
+        text = font.render("Press SPACE to start!", True, WHITE)
+        text_rect = text.get_rect(center=(WIDTH//2, HEIGHT//2))
+        screen.blit(text, text_rect)
+        pygame.display.flip()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    bullets.append(pygame.Rect(player.centerx - 3, player.top - 6, 6, 12))
+                    waiting_for_space = False
         continue
 
     if retry:
@@ -172,12 +229,28 @@ while True:
             boss_y -= 6
             if boss_y <= 20:
                 boss_state = "dive"
+                boss_dive_follow_frames = 20  # 20フレームだけ追尾
+                boss_dive_frame = 0
         elif boss_state == "dive":
-            # 急降下
+            # dive中は最初の20フレームだけ追尾
+            if 'boss_dive_frame' in locals() and boss_dive_frame < boss_dive_follow_frames:
+                if boss_x < player.centerx:
+                    boss_x += boss_speed // 2
+                    if boss_x > player.centerx:
+                        boss_x = player.centerx
+                elif boss_x > player.centerx:
+                    boss_x -= boss_speed // 2
+                    if boss_x < player.centerx:
+                        boss_x = player.centerx
+                boss_x = max(boss_radius, min(WIDTH - boss_radius, boss_x))
+                boss_dive_frame += 1
             boss_y += 16
             # プレイヤーのy座標付近まで降りる
             if boss_y >= player.centery:
                 boss_state = "return"
+                if 'boss_dive_frame' in locals():
+                    del boss_dive_frame
+                    del boss_dive_follow_frames
         elif boss_state == "return":
             # 元の位置に戻る
             if boss_y > boss_origin_y:
@@ -223,36 +296,43 @@ while True:
         explosion_timer += 1
 
     # ゲームオーバー判定
-    if player_lives <= 0:
+    if player_lives <= 0 or (not boss_alive and boss_explosion_timer >= BOSS_EXPLOSION_DURATION):
+        result = "win" if not boss_alive else "lose"
         # 爆発表示（最後の爆発）
         for i in range(EXPLOSION_DURATION):
             screen.fill(BLACK)
             if explosion_pos:
                 pygame.draw.circle(screen, RED, explosion_pos, 30)
-            font = pygame.font.SysFont(None, 60)
-            text = font.render("GAME OVER", True, RED)
+            if result == "win":
+                font = pygame.font.SysFont(None, 60)
+                text = font.render("GAME CLEAR!", True, (0,255,0))
+            else:
+                font = pygame.font.SysFont(None, 60)
+                text = font.render("GAME OVER", True, RED)
             text_rect = text.get_rect(center=(WIDTH//2, HEIGHT//2))
             screen.blit(text, text_rect)
             pygame.display.flip()
             pygame.time.wait(20)
-        pygame.time.wait(1500)
-        # リトライ待ち
-        font = pygame.font.SysFont(None, 40)
-        text = font.render("Press Enter to Retry", True, WHITE)
-        text_rect = text.get_rect(center=(WIDTH//2, HEIGHT//2+60))
-        screen.blit(text, text_rect)
-        pygame.display.flip()
-        waiting = True
-        while waiting:
+        pygame.time.wait(1000)
+        # 選択メニュー
+        while True:
+            draw_end_menu(result)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
                 if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_RETURN:
+                    if event.key == pygame.K_1:
+                        menu_mode = True
+                        break
+                    if event.key == pygame.K_2:
                         retry = True
-                        waiting = False
-            pygame.time.wait(50)
+                        break
+                    if event.key == pygame.K_3:
+                        pygame.quit()
+                        sys.exit()
+            if menu_mode or retry:
+                break
         continue
 
     # 描画
