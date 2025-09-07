@@ -1,121 +1,23 @@
-import pygame
-import sys
-import random
-import math
-
-# ================== 定数 ==================
-EXPLOSION_DURATION = 30        # 小爆発表示
-BOSS_EXPLOSION_DURATION = 60   # ボス撃破時派手演出
-PLAYER_INVINCIBLE_DURATION = 120
-BOSS_ATTACK_INTERVAL = 180
-# 楕円ボス コア調整（当てやすさ緩和用）
-OVAL_CORE_RADIUS = 28          # 弱点赤丸半径 (旧18→24→28)
-OVAL_CORE_GAP_HIT_THRESHOLD = 3  # gap この値超えでコア当たり判定開始 (旧5相当)
-OVAL_CORE_NO_REFLECT_WHEN_OPEN = True  # 開放中は中央縦楕円で弾を反射しない
+import pygame, sys, random, math
+from constants import (
+    WIDTH, HEIGHT,
+    EXPLOSION_DURATION, BOSS_EXPLOSION_DURATION, PLAYER_INVINCIBLE_DURATION,
+    OVAL_CORE_RADIUS, OVAL_CORE_GAP_HIT_THRESHOLD, OVAL_CORE_NO_REFLECT_WHEN_OPEN,
+    OVAL_BEAM_INTERVAL,
+    WHITE, BLACK, GRAY, RED,
+    BULLET_COLOR_NORMAL, BULLET_COLOR_HOMING, BULLET_COLOR_ENEMY, BULLET_COLOR_REFLECT,
+    boss_list, level_list
+)
+from fonts import jp_font
 
 pygame.init()
-WIDTH, HEIGHT = 480, 640
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("シューティングゲーム")
-
-# ================== 色 ==================
-WHITE = (255, 255, 255)
-BLACK = (0, 0, 0)
-GRAY  = (120, 120, 120)
-RED   = (255, 0, 0)
-
-# 弾カラー（視認性向上）
-BULLET_COLOR_NORMAL  = WHITE
-BULLET_COLOR_HOMING  = (50, 200, 255)   # シアン寄り
-BULLET_COLOR_ENEMY   = (255, 120, 40)   # オレンジ
-BULLET_COLOR_REFLECT = (255, 255, 0)    # 反射中: 黄
-
-# 楕円ボス ビーム同時発射用定数
-OVAL_BEAM_INTERVAL = 170   # 両側同時に telegraph へ移行するまでの待機フレーム
-
-# ================== 日本語フォント対応 ==================
-JP_FONT_CANDIDATES = [
-    "NotoSansCJKJP", "Noto Sans CJK JP", "notosanscjkjp", "notosansjp",
-    "SourceHanSansJP", "sourcehansansjp", "ipagothic", "ipamgothic",
-    "TakaoPGothic", "VL PGothic", "meiryo", "msgothic", "Yu Gothic", "yugothic", "sansserif"
-]
-_JP_FONT_PATH = None
-for name in JP_FONT_CANDIDATES:
-    try:
-        p = pygame.font.match_font(name)
-    except Exception:
-        p = None
-    if p:
-        _JP_FONT_PATH = p
-        break
-_font_cache = {}
-def jp_font(size: int):
-    f = _font_cache.get(size)
-    if f:
-        return f
-    if _JP_FONT_PATH:
-        f = pygame.font.Font(_JP_FONT_PATH, size)
-    else:
-        f = pygame.font.SysFont(None, size)
-    _font_cache[size] = f
-    return f
-
-# ================== ボス / レベル定義 ==================
-boss_list = [
-    {"name": "Boss A", "radius": 60, "hp": 35, "color": RED},
-    {"name": "蛇", "radius": 70, "hp": 40, "color": (128, 0, 128)},
-    # 楕円ボス大型化 radius 50 -> 70
-    {"name": "楕円ボス", "radius": 70, "hp": 10, "color": (255, 165, 0)}
-]
-
-level_list = [
-    {"level": 10, "boss": None},
-    {"level": 1, "boss": boss_list[0]},
-    {"level": 2, "boss": boss_list[1]},
-    {"level": 3, "boss": boss_list[2]},
-    {"level": 4, "boss": None},
-    {"level": 5, "boss": None},
-    {"level": 6, "boss": None},
-    {"level": 7, "boss": None},
-    {"level": 8, "boss": None},
-    {"level": 9, "boss": None},
-]
 selected_level = 1  # 0 が level10, 1..9 が level1..9
 menu_mode = True
 level_cleared = [False]*10
 
-def draw_menu():
-    screen.fill(BLACK)
-    title_font = pygame.font.SysFont(None, 50)
-    title = title_font.render("LEVEL SELECT", True, WHITE)
-    screen.blit(title, (WIDTH//2 - title.get_width()//2, 60))
-    font2 = pygame.font.SysFont(None, 34)
-    # level 10
-    level10_color = RED if selected_level == 0 else (180, 50, 50)
-    lvl10 = font2.render("LEVEL 10", True, level10_color)
-    x10 = WIDTH//2 - lvl10.get_width()//2
-    y10 = 130
-    screen.blit(lvl10, (x10, y10))
-    if level_cleared[0]:
-        star = font2.render("★", True, (255,215,0))
-        screen.blit(star, (x10 + lvl10.get_width() + 10, y10))
-    # levels 9..1
-    # 行間を少し詰めて下部の説明文と重ならないようにする
-    for i in range(9,0,-1):
-        color = WHITE if selected_level == i else GRAY
-        lvl_text = font2.render(f"LEVEL {i}", True, color)
-        # 45 -> 42 に変更し全体を上に詰める
-        y = 180 + (9 - i) * 42
-        x = WIDTH//2 - lvl_text.get_width()//2
-        screen.blit(lvl_text, (x, y))
-        if level_cleared[i]:
-            star = font2.render("★", True, (255,215,0))
-            screen.blit(star, (x + lvl_text.get_width() + 10, y))
-    # 下部説明（1行に統合して視認性向上）
-    font3 = pygame.font.SysFont(None, 20)
-    info = font3.render("←→:Select  Enter:Start   ★=Cleared", True, WHITE)
-    screen.blit(info, (WIDTH//2 - info.get_width()//2, HEIGHT - 46))
-    pygame.display.flip()
+from ui import draw_menu, draw_end_menu
 
 # （この下にゲームループ）
 
@@ -139,50 +41,7 @@ def draw_split_ellipse(surface, center_x, center_y, radius, gap, color):
     surface.blit(left_half, (left_x, top))
     surface.blit(right_half, (right_x, top))
 
-def draw_end_menu(result, reward_text=None):
-    screen.fill(BLACK)
-    font = jp_font(48)
-    if result == "win":
-        text = font.render("GAME CLEAR!", True, (0, 255, 0))
-        text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 80))
-        screen.blit(text, text_rect)
-    else:
-        text = font.render("GAME OVER", True, RED)
-        text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 60))
-        screen.blit(text, text_rect)
-    if reward_text:
-        font_reward = jp_font(26)
-        # 簡易改行: 幅がはみ出す場合はスペース区切りで複数行化
-        def split_reward(text):
-            parts = text.split(' ')
-            lines = []
-            cur = ''
-            for p in parts:
-                test = (cur + ' ' + p).strip()
-                w, _ = font_reward.size(test)
-                if w > WIDTH - 40 and cur:
-                    lines.append(cur)
-                    cur = p
-                else:
-                    cur = test
-            if cur:
-                lines.append(cur)
-            return lines
-        lines = split_reward(reward_text)
-        # 複数行の高さ調整（中央付近に収める）
-        line_h = font_reward.get_linesize()
-        total_h = line_h * len(lines)
-        # GAME CLEAR との重なり回避のため少し下へオフセット(+20)
-        start_y = (HEIGHT // 2 - 10) - total_h // 2 + line_h // 2
-        for i, line in enumerate(lines):
-            surf = font_reward.render(line, True, (0,255,0))
-            rect = surf.get_rect(center=(WIDTH//2, start_y + i*line_h))
-            screen.blit(surf, rect)
-    font2 = jp_font(30)
-    menu_text = font2.render("1: Menu   2: Retry   3: Quit", True, WHITE)
-    menu_rect = menu_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 30))
-    screen.blit(menu_text, menu_rect)
-    pygame.display.flip()
+# 結果画面描画は ui.draw_end_menu を使用
 
 
 # ゲームループ
@@ -226,7 +85,7 @@ unlocked_leaf_shield = False
 while True:
     events = pygame.event.get()
     if menu_mode:
-        draw_menu()
+        draw_menu(screen, selected_level, level_cleared)
         for event in events:
             if event.type == pygame.QUIT:
                 pygame.quit()
@@ -432,8 +291,10 @@ while True:
                         damage = True
                 if not damage:
                     central_open = (core_state in ('opening','firing','open_hold') and gap > OVAL_CORE_GAP_HIT_THRESHOLD)
-                    if central_open:
-                        # 開放中は本体を完全スルー（反射無効）
+                    # ホーミング弾だけは開放中でも反射判定を有効にする
+                    force_reflect = (bullet.get("type") == "homing")
+                    if central_open and not force_reflect:
+                        # 開放中 & 通常弾: スルー
                         pass
                     else:
                         # Boss radius に応じて反射領域をスケール
@@ -921,13 +782,21 @@ while True:
         pygame.time.wait(1000)
         # 選択メニュー
         while True:
-            draw_end_menu(result, reward_text)
+            draw_end_menu(screen, result, reward_text)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
                 if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_t:
+                        if boss_alive:
+                            # 即時爆発デバッグ: HP を 0 にし爆発シーケンスへ
+                            boss_hp = 0
+                            boss_alive = False
+                            boss_explosion_timer = 0
+                            explosion_pos = (boss_x, boss_y)
                     if event.key == pygame.K_1:
+                        # メニューへ戻る
                         menu_mode = True
                         break
                     if event.key == pygame.K_2:
@@ -1046,9 +915,7 @@ while True:
         if boss_explosion_pos:
             boss_explosion_pos = []
     # デバッグヒント表示
-    dbg_font = pygame.font.SysFont(None, 18)
-    hint = dbg_font.render("T: ボス即撃破(テスト)", True, (100,180,255))
-    screen.blit(hint, (10, HEIGHT-22))
+    # デバッグヒント(削除済み)
     # ボス撃破後の派手な爆発
     if not boss_alive and boss_explosion_timer < BOSS_EXPLOSION_DURATION:
         for i in range(12):
