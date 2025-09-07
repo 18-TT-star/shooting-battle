@@ -8,6 +8,7 @@ from constants import (
     OVAL_BEAM_INTERVAL,
     WHITE, BLACK, GRAY, RED,
     BULLET_COLOR_NORMAL, BULLET_COLOR_HOMING, BULLET_COLOR_ENEMY, BULLET_COLOR_REFLECT,
+    BULLET_COLOR_SPREAD,
     boss_list, level_list
 )
 from fonts import jp_font
@@ -79,11 +80,13 @@ has_homing = False
 bullet_type = "normal"  # normal or homing
 has_leaf_shield = False
 leaf_angle = 0.0
+has_spread = False  # 拡散弾所持（解放後ステージ開始時に有効）
 # ボス攻撃タイマー（グローバル宣言）
 boss_attack_timer = 0
 # 報酬持ち越しフラグ
 unlocked_homing = False
 unlocked_leaf_shield = False
+unlocked_spread = False  # 拡散弾報酬
 while True:
     events = pygame.event.get()
     if menu_mode:
@@ -113,6 +116,7 @@ while True:
                         # 報酬・弾種管理
                         has_homing = unlocked_homing
                         has_leaf_shield = unlocked_leaf_shield
+                        has_spread = unlocked_spread
                         bullet_type = "normal"  # 常に通常から
                         leaf_angle = 0.0
                         boss_x = WIDTH // 2
@@ -231,6 +235,10 @@ while True:
         if boss_info and boss_info["name"] == "蛇":
             has_leaf_shield = True
             unlocked_leaf_shield = True
+        # ボス3（楕円ボス）討伐報酬：拡散弾
+        if boss_info and boss_info["name"] == "楕円ボス":
+            has_spread = True
+            unlocked_spread = True
 
     # 弾発射
     for event in events:
@@ -240,16 +248,42 @@ while True:
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_SPACE:
                 if bullet_type == "normal":
-                    bullets.append({"rect": pygame.Rect(
-                        player.centerx - 3, player.top - 6, 6, 12), "type": "normal", "power": 1.0})
+                    bullets.append({"rect": pygame.Rect(player.centerx - 3, player.top - 6, 6, 12), "type": "normal", "power": 1.0})
                 elif bullet_type == "homing":
-                    bullets.append({"rect": pygame.Rect(
-                        player.centerx - 3, player.top - 6, 6, 12), "type": "homing", "power": 0.5})
+                    bullets.append({"rect": pygame.Rect(player.centerx - 3, player.top - 6, 6, 12), "type": "homing", "power": 0.5})
+                elif bullet_type == "spread":
+                    # 3WAY: 中央・左右少し角度付き。威力は各0.5 (ホーミングと同等)
+                    angles = [0, -0.18, 0.18]
+                    speed = 9
+                    for ang in angles:
+                        vx = int(speed * math.sin(ang))
+                        vy = -int(speed * math.cos(ang))
+                        bullets.append({
+                            "rect": pygame.Rect(player.centerx - 3, player.top - 6, 6, 12),
+                            "type": "spread",
+                            "power": 0.5,
+                            "vx": vx,
+                            "vy": vy
+                        })
             # 全ボス共通: テスト用即撃破キー
             if event.key == pygame.K_t and boss_alive and boss_info:
+                # 即座に撃破状態へ移行（HPを0にしフラグ更新＋爆発開始）
                 boss_hp = 0
-            if event.key == pygame.K_v and has_homing:
-                bullet_type = "homing" if bullet_type == "normal" else "normal"
+                boss_alive = False
+                boss_explosion_timer = 0
+                explosion_pos = (boss_x, boss_y)
+            if event.key == pygame.K_v:
+                # 解放済み弾種を巡回: normal -> homing -> spread -> normal ...
+                order = ["normal"]
+                if has_homing:
+                    order.append("homing")
+                if has_spread:
+                    order.append("spread")
+                if bullet_type not in order:
+                    bullet_type = "normal"
+                else:
+                    idx = order.index(bullet_type)
+                    bullet_type = order[(idx + 1) % len(order)]
 
     # 自機移動
     keys = pygame.key.get_pressed()
@@ -260,19 +294,52 @@ while True:
 
     # 弾の移動
     for bullet in bullets:
-        # 反射後のホーミング弾は再追尾させない（reflectフラグで判定）
+        # ホーミング：反射後以外は追尾更新
         if bullet["type"] == "homing" and boss_alive and not bullet.get("reflect"):
             dx = boss_x - bullet["rect"].centerx
             dy = boss_y - bullet["rect"].centery
             dist = max(1, (dx**2 + dy**2)**0.5)
             bullet["vx"] = int(6 * dx / dist)
             bullet["vy"] = int(6 * dy / dist)
+        # spread は生成時に与えた vx, vy を利用（vy は既に上向き負値）
         bullet["rect"].x += bullet.get("vx", 0)
         bullet["rect"].y += bullet.get("vy", -bullet_speed)
     # 上に抜けた自機弾と下に抜けた敵弾を除去
     bullets = [b for b in bullets if b["rect"].bottom > 0 and b["rect"].top < HEIGHT]
 
     # 弾とボスの当たり判定（多重ヒット防止版）
+    # 拡散弾: 敵弾( enemy ) と接触した場合双方消滅（ボス判定前）
+    if any(b.get("type") == "spread" for b in bullets):
+        survivors = []
+        enemy_bullets = []
+        spread_bullets = []
+        for b in bullets:
+            t = b.get("type")
+            if t == "enemy":
+                enemy_bullets.append(b)
+            elif t == "spread":
+                spread_bullets.append(b)
+            else:
+                survivors.append(b)
+        # 相殺判定（O(n*m) だが弾数少なので十分）
+        removed_enemy = set()
+        removed_spread = set()
+        for si, sb in enumerate(spread_bullets):
+            for ei, eb in enumerate(enemy_bullets):
+                if ei in removed_enemy:
+                    continue
+                if sb["rect"].colliderect(eb["rect"]):
+                    removed_enemy.add(ei)
+                    removed_spread.add(si)
+        new_list = survivors
+        for ei, eb in enumerate(enemy_bullets):
+            if ei not in removed_enemy:
+                new_list.append(eb)
+        for si, sb in enumerate(spread_bullets):
+            if si not in removed_spread:
+                new_list.append(sb)
+        bullets = new_list
+
     if boss_alive and boss_info:
         cleaned_bullets = []
         for bullet in bullets:
@@ -744,6 +811,8 @@ while True:
                 reward_text = "ホーミング弾解放! V切替 威力0.5/追尾"
             elif boss_info["name"] == "蛇":
                 reward_text = "リーフシールド獲得! 自機周囲で敵/弾を防ぐ"
+            elif boss_info["name"] == "楕円ボス":
+                reward_text = "拡散弾(3WAY) 解放! Vで切替 威力0.5x3 敵弾相殺"
         # 星マーク
         if result == "win":
             level_cleared[selected_level] = True
@@ -861,6 +930,8 @@ while True:
             color = BULLET_COLOR_HOMING
         elif btype == "enemy":
             color = BULLET_COLOR_ENEMY
+        elif btype == "spread":
+            color = BULLET_COLOR_SPREAD
         else:
             color = WHITE
         pygame.draw.rect(screen, color, bullet["rect"])
@@ -970,10 +1041,30 @@ while True:
     screen.blit(text_surf, text_rect)
     # 弾種表示
     font = pygame.font.SysFont(None, 20)
+    # 武器アイコン表示（解放済みのもののみ）
+    weapon_icons = []  # (label, color, active)
+    weapon_icons.append(("N", BULLET_COLOR_NORMAL, bullet_type == "normal"))
     if has_homing:
-        bullet_text = f"Bullet: {'Homing' if bullet_type == 'homing' else 'Normal'} (V to switch)"
-        text_surf = font.render(bullet_text, True, (0,255,0) if bullet_type == "homing" else WHITE)
-        screen.blit(text_surf, (20, HEIGHT-40))
+        weapon_icons.append(("H", BULLET_COLOR_HOMING, bullet_type == "homing"))
+    if has_spread:
+        weapon_icons.append(("S", BULLET_COLOR_SPREAD, bullet_type == "spread"))
+    icon_size = 22
+    pad = 6
+    base_x = 20
+    base_y = HEIGHT - 50
+    for i,(lbl,col,active) in enumerate(weapon_icons):
+        x = base_x + i*(icon_size+pad)
+        rect = pygame.Rect(x, base_y, icon_size, icon_size)
+        pygame.draw.rect(screen, col, rect, 0 if active else 2)
+        if not active:
+            pygame.draw.rect(screen, WHITE, rect, 2)
+        f2 = pygame.font.SysFont(None, 18)
+        ts = f2.render(lbl, True, BLACK if active else col)
+        ts_rect = ts.get_rect(center=rect.center)
+        screen.blit(ts, ts_rect)
+    hint_font = pygame.font.SysFont(None, 18)
+    hint = hint_font.render("V:切替", True, WHITE)
+    screen.blit(hint, (base_x, base_y - 18))
 
     pygame.display.flip()
     clock.tick(60)
