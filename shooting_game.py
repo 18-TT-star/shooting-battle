@@ -3,6 +3,8 @@ from constants import (
     WIDTH, HEIGHT,
     EXPLOSION_DURATION, BOSS_EXPLOSION_DURATION, PLAYER_INVINCIBLE_DURATION,
     OVAL_CORE_RADIUS, OVAL_CORE_GAP_HIT_THRESHOLD, OVAL_CORE_NO_REFLECT_WHEN_OPEN,
+    OVAL_CORE_GAP_TARGET, OVAL_CORE_CYCLE_INTERVAL, OVAL_CORE_FIRING_DURATION,
+    OVAL_CORE_OPEN_HOLD, OVAL_CORE_GAP_STEP,
     OVAL_BEAM_INTERVAL,
     WHITE, BLACK, GRAY, RED,
     BULLET_COLOR_NORMAL, BULLET_COLOR_HOMING, BULLET_COLOR_ENEMY, BULLET_COLOR_REFLECT,
@@ -13,9 +15,9 @@ from fonts import jp_font
 pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("シューティングゲーム")
-selected_level = 1  # 0 が level10, 1..9 が level1..9
+selected_level = 1  # 1..MAX_LEVEL を使用
 menu_mode = True
-level_cleared = [False]*10
+level_cleared = [False]*7  # 0..6
 
 from ui import draw_menu, draw_end_menu
 
@@ -92,9 +94,13 @@ while True:
                 sys.exit()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_UP:
-                    selected_level = (selected_level + 1) % 10
+                    selected_level += 1
+                    if selected_level > 6:  # MAX_LEVEL 定数化してもよい
+                        selected_level = 1
                 if event.key == pygame.K_DOWN:
-                    selected_level = (selected_level - 1) % 10
+                    selected_level -= 1
+                    if selected_level < 1:
+                        selected_level = 6
                 if event.key == pygame.K_RETURN:
                     # レベル選択でボスがいる場合のみ開始
                     boss_info = level_list[selected_level]["boss"]
@@ -137,11 +143,11 @@ while True:
                             if 'core_state' not in boss_info:
                                 boss_info['core_state'] = 'closed'
                                 boss_info['core_timer'] = 0
-                                boss_info['core_cycle_interval'] = 240
-                                boss_info['core_firing_duration'] = 60
-                                boss_info['core_open_hold'] = 120  # 開放維持を長く
+                                boss_info['core_cycle_interval'] = OVAL_CORE_CYCLE_INTERVAL
+                                boss_info['core_firing_duration'] = OVAL_CORE_FIRING_DURATION
+                                boss_info['core_open_hold'] = OVAL_CORE_OPEN_HOLD  # 開放維持を長く
                                 boss_info['core_gap'] = 0
-                                boss_info['core_gap_target'] = 40
+                                boss_info['core_gap_target'] = OVAL_CORE_GAP_TARGET
                         player_lives = 3
                         player_invincible = False
                         player_invincible_timer = 0
@@ -254,8 +260,8 @@ while True:
 
     # 弾の移動
     for bullet in bullets:
-        # velocityベースで移動
-        if bullet["type"] == "homing" and boss_alive:
+        # 反射後のホーミング弾は再追尾させない（reflectフラグで判定）
+        if bullet["type"] == "homing" and boss_alive and not bullet.get("reflect"):
             dx = boss_x - bullet["rect"].centerx
             dy = boss_y - bullet["rect"].centery
             dist = max(1, (dx**2 + dy**2)**0.5)
@@ -316,6 +322,9 @@ while True:
                                     break
                         if reflected_here:
                             bullet["reflect"] = True
+                            # 反射後は通常弾化して再追尾しない
+                            if bullet.get("type") == "homing":
+                                bullet["type"] = "normal"
                             bullet["vy"] = abs(bullet.get("vy", -7))
                             bullet["vx"] = random.randint(-3, 3)
                 if not damage:
@@ -343,6 +352,8 @@ while True:
                         seg_rect = pygame.Rect(int(sx-20), int(sy-20), 40, 40)
                         if seg_rect.colliderect(bullet["rect"]):
                             bullet["reflect"] = True
+                            if bullet.get("type") == "homing":
+                                bullet["type"] = "normal"
                             bullet["vy"] = abs(bullet.get("vy", -7))
                             bullet["vx"] = random.randint(-3, 3)
                             break
@@ -629,10 +640,10 @@ while True:
                 boss_info['core_state'] = 'closed'
                 boss_info['core_timer'] = 0
                 boss_info['core_gap'] = 0
-                boss_info['core_gap_target'] = 40
-                boss_info['core_cycle_interval'] = 240
-                boss_info['core_firing_duration'] = 60
-                boss_info['core_open_hold'] = 50
+                boss_info['core_gap_target'] = OVAL_CORE_GAP_TARGET
+                boss_info['core_cycle_interval'] = OVAL_CORE_CYCLE_INTERVAL
+                boss_info['core_firing_duration'] = OVAL_CORE_FIRING_DURATION
+                boss_info['core_open_hold'] = OVAL_CORE_OPEN_HOLD
             cs = boss_info['core_state']
             boss_info['core_timer'] += 1
             gap = boss_info.get('core_gap',0)
@@ -642,7 +653,7 @@ while True:
                     boss_info['core_state'] = 'opening'
                     boss_info['core_timer'] = 0
             elif cs == 'opening':
-                gap += 4
+                gap += OVAL_CORE_GAP_STEP
                 if gap >= boss_info['core_gap_target']:
                     gap = boss_info['core_gap_target']
                     boss_info['core_state'] = 'firing'
@@ -650,7 +661,7 @@ while True:
                 boss_info['core_gap'] = gap
             elif cs == 'firing':
                 # 一定間隔で拡散弾リング
-                if boss_info['core_timer'] % 12 == 1:
+                if boss_info['core_timer'] % 12 == 1:  # 12 も後で定数化候補
                     core_cx, core_cy = boss_x, boss_y
                     RING_NUM = 10
                     speed = 4
@@ -673,7 +684,7 @@ while True:
                     boss_info['core_state'] = 'closing'
                     boss_info['core_timer'] = 0
             elif cs == 'closing':
-                gap -= 4
+                gap -= OVAL_CORE_GAP_STEP
                 if gap <= 0:
                     gap = 0
                     boss_info['core_state'] = 'closed'

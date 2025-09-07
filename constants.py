@@ -14,6 +14,11 @@ BOSS_ATTACK_INTERVAL = 180
 OVAL_CORE_RADIUS = 28          # 弱点赤丸半径
 OVAL_CORE_GAP_HIT_THRESHOLD = 3
 OVAL_CORE_NO_REFLECT_WHEN_OPEN = True
+OVAL_CORE_GAP_TARGET = 40
+OVAL_CORE_CYCLE_INTERVAL = 240
+OVAL_CORE_FIRING_DURATION = 60
+OVAL_CORE_OPEN_HOLD = 120
+OVAL_CORE_GAP_STEP = 4  # 開閉1フレームあたり増減
 
 # 楕円ボス ビーム同時発射用
 OVAL_BEAM_INTERVAL = 170
@@ -38,15 +43,14 @@ boss_list = [
     {"name": "楕円ボス", "radius": 70, "hp": 10, "color": (255, 165, 0)}
 ]
 
+# レベル数を 6 までに縮小。index は 1..MAX_LEVEL を使用（0 番は未使用保険で None）。
+MAX_LEVEL = 6
 level_list = [
-    {"level": 10, "boss": None},
+    {"level": 0, "boss": None},      # ダミー（インデックス合わせ）
     {"level": 1, "boss": boss_list[0]},
     {"level": 2, "boss": boss_list[1]},
     {"level": 3, "boss": boss_list[2]},
     {"level": 4, "boss": None},
     {"level": 5, "boss": None},
     {"level": 6, "boss": None},
-    {"level": 7, "boss": None},
-    {"level": 8, "boss": None},
-    {"level": 9, "boss": None},
 ]

@@ -9,28 +9,26 @@ def draw_menu(screen, selected_level, level_cleared):
     title_font = pygame.font.SysFont(None, 50)
     title = title_font.render("LEVEL SELECT", True, WHITE)
     screen.blit(title, (WIDTH//2 - title.get_width()//2, 60))
-    font2 = pygame.font.SysFont(None, 34)
-    # level 10
-    level10_color = RED if selected_level == 0 else (180, 50, 50)
-    lvl10 = font2.render("LEVEL 10", True, level10_color)
-    x10 = WIDTH//2 - lvl10.get_width()//2
-    y10 = 130
-    screen.blit(lvl10, (x10, y10))
-    if level_cleared[0]:
-        star = font2.render("★", True, (255,215,0))
-        screen.blit(star, (x10 + lvl10.get_width() + 10, y10))
-    for i in range(9,0,-1):
-        color = WHITE if selected_level == i else (120,120,120)
-        lvl_text = font2.render(f"LEVEL {i}", True, color)
-        y = 180 + (9 - i) * 42
-        x = WIDTH//2 - lvl_text.get_width()//2
-        screen.blit(lvl_text, (x, y))
-        if level_cleared[i]:
+    font2 = pygame.font.SysFont(None, 38)
+    # レベル 1..6 を上から並べる
+    base_y = 140
+    line_h = 50
+    # 表示順を逆(6 -> 1)
+    for row, i in enumerate(range(6, 0, -1)):
+        if i == 6:
+            color = RED if selected_level == i else (180, 50, 50)
+        else:
+            color = WHITE if selected_level == i else (120,120,120)
+        txt = font2.render(f"LEVEL {i}", True, color)
+        x = WIDTH//2 - txt.get_width()//2
+        y = base_y + row*line_h
+        screen.blit(txt, (x, y))
+        if len(level_cleared) > i and level_cleared[i]:
             star = font2.render("★", True, (255,215,0))
-            screen.blit(star, (x + lvl_text.get_width() + 10, y))
-    font3 = pygame.font.SysFont(None, 20)
-    info = font3.render("←→:Select  Enter:Start   ★=Cleared", True, WHITE)
-    screen.blit(info, (WIDTH//2 - info.get_width()//2, HEIGHT - 46))
+            screen.blit(star, (x + txt.get_width() + 10, y))
+    font3 = pygame.font.SysFont(None, 22)
+    info = font3.render("↑↓:Select  Enter:Start  ★=Cleared", True, WHITE)
+    screen.blit(info, (WIDTH//2 - info.get_width()//2, HEIGHT - 60))
     pygame.display.flip()
 
 
