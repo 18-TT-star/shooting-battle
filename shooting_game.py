@@ -21,9 +21,8 @@ RED = (255, 0, 0)
 # ボス選択メニュー
 boss_list = [
     {"name": "Boss A", "radius": 60, "hp": 35, "color": RED},
-    {"name": "Boss B", "radius": 60, "hp": 60, "color": (0, 0, 255)},
-    {"name": "Boss C", "radius": 30, "hp": 20, "color": (0, 255, 0)},
-    {"name": "蛇", "radius": 70, "hp": 80, "color": (128, 0, 128)}  # ボス2（紫）
+    {"name": "蛇", "radius": 70, "hp": 80, "color": (128, 0, 128)},  # ボス2（紫）
+    {"name": "楕円ボス", "radius": 50, "hp": 50, "color": (255, 165, 0)}  # 楕円ボス（オレンジ）
 ]
 selected_boss = 0
 
@@ -31,8 +30,8 @@ selected_boss = 0
 level_list = [
     {"level": 10, "boss": None},
     {"level": 1, "boss": boss_list[0]},
-    {"level": 2, "boss": boss_list[3]},  # レベル2にボス2を割り当て
-    {"level": 3, "boss": None},
+    {"level": 2, "boss": boss_list[1]},  # レベル2にボス2を割り当て
+    {"level": 3, "boss": boss_list[2]},
     {"level": 4, "boss": None},
     {"level": 5, "boss": None},
     {"level": 6, "boss": None},
@@ -110,6 +109,14 @@ clock = pygame.time.Clock()
 edge_move_flag = None
 cross_flag = None
 
+# プレイヤー初期化
+player = pygame.Rect(WIDTH // 2 - 15, HEIGHT - 40, 30, 30)
+player_speed = 7
+player_lives = 3
+explosion_timer = 0
+explosion_pos = None
+bullet_speed = 10
+
 # 蛇ボス用変数
 snake_segments = []  # 小さい正方形の座標リスト
 snake_tail_fixed = False
@@ -127,10 +134,15 @@ waiting_for_space = False
 # 報酬・弾種管理
 has_homing = False
 bullet_type = "normal"  # normal or homing
+has_leaf_shield = False
+leaf_angle = 0.0
+# ボス攻撃タイマー（グローバル宣言）
+boss_attack_timer = 0
 while True:
+    events = pygame.event.get()
     if menu_mode:
         draw_menu()
-        for event in pygame.event.get():
+        for event in events:
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
@@ -146,15 +158,21 @@ while True:
                         boss_radius = boss_info["radius"]
                         boss_hp = boss_info["hp"]
                         boss_color = boss_info["color"]
+                        retry = False
+                        waiting_for_space = False
+                        # 報酬・弾種管理
+                        has_homing = False
+                        bullet_type = "normal"  # normal or homing
+                        has_leaf_shield = False
+                        leaf_angle = 0.0
                         boss_x = WIDTH // 2
                         boss_y = 60
                         boss_alive = True
                         boss_speed = 4
                         boss_dir = 1
                         boss_state = "track"
-                        boss_attack_timer = 0
-                        boss_origin_x = boss_x
-                        boss_origin_y = boss_y
+                        if boss_info and boss_info["name"] == "楕円ボス":
+                            boss_origin_x = boss_x
                         player_lives = 3
                         player_invincible = False
                         player_invincible_timer = 0
@@ -163,15 +181,14 @@ while True:
                         bullets = []
                         boss_explosion_timer = 0
                         boss_explosion_pos = []
+                        boss_attack_timer = 0
                         retry = False
-                        player = pygame.Rect(
-    WIDTH // 2 - 15, HEIGHT - 40, 30, 15)
+                        player = pygame.Rect(WIDTH // 2 - 15, HEIGHT - 40, 30, 15)
                         player_speed = 5
                         bullet_speed = 7
-                        menu_mode = False
                         waiting_for_space = True
+                        menu_mode = False
         continue
-
     if waiting_for_space:
         screen.fill(BLACK)
         font = pygame.font.SysFont(None, 50)
@@ -179,13 +196,12 @@ while True:
         text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
         screen.blit(text, text_rect)
         pygame.display.flip()
-        for event in pygame.event.get():
+        for event in events:
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
-                    # 弾にvelocity情報を追加（初期は上方向）
                     bullets.append({
                         "rect": pygame.Rect(player.centerx - 3, player.top - 6, 6, 12),
                         "type": bullet_type,
@@ -195,34 +211,34 @@ while True:
                     })
                     waiting_for_space = False
         continue
-
     if retry:
-        # 初期化
         player_lives = 3
         player_invincible = False
         player_invincible_timer = 0
         explosion_timer = 0
         explosion_pos = None
         bullets = []
-        boss_alive = True
-        boss_x = WIDTH // 2
-        boss_y = 60
-        boss_state = "track"
-        boss_attack_timer = 0
-        boss_origin_x = boss_x
-        boss_origin_y = boss_y
-        boss_hp = 35
-        retry = False
-
-    # ボス撃破時の報酬
+    boss_alive = True
+    boss_x = WIDTH // 2
+    boss_y = 60
+    boss_state = "track"
+    boss_attack_timer = 0
+    boss_origin_x = boss_x
+    boss_origin_y = boss_y
+    boss_hp = boss_info["hp"] if boss_info else 35
+    retry = False
+    continue
     if not boss_alive and boss_explosion_timer == 1:
         # ボス1を倒した場合のみ報酬
         if boss_info and boss_info["name"] == "Boss A":
             has_homing = True
             bullet_type = "normal"
+        # ボス2（蛇）討伐報酬：リーフシールド
+        if boss_info and boss_info["name"] == "蛇":
+            has_leaf_shield = True
 
     # 弾発射
-    for event in pygame.event.get():
+    for event in events:
         if event.type == pygame.QUIT:
             pygame.quit()
             sys.exit()
@@ -257,277 +273,152 @@ while True:
         bullet["rect"].y += bullet.get("vy", -bullet_speed)
     bullets = [b for b in bullets if b["rect"].bottom > 0]
 
-    # 弾とボスの当たり判定
-    if boss_alive:
+    # 弾とボスの当たり判定（整理後）
+    if boss_alive and boss_info:
+        cleaned_bullets = []
         for bullet in bullets:
-            # 蛇ボス（名前: "蛇"）の特殊判定
-            if boss_info and boss_info["name"] == "蛇":
-                import math
-                import random
-                main_size = boss_radius * 0.8
-                main_rect = pygame.Rect(
-    boss_x - int(main_size) // 2,
-    boss_y - int(main_size) // 2,
-    int(main_size),
-     int(main_size))
-                # 大きい四角形に当たった場合は反射
-                if main_rect.colliderect(bullet["rect"]):
-                    bullet["vy"] = int(bullet_speed * 0.7)
-                    bullet["vx"] = int(
-                        bullet_speed * random.uniform(-0.7, 0.7))
+            hit_or_reflected = False
+            # 楕円ボス: 反射判定のみ（ダメージは与えない）
+            if boss_info["name"] == "楕円ボス":
+                cx, cy = boss_x, boss_y
+                # 中央縦楕円
+                if ((bullet["rect"].centerx - cx)**2)/(30**2) + ((bullet["rect"].centery - cy)**2)/(50**2) < 1:
                     bullet["reflect"] = True
-                    if bullet["rect"].top > HEIGHT or bullet["rect"].left < 0 or bullet["rect"].right > WIDTH:
-                        bullets.remove(bullet)
-                    continue
-                # 体節（小さい四角形）に当たった場合のみダメージ
-                small_size = boss_radius // 2
-                hit = False
-                for seg in snake_segments:
-                    snake_shrink_path = []
-                    if seg_rect.colliderect(bullet["rect"]):
-                        boss_hp -= bullet["power"]
-                        boss_explosion_pos.append(
-    (bullet["rect"].centerx, bullet["rect"].centery))
-                        bullets.remove(bullet)
-                        hit = True
-                        if boss_hp <= 0:
-                            boss_alive = False
-                            boss_explosion_timer = 0
-                        break
-                if hit:
-                    break
-            else:
-                dx = bullet["rect"].centerx - boss_x
-                dy = bullet["rect"].centery - boss_y
-                if dx * dx + dy * dy < boss_radius * boss_radius:
-                    boss_hp -= bullet["power"]
-                    boss_explosion_pos.append(
-    (bullet["rect"].centerx, bullet["rect"].centery))
-                    bullets.remove(bullet)
+                    bullet["vy"] = abs(bullet.get("vy", -7))
+                    bullet["vx"] = random.randint(-3, 3)
+                    hit_or_reflected = True
+                else:
+                    # 左右小楕円
+                    for ox in (-60, 60):
+                        ex = boss_x + ox - (20 if ox>0 else -20)
+                        ey = boss_y
+                        if ((bullet["rect"].centerx - ex)**2)/(20**2) + ((bullet["rect"].centery - ey)**2)/(30**2) < 1:
+                            bullet["reflect"] = True
+                            bullet["vy"] = abs(bullet.get("vy", -7))
+                            bullet["vx"] = random.randint(-3, 3)
+                            hit_or_reflected = True
+                            break
+            elif boss_info["name"] == "蛇":
+                # 本体（正方形）はダメージ対象
+                main_size = int(boss_radius * 1.2)
+                main_rect = pygame.Rect(boss_x - main_size//2, boss_y - main_size//2, main_size, main_size)
+                if main_rect.colliderect(bullet["rect"]):
+                    boss_hp -= bullet.get("power", 1.0)
+                    boss_explosion_pos.append((bullet["rect"].centerx, bullet["rect"].centery))
                     if boss_hp <= 0:
                         boss_alive = False
                         boss_explosion_timer = 0
-                    break
+                        explosion_pos = (boss_x, boss_y)
+                    hit_or_reflected = True  # 弾削除
+                else:
+                    # 回転体節は反射
+                    ROTATE_SEGMENTS_NUM = 5
+                    ROTATE_RADIUS = boss_radius + 30
+                    rotate_angle_local = globals().get("rotate_angle", 0.0)
+                    for i in range(ROTATE_SEGMENTS_NUM):
+                        angle = rotate_angle_local + (2*math.pi*i/ROTATE_SEGMENTS_NUM)
+                        sx = boss_x + ROTATE_RADIUS * math.cos(angle)
+                        sy = boss_y + ROTATE_RADIUS * math.sin(angle)
+                        seg_rect = pygame.Rect(int(sx-20), int(sy-20), 40, 40)
+                        if seg_rect.colliderect(bullet["rect"]):
+                            bullet["reflect"] = True
+                            bullet["vy"] = abs(bullet.get("vy", -7))
+                            bullet["vx"] = random.randint(-3, 3)
+                            hit_or_reflected = True
+                            break
+            else:
+                # 通常ボス: 円形判定（半径 boss_radius）
+                dx = bullet["rect"].centerx - boss_x
+                dy = bullet["rect"].centery - boss_y
+                if dx*dx + dy*dy < boss_radius*boss_radius:
+                    boss_hp -= bullet.get("power", 1.0)
+                    boss_explosion_pos.append((bullet["rect"].centerx, bullet["rect"].centery))
+                    if boss_hp <= 0:
+                        boss_alive = False
+                        boss_explosion_timer = 0
+                        explosion_pos = (boss_x, boss_y)
+                    hit_or_reflected = True
+            # 処理後の弾リスト再構築（反射した弾は残し、ヒットした弾は除去）
+            if not hit_or_reflected or bullet.get("reflect"):
+                cleaned_bullets.append(bullet)
+        bullets = cleaned_bullets
     # ボス撃破後の爆発演出
     if not boss_alive and boss_explosion_timer < BOSS_EXPLOSION_DURATION:
         boss_explosion_timer += 1
-
     # ボスキャラの攻撃パターン
     if boss_alive:
         boss_attack_timer += 1
-        # 蛇ボスの状態管理
-        if boss_info and boss_info["name"] == "蛇":
-            # 攻撃サイクル管理
-            snake_attack_timer += 1
-            # 攻撃終了後3秒待機
-            if snake_state == "normal" and snake_attack_timer > 180:
-                snake_state = "grow"
-                snake_attack_timer = 0
-                snake_segments = []
-                snake_tail_pos = None
-                snake_target_edge = None
-                snake_attack_y = None
-                snake_cross_progress = 0
-                boss_origin_x = boss_x
-                boss_origin_y = 20
-            # 通常時はプレイヤー追尾
-            if snake_state == "normal":
-                if boss_x < player.centerx:
-                    boss_x += boss_speed
-                    if boss_x > player.centerx:
-                        boss_x = player.centerx
-                elif boss_x > player.centerx:
-                    boss_x -= boss_speed
-                    if boss_x < player.centerx:
-                        boss_x = player.centerx
-                boss_x = max(boss_radius, min(WIDTH - boss_radius, boss_x))
-                # しっぽはサイン波でくねくね
-                # くねくね描画用snake_segmentsのみ生成（shrink用リストは上書きしない）
-                main_size = boss_radius * 0.8
-                small_size = boss_radius // 2
-                base_x, base_y = boss_x, boss_y - main_size // 2 + 30
-                snake_segments = []
-                for i in range(1, 6):
-                    wave = math.sin(pygame.time.get_ticks() / 200.0 + i) * (10 + i * 3)
-                    seg_x = base_x + wave
-                    seg_y = base_y - i * (small_size + 8)
-                    snake_segments.append([seg_x, seg_y])
-            elif snake_state == "shrink":
-                # 収縮: snake_shrink_pathに沿って本体が戻る
-                global snake_shrink_index
-                # 戻る速度調整用カウンタ
-                global shrink_speed_counter
-                if 'shrink_speed_counter' not in globals():
-                    shrink_speed_counter = 0
-                if snake_shrink_path and snake_shrink_index < len(snake_shrink_path):
-                    boss_x, boss_y = snake_shrink_path[-(snake_shrink_index+1)]
-                    shrink_speed_counter += 1
-                    if 'shrink_interval' not in globals():
-                        shrink_interval = max(1, int(120 / len(snake_shrink_path)))
-                    if shrink_speed_counter >= shrink_interval:
-                        snake_shrink_index += 1
-                        shrink_speed_counter = 0
-                else:
-                    # しっぽ端まで戻ったら通常状態へ
-                    boss_x = boss_origin_x
-                    boss_y = boss_origin_y
-                    snake_state = "normal"
-                    snake_attack_timer = 0
-                    boss_state = "up"
-                    shrink_speed_counter = 0
-        # grow: しっぽ端固定、本体が端まで移動し体節生成
-            elif snake_state == "grow":
-                # grow開始時のみ体節生成
-                if not snake_segments:
-                    snake_tail_pos = [boss_x, boss_y]
-                    snake_segments.append(snake_tail_pos)
-                    if player.centerx < WIDTH // 2:
-                        snake_target_edge = boss_radius
-                    else:
-                        snake_target_edge = WIDTH - boss_radius
-                    snake_attack_y = boss_y
-                    snake_shrink_path = [snake_tail_pos[:]]
-                # 本体は端座標に完全到達するまで移動
-                if boss_x < snake_target_edge:
-                    boss_x += boss_speed
-                    if boss_x > snake_target_edge:
-                        boss_x = snake_target_edge
-                elif boss_x > snake_target_edge:
-                    boss_x -= boss_speed
-                    if boss_x < snake_target_edge:
-                        boss_x = snake_target_edge
-                boss_y = snake_attack_y
-                # しっぽ端から本体まで体節が連なるように線形補間
-                snake_segments = [snake_tail_pos[:]]
-                steps = max(2, min(5, 8))
-                for i in range(1, steps + 1):
-                    t = i / steps
-                    seg_x = snake_tail_pos[0] + (boss_x - snake_tail_pos[0]) * t
-                    seg_y = snake_attack_y + (boss_y - snake_attack_y) * t
-                    snake_segments.append([seg_x, seg_y])
-                    snake_shrink_path.append([seg_x, seg_y])
-                if boss_x == snake_target_edge:
-                    snake_state = "edge_move"
-            # edge_move: 端に沿ってプレイヤーのy座標まで移動
-            elif snake_state == "edge_move":
-                # y座標がプレイヤーに到達するまで移動
-                if boss_y < player.centery:
-                    boss_y += boss_speed
-                    if boss_y > player.centery:
-                        boss_y = player.centery
-                elif boss_y > player.centery:
-                    boss_y -= boss_speed
-                    if boss_y < player.centery:
-                        boss_y = player.centery
-                # x座標は端に固定
-                boss_x = snake_target_edge
-                # 毎フレーム体節座標を追加（前回追加座標と十分離れている場合のみ）
-                min_dist = 18
-                if not snake_segments:
-                    snake_segments.append([snake_tail_pos[0], snake_tail_pos[1]])
-                last_seg = snake_segments[-1]
-                # x方向（端まで）
-                if abs(last_seg[0] - boss_x) > min_dist or abs(last_seg[1] - boss_y) > min_dist:
-                    snake_segments.append([boss_x, boss_y])
-                if boss_y == player.centery:
-                    snake_state = "cross"
-                    snake_cross_progress = 0
-            # cross: 端から反対側へ向かって移動（4分の3程度進む）
-            elif snake_state == "cross":
-                cross_target_x = WIDTH - boss_radius if snake_target_edge == boss_radius else boss_radius
-                cross_distance = abs(cross_target_x - boss_x)
-                cross_step = boss_speed
-                if boss_x < cross_target_x:
-                    boss_x += cross_step
-                    if boss_x > cross_target_x:
-                        boss_x = cross_target_x
-                elif boss_x > cross_target_x:
-                    boss_x -= cross_step
-                    if boss_x < cross_target_x:
-                        boss_x = cross_target_x
-                # 毎フレーム体節座標を追加（前回追加座標と十分離れている場合のみ）
-                min_dist = 18
-                if not snake_segments:
-                    snake_segments.append([boss_x, boss_y])
-                last_seg = snake_segments[-1]
-                if abs(last_seg[0] - boss_x) > min_dist or abs(last_seg[1] - boss_y) > min_dist:
-                    snake_segments.append([boss_x, boss_y])
-                # 4分の3進んだら収縮
-                snake_cross_progress += cross_step
-                if snake_cross_progress > cross_distance * 0.9:
-                    print(f"[DEBUG] shrink開始: snake_shrink_pathの長さ={len(snake_segments)}")
-                    # shrink開始時に体節座標リストを保存
-                    snake_shrink_path = list(snake_segments)
-                    snake_state = "shrink"
-                    snake_shrink_timer = 0
-                    snake_shrink_index = 0
-                    shrink_speed_counter = 0
-                # 完全に元の位置に戻ったら通常状態へ
-                if boss_x == cross_target_x:
-                    snake_state = "normal"
-                    snake_attack_timer = 0
-                    boss_state = "up"
-        else:
-            # 通常ボスの移動ロジック
-            if boss_state == "track":
-                # 追尾
-                if boss_attack_timer >= BOSS_ATTACK_INTERVAL:
-                    boss_state = "up"
-                    boss_attack_timer = 0
-                    boss_origin_x = boss_x
-                    boss_origin_y = boss_y
-                else:
-                    if boss_x < player.centerx:
-                        boss_x += boss_speed
-                        if boss_x > player.centerx:
-                            boss_x = player.centerx
-                    elif boss_x > player.centerx:
-                        boss_x -= boss_speed
-                        if boss_x < player.centerx:
-                            boss_x = player.centerx
-                    boss_x = max(boss_radius, min(WIDTH - boss_radius, boss_x))
-            elif boss_state == "up":
-                # 少し上に移動
-                boss_y -= 6
-                if boss_y <= 20:
-                    boss_y = 20
-                    boss_state = "dive"
-                    boss_dive_follow_frames = 20  # 20フレームだけ追尾
-                    boss_dive_frame = 0
-                    # 蛇ボスの場合はここでsnake_stateをnormalに戻す
-                    if boss_info and boss_info["name"] == "蛇":
-                        snake_state = "normal"
-            elif boss_state == "dive":
-                # dive中は最初の20フレームだけ追尾
-                if 'boss_dive_frame' in locals() and boss_dive_frame < boss_dive_follow_frames:
-                    if boss_x < player.centerx:
-                        boss_x += boss_speed // 2
-                        if boss_x > player.centerx:
-                            boss_x = player.centerx
-                    elif boss_x > player.centerx:
-                        boss_x -= boss_speed // 2
-                        if boss_x < player.centerx:
-                            boss_x = player.centerx
-                    boss_x = max(boss_radius, min(WIDTH - boss_radius, boss_x))
-                    boss_dive_frame += 1
-                boss_y += 16
-                # プレイヤーのy座標付近まで降りる
-                if boss_y >= player.centery:
-                    boss_state = "return"
-                    if 'boss_dive_frame' in locals():
-                        del boss_dive_frame
-                        del boss_dive_follow_frames
-            elif boss_state == "return":
-                # 元の位置に戻る
-                if boss_y > boss_origin_y:
-                    boss_y -= 8
-                    if boss_y < boss_origin_y:
-                        boss_y = boss_origin_y
-                else:
-                    boss_y = boss_origin_y
-                    boss_state = "track"
-                    boss_attack_timer = 0
-                # x座標も元の位置に戻す
+        
+        # 新・回転型ボス
+        ROTATE_SEGMENTS_NUM = 5
+        ROTATE_RADIUS = boss_radius + 30
+        ROTATE_SPEED = 0.03
+        if 'rotate_angle' not in globals():
+            rotate_angle = 0.0
+        rotate_angle += ROTATE_SPEED
+         # ここに楕円ボスの移動ロジックを追加
+        if boss_info and boss_info["name"] == "楕円ボス":
+            if 'move_dir' not in boss_info:
+                boss_info['move_dir'] = 1
+            boss_x += boss_info['move_dir'] * boss_speed
+            # 楕円ボスの移動ロジック（毎フレーム必ず実行）
+            if boss_info and boss_info["name"] == "楕円ボス":
+                if 'move_dir' not in boss_info:
+                    boss_info['move_dir'] = 1
+                boss_x += boss_info['move_dir'] * boss_speed
+                if boss_x < boss_radius + 40:
+                    boss_x = boss_radius + 40
+                    boss_info['move_dir'] = 1
+                elif boss_x > WIDTH - boss_radius - 40:
+                    boss_x = WIDTH - boss_radius - 40
+                    boss_info['move_dir'] = -1
+                # 左右ビーム攻撃用の状態管理
+                if 'beam_left_timer' not in boss_info:
+                    boss_info['beam_left_timer'] = 0
+                    boss_info['beam_left_active'] = False
+                    boss_info['beam_left_target'] = None
+                    boss_info['beam_left_delay'] = 0
+                if 'beam_right_timer' not in boss_info:
+                    boss_info['beam_right_timer'] = 0
+                    boss_info['beam_right_active'] = False
+                    boss_info['beam_right_target'] = None
+                    boss_info['beam_right_delay'] = 0
+                # 左ビーム攻撃（120フレームごとに座標記録、30フレーム遅延後発射、60フレーム表示）
+                boss_info['beam_left_timer'] += 1
+                if not boss_info['beam_left_active'] and boss_info['beam_left_timer'] > 120:
+                    boss_info['beam_left_active'] = True
+                    boss_info['beam_left_timer'] = 0
+                    boss_info['beam_left_target'] = (player.centerx, player.centery)
+                    boss_info['beam_left_delay'] = 0
+                if boss_info['beam_left_active']:
+                    boss_info['beam_left_delay'] += 1
+                    if boss_info['beam_left_delay'] == 30:
+                        boss_info['beam_left_show'] = True
+                        boss_info['beam_left_show_timer'] = 0
+                    if boss_info.get('beam_left_show'):
+                        boss_info['beam_left_show_timer'] += 1
+                        if boss_info['beam_left_show_timer'] > 60:
+                            boss_info['beam_left_active'] = False
+                            boss_info['beam_left_delay'] = 0
+                            boss_info['beam_left_show'] = False
+                # 右ビーム攻撃（180フレームごとに座標記録、30フレーム遅延後発射、60フレーム表示）
+                boss_info['beam_right_timer'] += 1
+                if not boss_info['beam_right_active'] and boss_info['beam_right_timer'] > 180:
+                    boss_info['beam_right_active'] = True
+                    boss_info['beam_right_timer'] = 0
+                    boss_info['beam_right_target'] = (player.centerx, player.centery)
+                    boss_info['beam_right_delay'] = 0
+                if boss_info['beam_right_active']:
+                    boss_info['beam_right_delay'] += 1
+                    if boss_info['beam_right_delay'] == 30:
+                        boss_info['beam_right_show'] = True
+                        boss_info['beam_right_show_timer'] = 0
+                    if boss_info.get('beam_right_show'):
+                        boss_info['beam_right_show_timer'] += 1
+                        if boss_info['beam_right_show_timer'] > 60:
+                            boss_info['beam_right_active'] = False
+                            boss_info['beam_right_delay'] = 0
+                            boss_info['beam_right_show'] = False
                 if boss_x > boss_origin_x:
                     boss_x -= 8
                     if boss_x < boss_origin_x:
@@ -638,9 +529,35 @@ while True:
     # プレイヤー（無敵時は半透明）
     if not player_invincible or (player_invincible_timer//10)%2 == 0:
         pygame.draw.rect(screen, WHITE, player)
+        # リーフシールド描画
+        if has_leaf_shield:
+            leaf_angle += 0.03  # ゆっくり回転
+            for i in range(2):
+                angle = leaf_angle + math.pi * i
+                leaf_radius = 40
+                leaf_x = player.centerx + leaf_radius * math.cos(angle)
+                leaf_y = player.centery + leaf_radius * math.sin(angle)
+                pygame.draw.ellipse(screen, (0,200,0), (leaf_x-12, leaf_y-8, 24, 16))
     for bullet in bullets:
-        color = WHITE if bullet["type"] == "normal" else (0,255,0)
-        pygame.draw.rect(screen, color, bullet["rect"])
+        # boss_beamは弾として描画しない
+        if bullet["type"] != "boss_beam":
+            color = WHITE if bullet["type"] == "normal" else (0,255,0)
+            pygame.draw.rect(screen, color, bullet["rect"])
+
+    # 楕円ボスのビーム（太い線）を描画
+    if boss_alive and boss_info and boss_info["name"] == "楕円ボス":
+        # 左ビーム
+        if boss_info.get('beam_left_show') and boss_info.get('beam_left_target'):
+            lx = boss_x - 60 + 20
+            ly = boss_y
+            tx, ty = boss_info['beam_left_target']
+            pygame.draw.line(screen, (0,255,255), (lx, ly), (tx, ty), 12)
+        # 右ビーム
+        if boss_info.get('beam_right_show') and boss_info.get('beam_right_target'):
+            rx = boss_x + 60 - 20
+            ry = boss_y
+            tx, ty = boss_info['beam_right_target']
+            pygame.draw.line(screen, (0,255,255), (rx, ry), (tx, ty), 12)
     # ボスキャラ
     if boss_alive:
         # Boss A: 台形
@@ -655,18 +572,102 @@ while True:
                 (boss_x - bottom_width//2, boss_y + int(height//2)),
             ]
             pygame.draw.polygon(screen, boss_color, points)
-        # 蛇ボス: 体節描画
         elif boss_info and boss_info["name"] == "蛇":
-            main_size = boss_radius * 0.8
-            main_rect = pygame.Rect(boss_x - int(main_size)//2, boss_y - int(main_size)//2, int(main_size), int(main_size))
-            pygame.draw.rect(screen, boss_color, main_rect)
-            small_size = boss_radius // 2
-            # 体節（小さい四角形）描画
-            for seg in snake_segments:
-                seg_rect = pygame.Rect(seg[0] - small_size//2, seg[1] - small_size//2, small_size, small_size)
-                pygame.draw.rect(screen, boss_color, seg_rect)
-        else:
-            pygame.draw.circle(screen, boss_color, (boss_x, boss_y), boss_radius)
+            # 本体（大きい正方形）
+            snake_color = (128, 0, 128)  # 紫色で明示
+            if boss_alive:
+                for bullet in bullets:
+                    if boss_info:
+                        # 楕円ボスの場合は中央・左右楕円で弾を反射
+                        if boss_info["name"] == "楕円ボス":
+                            cx, cy = boss_x, boss_y
+                            if ((bullet["rect"].centerx - cx)**2) / (30**2) + ((bullet["rect"].centery - cy)**2) / (50**2) < 1:
+                                bullet["reflect"] = True
+                                bullet["vy"] = abs(bullet.get("vy", -7))
+                                bullet["vx"] = random.randint(-3, 3)
+                                continue
+                            lx, ly = boss_x - 60 + 20, boss_y
+                            if ((bullet["rect"].centerx - lx)**2) / (20**2) + ((bullet["rect"].centery - ly)**2) / (30**2) < 1:
+                                bullet["reflect"] = True
+                                bullet["vy"] = abs(bullet.get("vy", -7))
+                                bullet["vx"] = random.randint(-3, 3)
+                                continue
+                            rx, ry = boss_x + 60 - 20, boss_y
+                            if ((bullet["rect"].centerx - rx)**2) / (20**2) + ((bullet["rect"].centery - ry)**2) / (30**2) < 1:
+                                bullet["reflect"] = True
+                                bullet["vy"] = abs(bullet.get("vy", -7))
+                                bullet["vx"] = random.randint(-3, 3)
+                                continue
+                        # 蛇ボスの場合は本体・体節で判定
+                        elif boss_info["name"] == "蛇":
+                            main_size = boss_radius * 1.2
+                            main_rect = pygame.Rect(boss_x - int(main_size)//2, boss_y - int(main_size)//2, int(main_size), int(main_size))
+                            if main_rect.colliderect(bullet["rect"]):
+                                boss_hp -= bullet.get("power", 1.0)
+                                boss_explosion_pos.append((bullet["rect"].centerx, bullet["rect"].centery))
+                                bullets.remove(bullet)
+                                if boss_hp <= 0:
+                                    boss_alive = False
+                                    boss_explosion_timer = 0
+                                    explosion_pos = (boss_x, boss_y)
+                                break
+                            ROTATE_SEGMENTS_NUM = 5
+                            ROTATE_RADIUS = boss_radius + 30
+                            rotate_angle_local = globals().get("rotate_angle", 0.0)
+                            for i in range(ROTATE_SEGMENTS_NUM):
+                                angle = rotate_angle_local + (2 * math.pi * i / ROTATE_SEGMENTS_NUM)
+                                seg_x = boss_x + ROTATE_RADIUS * math.cos(angle)
+                                seg_y = boss_y + ROTATE_RADIUS * math.sin(angle)
+                                seg_rect = pygame.Rect(int(seg_x-20), int(seg_y-20), 40, 40)
+                                if seg_rect.colliderect(bullet["rect"]):
+                                    bullet["reflect"] = True
+                                    bullet["vy"] = abs(bullet.get("vy", -7))
+                                    bullet["vx"] = random.randint(-3, 3)
+                                    break
+                        # 通常ボス
+                        else:
+                            dx = bullet["rect"].centerx - boss_x
+                            dy = bullet["rect"].centery - boss_y
+                            if dx*dx + dy*dy < boss_radius**2:
+                                boss_hp -= bullet.get("power", 1.0)
+                                boss_explosion_pos.append((bullet["rect"].centerx, bullet["rect"].centery))
+                                bullets.remove(bullet)
+                                if boss_hp <= 0:
+                                    boss_alive = False
+                                    boss_explosion_timer = 0
+                                    explosion_pos = (boss_x, boss_y)
+                                break
+                        dist = max(1, (dx**2 + dy**2)**0.5)
+                        vx = int(8 * dx / dist)
+                        vy = int(8 * dy / dist)
+                        bullets.append({
+                            "rect": pygame.Rect(int(rx)-4, int(ry)-4, 8, 8),
+                            "type": "boss_beam",
+                            "power": 1.0,
+                            "vx": vx,
+                            "vy": vy,
+                            "reflect": False
+                        })
+                    if boss_info['beam_right_timer'] > 60:
+                        boss_info['beam_right_active'] = False
+                        boss_info['beam_right_timer'] = 0
+            rotate_angle_local = globals().get("rotate_angle", 0.0)
+            for i in range(ROTATE_SEGMENTS_NUM):
+                angle = rotate_angle_local + (2 * math.pi * i / ROTATE_SEGMENTS_NUM)
+                seg_x = boss_x + ROTATE_RADIUS * math.cos(angle)
+                seg_y = boss_y + ROTATE_RADIUS * math.sin(angle)
+                seg_rect = pygame.Rect(int(seg_x-20), int(seg_y-20), 40, 40)
+                pygame.draw.rect(screen, (180, 0, 180), seg_rect)
+        elif boss_info and boss_info["name"] == "楕円ボス":
+            # 本体（縦楕円）
+            main_rect = pygame.Rect(boss_x - boss_radius//2, boss_y - boss_radius, boss_radius, boss_radius*2)
+            pygame.draw.ellipse(screen, boss_color, main_rect)
+            # 左右の小楕円
+            small_w, small_h = boss_radius//2, boss_radius*2//3
+            left_rect = pygame.Rect(boss_x - boss_radius - small_w//2, boss_y - small_h//2, small_w, small_h)
+            right_rect = pygame.Rect(boss_x + boss_radius - small_w//2, boss_y - small_h//2, small_w, small_h)
+            pygame.draw.ellipse(screen, (0,255,0), left_rect)
+            pygame.draw.ellipse(screen, (0,255,0), right_rect)
         # ボスへの小爆発
         for pos in boss_explosion_pos:
             pygame.draw.circle(screen, (255,255,0), pos, 15)
