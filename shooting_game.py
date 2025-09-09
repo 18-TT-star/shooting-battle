@@ -9,13 +9,32 @@ from constants import (
     WHITE, BLACK, GRAY, RED,
     BULLET_COLOR_NORMAL, BULLET_COLOR_HOMING, BULLET_COLOR_ENEMY, BULLET_COLOR_REFLECT,
     BULLET_COLOR_SPREAD,
-    boss_list, level_list
+    boss_list, level_list,
+    BOUNCE_BOSS_SPEED, BOUNCE_BOSS_RING_COUNT, BOUNCE_BOSS_NO_PATTERN_BOTTOM_MARGIN,
+    BOUNCE_BOSS_SQUISH_DURATION, BOUNCE_BOSS_ANGLE_JITTER_DEG,
+    BOUNCE_BOSS_SHRINK_STEP, BOUNCE_BOSS_SPEED_STEP,
+    WINDOW_SHAKE_DURATION, WINDOW_SHAKE_INTENSITY
+)
+from constants import (
+    DASH_COOLDOWN_FRAMES, DASH_INVINCIBLE_FRAMES, DASH_DISTANCE,
+    DASH_DOUBLE_TAP_WINDOW, DASH_ICON_SEGMENTS
 )
 from fonts import jp_font
 
 pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("シューティングゲーム")
+try:
+    from pygame._sdl2 import Window
+    _game_window = Window.from_display_module()
+    _window_shake_timer = 0
+    _window_shake_intensity = 0
+    _window_base_pos = _game_window.position
+except Exception:
+    _game_window = None
+    _window_shake_timer = 0
+    _window_shake_intensity = 0
+    _window_base_pos = (0, 0)
 selected_level = 1  # 1..MAX_LEVEL を使用
 menu_mode = True
 level_cleared = [False]*7  # 0..6
@@ -87,6 +106,7 @@ boss_attack_timer = 0
 unlocked_homing = False
 unlocked_leaf_shield = False
 unlocked_spread = False  # 拡散弾報酬
+unlocked_dash = False    # ダッシュ報酬（バウンドボス撃破）
 while True:
     events = pygame.event.get()
     if menu_mode:
@@ -117,6 +137,7 @@ while True:
                         has_homing = unlocked_homing
                         has_leaf_shield = unlocked_leaf_shield
                         has_spread = unlocked_spread
+                        has_dash = unlocked_dash
                         bullet_type = "normal"  # 常に通常から
                         leaf_angle = 0.0
                         boss_x = WIDTH // 2
@@ -125,6 +146,24 @@ while True:
                         boss_speed = 4
                         boss_dir = 1
                         boss_state = "track"
+                        # バウンドボス用初期化
+                        if boss_info and boss_info["name"] == "バウンドボス":
+                            boss_info['bounce_vx'] = 0
+                            boss_info['bounce_vy'] = 0
+                            boss_info['bounce_started'] = False
+                            boss_info['bounce_last_side'] = None  # 'top','bottom','left','right'
+                            boss_info['bounce_cool'] = 0
+                            boss_info['squish_timer'] = 0
+                            boss_info['squish_state'] = 'normal'  # 'squish'
+                            boss_info['base_radius'] = boss_radius
+                            boss_info['base_speed'] = BOUNCE_BOSS_SPEED
+                            boss_info['hp_last_segment'] = boss_hp
+                            boss_info['initial_hp'] = boss_hp
+                            boss_info['first_drop'] = True  # 最初の突進中は垂直バウンドを無効化
+                        dash_cooldown = 0
+                        dash_invincible_timer = 0
+                        dash_last_tap = { 'left': -9999, 'right': -9999 }
+                        dash_active = False
                         # Boss A 踏み潰し攻撃用初期化
                         if boss_info["name"] == "Boss A":
                             boss_info['stomp_state'] = 'idle'  # idle, descending, pause, ascending, cooldown
@@ -239,8 +278,35 @@ while True:
         if boss_info and boss_info["name"] == "楕円ボス":
             has_spread = True
             unlocked_spread = True
+        if boss_info and boss_info["name"] == "バウンドボス":
+            unlocked_dash = True
+            has_dash = True
 
-    # 弾発射
+    # フレームカウント（ダッシュのダブルタップ判定で使用）
+    frame_count = pygame.time.get_ticks() // 16  # おおよそ60FPS換算
+
+    # KEYDOWNベースのダッシュ処理関数（長押しで再発動しない）
+    def attempt_dash(dir_key: str):
+        if not has_dash:
+            return
+        if dash_state['cooldown'] > 0:
+            return
+        prev = dash_state['last_tap'][dir_key]
+        if frame_count - prev <= DASH_DOUBLE_TAP_WINDOW:
+            # 発動
+            dist = DASH_DISTANCE
+            if dir_key == 'left':
+                player.x = max(0, player.x - dist)
+            else:
+                player.x = min(WIDTH - player.width, player.x + dist)
+            dash_state['cooldown'] = DASH_COOLDOWN_FRAMES
+            dash_state['invincible_timer'] = DASH_INVINCIBLE_FRAMES
+            dash_state['active'] = True
+            player_invincible = True
+            player_invincible_timer = 0
+        dash_state['last_tap'][dir_key] = frame_count
+
+    # 弾発射 & 入力処理
     for event in events:
         if event.type == pygame.QUIT:
             pygame.quit()
@@ -284,13 +350,42 @@ while True:
                 else:
                     idx = order.index(bullet_type)
                     bullet_type = order[(idx + 1) % len(order)]
+            # ダッシュ（ダブルタップ判定用）: 左右キー押下時のみタップ記録
+            if event.key == pygame.K_LEFT:
+                attempt_dash('left')
+            if event.key == pygame.K_RIGHT:
+                attempt_dash('right')
 
     # 自機移動
     keys = pygame.key.get_pressed()
+    # ダッシュクール/無敵管理
+    if 'has_dash' not in globals():
+        has_dash = False
+    if 'dash_state' not in globals():
+        dash_state = {
+            'cooldown': 0,
+            'invincible_timer': 0,
+            'last_tap': { 'left': -9999, 'right': -9999 },
+            'active': False
+        }
+    dash_cooldown = dash_state['cooldown']
+    dash_invincible_timer = dash_state['invincible_timer']
+    dash_last_tap = dash_state['last_tap']
+    dash_active = dash_state['active']
+    if dash_state['cooldown'] > 0:
+        dash_state['cooldown'] -= 1
+    if dash_state['invincible_timer'] > 0:
+        dash_state['invincible_timer'] -= 1
+        if dash_state['invincible_timer'] == 0:
+            dash_state['active'] = False
     if keys[pygame.K_LEFT] and player.left > 0:
         player.x -= player_speed
     if keys[pygame.K_RIGHT] and player.right < screen.get_width():
         player.x += player_speed
+    # ダッシュ関数内で state 更新された可能性があるのでローカル同期
+    dash_cooldown = dash_state['cooldown']
+    dash_invincible_timer = dash_state['invincible_timer']
+    dash_active = dash_state['active']
 
     # 弾の移動
     for bullet in bullets:
@@ -438,6 +533,25 @@ while True:
                     boss_explosion_timer = 0
                     explosion_pos = (boss_x, boss_y)
                 damage = True
+                # バウンドボス: HP5ごと縮小 & 速度上昇
+                if boss_info and boss_info.get("name") == "バウンドボス" and boss_hp > 0:
+                    # 基準HPとの差異で段数計算 (初期HPからの減少量)
+                    initial_hp = boss_info.get('initial_hp') or boss_info.setdefault('initial_hp', boss_info['hp'])
+                    reduced = initial_hp - boss_hp
+                    new_stage = int(reduced // 5)
+                    if new_stage != boss_info.get('shrink_stage', 0):
+                        boss_info['shrink_stage'] = new_stage
+                        # 半径縮小 (割合減少)
+                        boss_radius = int(boss_info['base_radius'] * (1 - BOUNCE_BOSS_SHRINK_STEP * new_stage))
+                        boss_radius = max(25, boss_radius)
+                        # 速度再計算（方向保持）
+                        speed_now = boss_info['base_speed'] * (1 + BOUNCE_BOSS_SPEED_STEP * new_stage)
+                        vx = boss_info.get('bounce_vx',0)
+                        vy = boss_info.get('bounce_vy',0)
+                        cur_speed = math.hypot(vx, vy) or 1
+                        scale = speed_now / cur_speed
+                        boss_info['bounce_vx'] = vx * scale
+                        boss_info['bounce_vy'] = vy * scale
             if not damage:
                 cleaned_bullets.append(bullet)
         bullets = cleaned_bullets
@@ -762,6 +876,97 @@ while True:
 
             # （オリジンへの補正戻しなし＝回転しつつ周期的に狙う）
 
+        # バウンドボス: 直進突撃→バウンド運動
+        if boss_info and boss_info["name"] == "バウンドボス":
+            r = boss_radius
+            # 潰れ演出中
+            if boss_info.get('squish_state') == 'squish':
+                boss_info['squish_timer'] += 1
+                # 一定フレーム経過で復帰（移動再開）
+                if boss_info['squish_timer'] >= BOUNCE_BOSS_SQUISH_DURATION:
+                    boss_info['squish_state'] = 'normal'
+                    boss_info['squish_timer'] = 0
+                # 潰れ中は移動しない
+            else:
+                # 初回発射方向決定
+                if not boss_info.get('bounce_started'):
+                    # 初回は真下へ落下(速度はYのみ)
+                    boss_info['bounce_vx'] = 0
+                    boss_info['bounce_vy'] = BOUNCE_BOSS_SPEED
+                    boss_info['bounce_started'] = True
+                boss_x += boss_info['bounce_vx']
+                boss_y += boss_info['bounce_vy']
+                bounced = None
+                # 画面端衝突判定
+                if boss_x - r < 0:
+                    boss_x = r
+                    boss_info['bounce_vx'] *= -1
+                    bounced = 'left'
+                elif boss_x + r > WIDTH:
+                    boss_x = WIDTH - r
+                    boss_info['bounce_vx'] *= -1
+                    bounced = 'right'
+                if boss_y - r < 0 and not boss_info.get('first_drop'):
+                    boss_y = r
+                    boss_info['bounce_vy'] *= -1
+                    bounced = 'top'
+                elif boss_y + r > HEIGHT:
+                    boss_y = HEIGHT - r
+                    if boss_info.get('first_drop'):
+                        # 初回底面到達: 方向をランダム斜めに変換し first_drop 終了
+                        boss_info['first_drop'] = False
+                        base_ang = math.radians(random.choice([120, 150, 210, 240]))  # 上向き4方向
+                        speed = math.hypot(boss_info['bounce_vx'], boss_info['bounce_vy']) or BOUNCE_BOSS_SPEED
+                        boss_info['bounce_vx'] = speed * math.cos(base_ang)
+                        boss_info['bounce_vy'] = speed * math.sin(base_ang)
+                        bounced = 'bottom'  # ここでは弾幕無し（仕様通り）
+                    else:
+                        boss_info['bounce_vy'] *= -1
+                        bounced = 'bottom'
+                if bounced:
+                    # 反射角にランダムばらつき
+                    speed = math.hypot(boss_info['bounce_vx'], boss_info['bounce_vy'])
+                    ang = math.atan2(boss_info['bounce_vy'], boss_info['bounce_vx'])
+                    # 1次ジッター + 追加で微小再ジッター
+                    jitter = math.radians(random.uniform(-BOUNCE_BOSS_ANGLE_JITTER_DEG, BOUNCE_BOSS_ANGLE_JITTER_DEG))
+                    ang += jitter
+                    ang += math.radians(random.uniform(-12, 12)) * 0.4
+                    nvx = speed * math.cos(ang)
+                    nvy = speed * math.sin(ang)
+                    # 垂直成分が極端に小さくなりすぎるとゲームが水平往復になるので最小比率を確保
+                    min_vert = 0.25 * speed
+                    if abs(nvy) < min_vert:
+                        nvy = min_vert if nvy >= 0 else -min_vert
+                        # 水平成分再計算して速度維持
+                        horiz = math.sqrt(max(speed**2 - nvy**2, 0.1))
+                        nvx = horiz if nvx >= 0 else -horiz
+                    boss_info['bounce_vx'] = nvx
+                    boss_info['bounce_vy'] = nvy
+                    # 潰れ状態遷移 & 弾幕生成（下端以外）
+                    if bounced != 'bottom':
+                        # 弾幕（リング）
+                        if boss_attack_timer - boss_info.get('bounce_cool', 0) > 5:
+                            cx, cy = boss_x, boss_y
+                            for i in range(BOUNCE_BOSS_RING_COUNT):
+                                bang = 2*math.pi*i/BOUNCE_BOSS_RING_COUNT
+                                bspeed = 4
+                                vx = int(bspeed * math.cos(bang))
+                                vy = int(bspeed * math.sin(bang))
+                                bullets.append({
+                                    'rect': pygame.Rect(int(cx-4), int(cy-4), 8, 8),
+                                    'type': 'enemy',
+                                    'power': 1.0,
+                                    'vx': vx,
+                                    'vy': vy
+                                })
+                            boss_info['bounce_cool'] = boss_attack_timer
+                    # 全方向バウンドでウィンドウシェイク（下端は既に弾幕無しだが揺れは発生）
+                    if bounced and _game_window:
+                        _window_shake_timer = WINDOW_SHAKE_DURATION
+                        _window_shake_intensity = WINDOW_SHAKE_INTENSITY
+                    boss_info['squish_state'] = 'squish'
+                    boss_info['squish_timer'] = 0
+
     # プレイヤーとボスの当たり判定
     if boss_alive and not player_invincible:
         # 跳ね返り弾のみプレイヤー判定
@@ -794,7 +999,7 @@ while True:
     # 無敵時間管理
     if player_invincible:
         player_invincible_timer += 1
-        if player_invincible_timer >= PLAYER_INVINCIBLE_DURATION:
+        if player_invincible_timer >= PLAYER_INVINCIBLE_DURATION and dash_state['invincible_timer'] <= 0:
             player_invincible = False
 
     # 爆発表示管理
@@ -813,6 +1018,8 @@ while True:
                 reward_text = "リーフシールド獲得! 自機周囲で敵/弾を防ぐ"
             elif boss_info["name"] == "楕円ボス":
                 reward_text = "拡散弾(3WAY) 解放! Vで切替 威力0.5x3 敵弾相殺"
+            elif boss_info["name"] == "バウンドボス":
+                reward_text = "緊急回避(ダッシュ) 解放! ←← / →→ で瞬間移動&無敵"
         # 星マーク
         if result == "win":
             level_cleared[selected_level] = True
@@ -990,6 +1197,30 @@ while True:
             right_rect = pygame.Rect(boss_x + boss_radius - small_w//2, boss_y - small_h//2, small_w, small_h)
             pygame.draw.ellipse(screen, (0,200,0), left_rect)
             pygame.draw.ellipse(screen, (0,200,0), right_rect)
+        elif boss_info and boss_info["name"] == "バウンドボス":
+            # 潰れ演出: squish_state中は縦に潰し・横に拡げる
+            if boss_info.get('squish_state') == 'squish':
+                t = boss_info.get('squish_timer',0)
+                ratio = 1 - (t / max(1, BOUNCE_BOSS_SQUISH_DURATION))
+                # 直前のバウンド面を推定: 速度ベクトルの符号から反射面を判断（速度成分の絶対値大きい軸）
+                vx = boss_info.get('bounce_vx',0)
+                vy = boss_info.get('bounce_vy',0)
+                horizontal_hit = abs(vy) > abs(vx)  # 上下反射後は縦速度が大, 左右反射後は横速度が大
+                if horizontal_hit:
+                    # 上下バウンド: 従来（縦潰れ）
+                    squash = 0.45 + 0.55 * ratio
+                    stretch = 1.0 + (1 - ratio) * 0.5
+                else:
+                    # 左右バウンド: 横潰れ / 縦伸び
+                    stretch = 0.45 + 0.55 * ratio  # 横縮小
+                    squash = 1.0 + (1 - ratio) * 0.5  # 縦拡張
+                w = int(boss_radius * 2 * stretch)
+                h = int(boss_radius * 2 * squash)
+                rect = pygame.Rect(0,0,w,h)
+                rect.center = (int(boss_x), int(boss_y))
+                pygame.draw.ellipse(screen, boss_color, rect)
+            else:
+                pygame.draw.circle(screen, boss_color, (int(boss_x), int(boss_y)), boss_radius)
         # ボスへの小爆発
         for pos in boss_explosion_pos:
             pygame.draw.circle(screen, (255,255,0), pos, 15)
@@ -1066,7 +1297,55 @@ while True:
     hint = hint_font.render("V:切替", True, WHITE)
     screen.blit(hint, (base_x, base_y - 18))
 
+    # ダッシュクールダウン表示
+    if 'has_dash' in globals() and has_dash:
+        # 円形メーター (右下ライフの左側)
+        cx = WIDTH - 80
+        cy = HEIGHT - 70
+        radius = 24
+        # 外枠
+        pygame.draw.circle(screen, (200,200,200), (cx, cy), radius, 2)
+        # クール残割合
+        if dash_cooldown > 0:
+            ratio = dash_cooldown / DASH_COOLDOWN_FRAMES
+            # 12分割(アイコンの足=セグメント)埋め
+            segs = DASH_ICON_SEGMENTS
+            filled = int(segs * ratio + 0.999)
+            for i in range(filled):
+                ang0 = (2*math.pi * i / segs) - math.pi/2
+                ang1 = (2*math.pi * (i+1) / segs) - math.pi/2
+                inner = radius - 8
+                pts = [
+                    (cx + inner * math.cos(ang0), cy + inner * math.sin(ang0)),
+                    (cx + radius * math.cos(ang0), cy + radius * math.sin(ang0)),
+                    (cx + radius * math.cos(ang1), cy + radius * math.sin(ang1)),
+                    (cx + inner * math.cos(ang1), cy + inner * math.sin(ang1)),
+                ]
+                pygame.draw.polygon(screen, (120,180,255), pts)
+        else:
+            # READY 表示
+            font_ready = pygame.font.SysFont(None, 18)
+            txt = font_ready.render("DASH", True, (120,200,255))
+            rect = txt.get_rect(center=(cx, cy))
+            screen.blit(txt, rect)
+        # 発動中ハイライトリング
+        if dash_active:
+            pygame.draw.circle(screen, (0,255,255), (cx, cy), radius+2, 2)
+
     pygame.display.flip()
     clock.tick(60)
+
+    # ウィンドウシェイク更新
+    if _game_window and _window_shake_timer > 0:
+        _window_shake_timer -= 1
+        progress = 1 - (_window_shake_timer / float(WINDOW_SHAKE_DURATION))
+        # ease-out 強め + ランダム揺れ合成
+        decay = (1 - progress)**0.4
+        jitter_phase = pygame.time.get_ticks()
+        ox = int((_window_shake_intensity * decay) * math.sin(jitter_phase*0.09) + random.randint(-3,3))
+        oy = int((_window_shake_intensity * decay) * math.cos(jitter_phase*0.11) + random.randint(-3,3))
+        _game_window.position = (_window_base_pos[0] + ox, _window_base_pos[1] + oy)
+    elif _game_window and _window_shake_timer == 0 and _game_window.position != _window_base_pos:
+        _game_window.position = _window_base_pos
 
 

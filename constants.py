@@ -41,7 +41,8 @@ BULLET_COLOR_SPREAD  = (255, 100, 255)  # 拡散弾（3WAY）
 boss_list = [
     {"name": "Boss A", "radius": 60, "hp": 35, "color": RED},
     {"name": "蛇", "radius": 70, "hp": 40, "color": (128, 0, 128)},
-    {"name": "楕円ボス", "radius": 70, "hp": 10, "color": (255, 165, 0)}
+    {"name": "楕円ボス", "radius": 70, "hp": 10, "color": (255, 165, 0)},
+    {"name": "バウンドボス", "radius": 75, "hp": 45, "color": (0, 180, 255)}
 ]
 
 # レベル数を 6 までに縮小。index は 1..MAX_LEVEL を使用（0 番は未使用保険で None）。
@@ -51,7 +52,27 @@ level_list = [
     {"level": 1, "boss": boss_list[0]},
     {"level": 2, "boss": boss_list[1]},
     {"level": 3, "boss": boss_list[2]},
-    {"level": 4, "boss": None},
+    {"level": 4, "boss": boss_list[3]},
     {"level": 5, "boss": None},
     {"level": 6, "boss": None},
 ]
+
+# バウンドボス挙動用（簡易定数）
+BOUNCE_BOSS_SPEED = 5  # 初期はより鈍く
+BOUNCE_BOSS_RING_COUNT = 14
+BOUNCE_BOSS_NO_PATTERN_BOTTOM_MARGIN = 0  # 0: 画面下端バウンド時のみ弾幕無し（拡張余地）
+BOUNCE_BOSS_SQUISH_DURATION = 16  # 潰れ演出フレーム数
+BOUNCE_BOSS_ANGLE_JITTER_DEG = 40  # 反射角ランダム付与最大角度(度) (以前:22)
+BOUNCE_BOSS_SHRINK_STEP = 0.05     # HP区切り毎(5削れ)の半径縮小割合
+BOUNCE_BOSS_SPEED_STEP = 0.15      # 終盤にかけてより急激に加速
+
+# ウィンドウシェイク強度設定
+WINDOW_SHAKE_DURATION = 36   # シェイク継続フレーム
+WINDOW_SHAKE_INTENSITY = 26  # 基本振幅ピクセル
+
+# ダッシュ(緊急回避)関連
+DASH_COOLDOWN_FRAMES = 180
+DASH_INVINCIBLE_FRAMES = 24
+DASH_DISTANCE = 140
+DASH_DOUBLE_TAP_WINDOW = 12  # 何フレーム以内の同キー連打で発動
+DASH_ICON_SEGMENTS = 12
