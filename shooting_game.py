@@ -20,6 +20,8 @@ from constants import (
     DASH_DOUBLE_TAP_WINDOW, DASH_ICON_SEGMENTS
 )
 from fonts import jp_font
+from bullet import spawn_player_bullets, move_player_bullets
+from player import update_dash_timers, attempt_dash
 
 pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -313,24 +315,7 @@ while True:
             sys.exit()
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_SPACE:
-                if bullet_type == "normal":
-                    bullets.append({"rect": pygame.Rect(player.centerx - 3, player.top - 6, 6, 12), "type": "normal", "power": 1.0})
-                elif bullet_type == "homing":
-                    bullets.append({"rect": pygame.Rect(player.centerx - 3, player.top - 6, 6, 12), "type": "homing", "power": 0.5})
-                elif bullet_type == "spread":
-                    # 3WAY: 中央・左右少し角度付き。威力は各0.5 (ホーミングと同等)
-                    angles = [0, -0.18, 0.18]
-                    speed = 9
-                    for ang in angles:
-                        vx = int(speed * math.sin(ang))
-                        vy = -int(speed * math.cos(ang))
-                        bullets.append({
-                            "rect": pygame.Rect(player.centerx - 3, player.top - 6, 6, 12),
-                            "type": "spread",
-                            "power": 0.5,
-                            "vx": vx,
-                            "vy": vy
-                        })
+                spawn_player_bullets(bullets, player, bullet_type, bullet_speed)
             # 全ボス共通: テスト用即撃破キー
             if event.key == pygame.K_t and boss_alive and boss_info:
                 # 即座に撃破状態へ移行（HPを0にしフラグ更新＋爆発開始）
@@ -352,9 +337,13 @@ while True:
                     bullet_type = order[(idx + 1) % len(order)]
             # ダッシュ（ダブルタップ判定用）: 左右キー押下時のみタップ記録
             if event.key == pygame.K_LEFT:
-                attempt_dash('left')
+                if attempt_dash(dash_state, 'left', frame_count, player, has_dash, WIDTH):
+                    player_invincible = True
+                    player_invincible_timer = 0
             if event.key == pygame.K_RIGHT:
-                attempt_dash('right')
+                if attempt_dash(dash_state, 'right', frame_count, player, has_dash, WIDTH):
+                    player_invincible = True
+                    player_invincible_timer = 0
 
     # 自機移動
     keys = pygame.key.get_pressed()
@@ -368,16 +357,8 @@ while True:
             'last_tap': { 'left': -9999, 'right': -9999 },
             'active': False
         }
-    dash_cooldown = dash_state['cooldown']
-    dash_invincible_timer = dash_state['invincible_timer']
-    dash_last_tap = dash_state['last_tap']
-    dash_active = dash_state['active']
-    if dash_state['cooldown'] > 0:
-        dash_state['cooldown'] -= 1
-    if dash_state['invincible_timer'] > 0:
-        dash_state['invincible_timer'] -= 1
-        if dash_state['invincible_timer'] == 0:
-            dash_state['active'] = False
+    # ダッシュタイマー更新
+    update_dash_timers(dash_state)
     if keys[pygame.K_LEFT] and player.left > 0:
         player.x -= player_speed
     if keys[pygame.K_RIGHT] and player.right < screen.get_width():
@@ -388,19 +369,7 @@ while True:
     dash_active = dash_state['active']
 
     # 弾の移動
-    for bullet in bullets:
-        # ホーミング：反射後以外は追尾更新
-        if bullet["type"] == "homing" and boss_alive and not bullet.get("reflect"):
-            dx = boss_x - bullet["rect"].centerx
-            dy = boss_y - bullet["rect"].centery
-            dist = max(1, (dx**2 + dy**2)**0.5)
-            bullet["vx"] = int(6 * dx / dist)
-            bullet["vy"] = int(6 * dy / dist)
-        # spread は生成時に与えた vx, vy を利用（vy は既に上向き負値）
-        bullet["rect"].x += bullet.get("vx", 0)
-        bullet["rect"].y += bullet.get("vy", -bullet_speed)
-    # 上に抜けた自機弾と下に抜けた敵弾を除去
-    bullets = [b for b in bullets if b["rect"].bottom > 0 and b["rect"].top < HEIGHT]
+    move_player_bullets(bullets, bullet_speed, boss_alive, (boss_x, boss_y))
 
     # 弾とボスの当たり判定（多重ヒット防止版）
     # 拡散弾: 敵弾( enemy ) と接触した場合双方消滅（ボス判定前）
