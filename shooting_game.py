@@ -20,8 +20,7 @@ from constants import (
     DASH_DOUBLE_TAP_WINDOW, DASH_ICON_SEGMENTS
 )
 from fonts import jp_font
-from bullet import spawn_player_bullets, move_player_bullets
-from player import update_dash_timers, attempt_dash
+from gameplay import spawn_player_bullets, move_player_bullets, update_dash_timers, attempt_dash
 
 pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
