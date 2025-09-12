@@ -286,26 +286,7 @@ while True:
     # フレームカウント（ダッシュのダブルタップ判定で使用）
     frame_count = pygame.time.get_ticks() // 16  # おおよそ60FPS換算
 
-    # KEYDOWNベースのダッシュ処理関数（長押しで再発動しない）
-    def attempt_dash(dir_key: str):
-        if not has_dash:
-            return
-        if dash_state['cooldown'] > 0:
-            return
-        prev = dash_state['last_tap'][dir_key]
-        if frame_count - prev <= DASH_DOUBLE_TAP_WINDOW:
-            # 発動
-            dist = DASH_DISTANCE
-            if dir_key == 'left':
-                player.x = max(0, player.x - dist)
-            else:
-                player.x = min(WIDTH - player.width, player.x + dist)
-            dash_state['cooldown'] = DASH_COOLDOWN_FRAMES
-            dash_state['invincible_timer'] = DASH_INVINCIBLE_FRAMES
-            dash_state['active'] = True
-            player_invincible = True
-            player_invincible_timer = 0
-        dash_state['last_tap'][dir_key] = frame_count
+    # （ダッシュ処理は gameplay.attempt_dash を利用）
 
     # 弾発射 & 入力処理
     for event in events:
