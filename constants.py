@@ -42,7 +42,8 @@ boss_list = [
     {"name": "Boss A", "radius": 60, "hp": 35, "color": RED},
     {"name": "蛇", "radius": 70, "hp": 40, "color": (128, 0, 128)},
     {"name": "楕円ボス", "radius": 70, "hp": 10, "color": (255, 165, 0)},
-    {"name": "バウンドボス", "radius": 75, "hp": 45, "color": (0, 180, 255)}
+    {"name": "バウンドボス", "radius": 75, "hp": 45, "color": (0, 180, 255)},
+    {"name": "扇ボス", "radius": 90, "hp": 55, "color": (90, 200, 255)}  # レベル5新規（名称仮）
 ]
 
 # レベル数を 6 までに縮小。index は 1..MAX_LEVEL を使用（0 番は未使用保険で None）。
@@ -53,7 +54,7 @@ level_list = [
     {"level": 2, "boss": boss_list[1]},
     {"level": 3, "boss": boss_list[2]},
     {"level": 4, "boss": boss_list[3]},
-    {"level": 5, "boss": None},
+    {"level": 5, "boss": boss_list[4]},
     {"level": 6, "boss": None},
 ]
 

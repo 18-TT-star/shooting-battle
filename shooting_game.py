@@ -286,7 +286,26 @@ while True:
     # フレームカウント（ダッシュのダブルタップ判定で使用）
     frame_count = pygame.time.get_ticks() // 16  # おおよそ60FPS換算
 
-    # （ダッシュ処理は gameplay.attempt_dash を利用）
+    # KEYDOWNベースのダッシュ処理関数（長押しで再発動しない）
+    def attempt_dash(dir_key: str):
+        if not has_dash:
+            return
+        if dash_state['cooldown'] > 0:
+            return
+        prev = dash_state['last_tap'][dir_key]
+        if frame_count - prev <= DASH_DOUBLE_TAP_WINDOW:
+            # 発動
+            dist = DASH_DISTANCE
+            if dir_key == 'left':
+                player.x = max(0, player.x - dist)
+            else:
+                player.x = min(WIDTH - player.width, player.x + dist)
+            dash_state['cooldown'] = DASH_COOLDOWN_FRAMES
+            dash_state['invincible_timer'] = DASH_INVINCIBLE_FRAMES
+            dash_state['active'] = True
+            player_invincible = True
+            player_invincible_timer = 0
+        dash_state['last_tap'][dir_key] = frame_count
 
     # 弾発射 & 入力処理
     for event in events:
@@ -1170,6 +1189,1629 @@ while True:
                 pygame.draw.ellipse(screen, boss_color, rect)
             else:
                 pygame.draw.circle(screen, boss_color, (int(boss_x), int(boss_y)), boss_radius)
+        # ボスへの小爆発
+        for pos in boss_explosion_pos:
+            pygame.draw.circle(screen, (255,255,0), pos, 15)
+        # 小爆発は一瞬だけ表示
+        if boss_explosion_pos:
+            boss_explosion_pos = []
+    # デバッグヒント表示
+    # デバッグヒント(削除済み)
+    # ボス撃破後の派手な爆発
+    if not boss_alive and boss_explosion_timer < BOSS_EXPLOSION_DURATION:
+        for i in range(12):
+            angle = i * 30
+            x = int(boss_x + boss_radius * 1.5 * math.cos(math.radians(angle)))
+            y = int(boss_y + boss_radius * 1.5 * math.sin(math.radians(angle)))
+            pygame.draw.circle(screen, (255, 100, 0), (x, y), 40)
+        pygame.draw.circle(screen, (255,255,0), (boss_x, boss_y), 60)
+    # ゲームクリア表示
+    if not boss_alive and boss_explosion_timer >= BOSS_EXPLOSION_DURATION:
+        font = pygame.font.SysFont(None, 50)
+        text = font.render("GAME CLEAR!", True, (0,255,0))
+        text_rect = text.get_rect(center=(WIDTH//2, HEIGHT//2))
+        screen.blit(text, text_rect)
+        pygame.display.flip()
+        pygame.time.wait(2000)
+        # リトライ待ち
+        font = pygame.font.SysFont(None, 32)
+        text = font.render("Press Enter to Retry", True, WHITE)
+        text_rect = text.get_rect(center=(WIDTH//2, HEIGHT//2+60))
+        screen.blit(text, text_rect)
+        pygame.display.flip()
+        waiting = True
+        while waiting:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_RETURN:
+                        retry = True
+                        waiting = False
+            pygame.time.wait(50)
+        continue
+
+    # 残機表示（画面右下）
+    font = pygame.font.SysFont(None, 26)
+    lives_text = f"Lives: {player_lives}"
+    text_surf = font.render(lives_text, True, WHITE)
+    text_rect = text_surf.get_rect(bottomright=(WIDTH-10, HEIGHT-10))
+    screen.blit(text_surf, text_rect)
+    # 弾種表示
+    font = pygame.font.SysFont(None, 20)
+    # 武器アイコン表示（解放済みのもののみ）
+    weapon_icons = []  # (label, color, active)
+    weapon_icons.append(("N", BULLET_COLOR_NORMAL, bullet_type == "normal"))
+    if has_homing:
+        weapon_icons.append(("H", BULLET_COLOR_HOMING, bullet_type == "homing"))
+    if has_spread:
+        weapon_icons.append(("S", BULLET_COLOR_SPREAD, bullet_type == "spread"))
+    icon_size = 22
+    pad = 6
+    base_x = 20
+    base_y = HEIGHT - 50
+    for i,(lbl,col,active) in enumerate(weapon_icons):
+        x = base_x + i*(icon_size+pad)
+        rect = pygame.Rect(x, base_y, icon_size, icon_size)
+        pygame.draw.rect(screen, col, rect, 0 if active else 2)
+        if not active:
+            pygame.draw.rect(screen, WHITE, rect, 2)
+        f2 = pygame.font.SysFont(None, 18)
+        ts = f2.render(lbl, True, BLACK if active else col)
+        ts_rect = ts.get_rect(center=rect.center)
+        screen.blit(ts, ts_rect)
+    hint_font = pygame.font.SysFont(None, 18)
+    hint = hint_font.render("V:切替", True, WHITE)
+    screen.blit(hint, (base_x, base_y - 18))
+
+    # ダッシュクールダウン表示
+    if 'has_dash' in globals() and has_dash:
+        # 円形メーター (右下ライフの左側)
+        cx = WIDTH - 80
+        cy = HEIGHT - 70
+        radius = 24
+        # 外枠
+        pygame.draw.circle(screen, (200,200,200), (cx, cy), radius, 2)
+        # クール残割合
+        if dash_cooldown > 0:
+            ratio = dash_cooldown / DASH_COOLDOWN_FRAMES
+            # 12分割(アイコンの足=セグメント)埋め
+            segs = DASH_ICON_SEGMENTS
+            filled = int(segs * ratio + 0.999)
+            for i in range(filled):
+                ang0 = (2*math.pi * i / segs) - math.pi/2
+                ang1 = (2*math.pi * (i+1) / segs) - math.pi/2
+                inner = radius - 8
+                pts = [
+                    (cx + inner * math.cos(ang0), cy + inner * math.sin(ang0)),
+                    (cx + radius * math.cos(ang0), cy + radius * math.sin(ang0)),
+                    (cx + radius * math.cos(ang1), cy + radius * math.sin(ang1)),
+                    (cx + inner * math.cos(ang1), cy + inner * math.sin(ang1)),
+                ]
+                pygame.draw.polygon(screen, (120,180,255), pts)
+        else:
+            # READY 表示
+            font_ready = pygame.font.SysFont(None, 18)
+            txt = font_ready.render("DASH", True, (120,200,255))
+            rect = txt.get_rect(center=(cx, cy))
+            screen.blit(txt, rect)
+        # 発動中ハイライトリング
+        if dash_active:
+            pygame.draw.circle(screen, (0,255,255), (cx, cy), radius+2, 2)
+
+    pygame.display.flip()
+    clock.tick(60)
+
+    # ウィンドウシェイク更新
+    if _game_window and _window_shake_timer > 0:
+        _window_shake_timer -= 1
+        progress = 1 - (_window_shake_timer / float(WINDOW_SHAKE_DURATION))
+        # ease-out 強め + ランダム揺れ合成
+        decay = (1 - progress)**0.4
+        jitter_phase = pygame.time.get_ticks()
+        ox = int((_window_shake_intensity * decay) * math.sin(jitter_phase*0.09) + random.randint(-3,3))
+        oy = int((_window_shake_intensity * decay) * math.cos(jitter_phase*0.11) + random.randint(-3,3))
+        _game_window.position = (_window_base_pos[0] + ox, _window_base_pos[1] + oy)
+    elif _game_window and _window_shake_timer == 0 and _game_window.position != _window_base_pos:
+        _game_window.position = _window_base_pos
+    if waiting_for_space:
+        screen.fill(BLACK)
+        font = pygame.font.SysFont(None, 42)
+        text = font.render("Press SPACE to start!", True, WHITE)
+        text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+        screen.blit(text, text_rect)
+        pygame.display.flip()
+        for event in events:
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    bullets.append({
+                        "rect": pygame.Rect(player.centerx - 3, player.top - 6, 6, 12),
+                        "type": bullet_type,
+                        "power": 1.0 if bullet_type == "normal" else 0.5,
+                        "vx": 0,
+                        "vy": -bullet_speed
+                    })
+                    waiting_for_space = False
+    if retry:
+        player_lives = 3
+        player_invincible = False
+        player_invincible_timer = 0
+        explosion_timer = 0
+        explosion_pos = None
+        bullets = []
+
+        boss_alive = True
+        boss_x = WIDTH // 2
+        boss_y = 60
+        boss_state = "track"
+        boss_speed = 4
+        boss_dir = 1
+        boss_attack_timer = 0
+        boss_origin_x = boss_x
+        boss_origin_y = boss_y
+        boss_hp = boss_info["hp"] if boss_info else 35
+        if boss_info and boss_info["name"] == "Boss A":
+            boss_info['stomp_state'] = 'idle'
+            boss_info['stomp_timer'] = 0
+            boss_info['stomp_target_y'] = None
+            boss_info['home_y'] = boss_y
+            boss_info['stomp_interval'] = 120
+            boss_info['last_stomp_frame'] = 0
+            boss_info['stomp_grace'] = 180
+        if boss_info and boss_info["name"] == "蛇":
+            boss_info['snake_stomp_state'] = 'idle'
+            boss_info['snake_stomp_timer'] = 0
+            boss_info['snake_stomp_target_y'] = None
+            boss_info['snake_home_y'] = boss_y
+            boss_info['snake_stomp_interval'] = 150
+            boss_info['snake_last_stomp_frame'] = 0
+            boss_info['snake_stomp_grace'] = 210
+        retry = False
+    if not boss_alive and boss_explosion_timer == 1:
+        # ボス1を倒した場合のみ報酬
+        if boss_info and boss_info["name"] == "Boss A":
+            has_homing = True
+            unlocked_homing = True
+            bullet_type = "normal"
+        # ボス2（蛇）討伐報酬：リーフシールド
+        if boss_info and boss_info["name"] == "蛇":
+            has_leaf_shield = True
+            unlocked_spread = False  # 拡散弾報酬 (duplicate stray block removed)
+    # ダッシュクール/無敵管理
+    if 'has_dash' not in globals():
+        has_dash = False
+    if 'dash_state' not in globals():
+        dash_state = {
+            'cooldown': 0,
+            'invincible_timer': 0,
+            'last_tap': { 'left': -9999, 'right': -9999 },
+            'active': False
+        }
+    # ダッシュタイマー更新
+    update_dash_timers(dash_state)
+    if keys[pygame.K_LEFT] and player.left > 0:
+        player.x -= player_speed
+    if keys[pygame.K_RIGHT] and player.right < screen.get_width():
+        player.x += player_speed
+    # ダッシュ関数内で state 更新された可能性があるのでローカル同期
+    dash_cooldown = dash_state['cooldown']
+    dash_invincible_timer = dash_state['invincible_timer']
+    dash_active = dash_state['active']
+
+    # 弾の移動
+    move_player_bullets(bullets, bullet_speed, boss_alive, (boss_x, boss_y))
+    # 敵側特殊弾 (crescent / mini_hito) 追加処理 & life 減衰
+    new_enemy = []
+    for b in bullets:
+        subtype = b.get('subtype')
+        if subtype in ('crescent','mini_hito'):
+            # life カウント
+            if 'life' in b:
+                b['life'] -= 1
+                if b['life'] <= 0:
+                    continue
+            # 移動 (vx, vy 既に反映済みだが homing なし単純)
+            b['rect'].x += int(b.get('vx',0))
+            b['rect'].y += int(b.get('vy',0))
+            # 画面外で除去
+            if b['rect'].right < 0 or b['rect'].left > WIDTH or b['rect'].bottom < 0 or b['rect'].top > HEIGHT:
+                continue
+            new_enemy.append(b)
+        else:
+            new_enemy.append(b)
+    bullets = new_enemy
+
+    # 弾とボスの当たり判定（多重ヒット防止版）
+    # 拡散弾: 敵弾( enemy ) と接触した場合双方消滅（ボス判定前）
+    if any(b.get("type") == "spread" for b in bullets):
+        survivors = []
+        enemy_bullets = []
+        spread_bullets = []
+        for b in bullets:
+            t = b.get("type")
+            if t == "enemy":
+                enemy_bullets.append(b)
+            elif t == "spread":
+                spread_bullets.append(b)
+            else:
+                survivors.append(b)
+        # 相殺判定（O(n*m) だが弾数少なので十分）
+        removed_enemy = set()
+        removed_spread = set()
+        for si, sb in enumerate(spread_bullets):
+            for ei, eb in enumerate(enemy_bullets):
+                if ei in removed_enemy:
+                    continue
+                if sb["rect"].colliderect(eb["rect"]):
+                    removed_enemy.add(ei)
+                    removed_spread.add(si)
+        new_list = survivors
+        for ei, eb in enumerate(enemy_bullets):
+            if ei not in removed_enemy:
+                new_list.append(eb)
+        for si, sb in enumerate(spread_bullets):
+            if si not in removed_spread:
+                new_list.append(sb)
+        bullets = new_list
+
+    if boss_alive and boss_info:
+        cleaned_bullets = []
+        for bullet in bullets:
+            if bullet.get("type") in ("enemy", "boss_beam"):
+                cleaned_bullets.append(bullet)
+                continue
+            damage = False
+            # 楕円ボス: コア開放時のみ弱点ダメージ, それ以外は反射
+            if boss_info["name"] == "楕円ボス":
+                core_state = boss_info.get('core_state','closed')
+                gap = boss_info.get('core_gap',0)
+                cx, cy = boss_x, boss_y
+                # コア開放中 & 弾がコア円内ならダメージ
+                if core_state in ('opening','firing','open_hold') and gap > OVAL_CORE_GAP_HIT_THRESHOLD:
+                    if (bullet["rect"].centerx - cx)**2 + (bullet["rect"].centery - cy)**2 < OVAL_CORE_RADIUS**2:
+                        boss_hp -= bullet.get("power", 1.0)
+                        boss_explosion_pos.append((bullet["rect"].centerx, bullet["rect"].centery))
+                        if boss_hp <= 0:
+                            boss_alive = False
+                            boss_explosion_timer = 0
+                            explosion_pos = (boss_x, boss_y)
+                        damage = True
+                if not damage:
+                    central_open = (core_state in ('opening','firing','open_hold') and gap > OVAL_CORE_GAP_HIT_THRESHOLD)
+                    # ホーミング弾だけは開放中でも反射判定を有効にする
+                    force_reflect = (bullet.get("type") == "homing")
+                    if central_open and not force_reflect:
+                        # 開放中 & 通常弾: スルー
+                        pass
+                    else:
+                        # Boss radius に応じて反射領域をスケール
+                        R = boss_radius  # 70 想定（可変対応）
+                        central_a = int(R * 0.6)   # 旧: 30 (R=50)
+                        central_b = int(R * 1.0)   # 旧: 50 (R=50)
+                        side_a = int(R * 0.4)      # 旧: 20 (R=50)
+                        side_b = int(R * 0.6)      # 旧: 30 (R=50)
+                        side_offset = int(R * 1.2) # 旧: 60 (R=50)
+                        reflected_here = False
+                        if ((bullet["rect"].centerx - cx)**2)/(central_a**2) + ((bullet["rect"].centery - cy)**2)/(central_b**2) < 1:
+                            reflected_here = True
+                        else:
+                            for ox in (-side_offset, side_offset):
+                                ex = boss_x + ox - (side_a if ox>0 else -side_a)
+                                ey = boss_y
+                                if ((bullet["rect"].centerx - ex)**2)/(side_a**2) + ((bullet["rect"].centery - ey)**2)/(side_b**2) < 1:
+                                    reflected_here = True
+                                    break
+                        if reflected_here:
+                            bullet["reflect"] = True
+                            # 反射後は通常弾化して再追尾しない
+                            if bullet.get("type") == "homing":
+                                bullet["type"] = "normal"
+                            bullet["vy"] = abs(bullet.get("vy", -7))
+                            bullet["vx"] = random.randint(-3, 3)
+                if not damage:
+                    cleaned_bullets.append(bullet)
+                continue
+            if boss_info["name"] == "蛇":
+                main_size = int(boss_radius * 1.2)
+                main_rect = pygame.Rect(boss_x - main_size//2, boss_y - main_size//2, main_size, main_size)
+                if main_rect.colliderect(bullet["rect"]):
+                    boss_hp -= bullet.get("power", 1.0)
+                    boss_explosion_pos.append((bullet["rect"].centerx, bullet["rect"].centery))
+                    if boss_hp <= 0:
+                        boss_alive = False
+                        boss_explosion_timer = 0
+                        explosion_pos = (boss_x, boss_y)
+                    damage = True  # ダメージ弾は消す
+                else:
+                    ROTATE_SEGMENTS_NUM = 5
+                    ROTATE_RADIUS = boss_radius + 30
+                    rotate_angle_local = globals().get("rotate_angle", 0.0)
+                    for i in range(ROTATE_SEGMENTS_NUM):
+                        angle = rotate_angle_local + (2*math.pi*i/ROTATE_SEGMENTS_NUM)
+                        sx = boss_x + ROTATE_RADIUS * math.cos(angle)
+                        sy = boss_y + ROTATE_RADIUS * math.sin(angle)
+                        seg_rect = pygame.Rect(int(sx-20), int(sy-20), 40, 40)
+                        if seg_rect.colliderect(bullet["rect"]):
+                            bullet["reflect"] = True
+                            if bullet.get("type") == "homing":
+                                bullet["type"] = "normal"
+                            bullet["vy"] = abs(bullet.get("vy", -7))
+                            bullet["vx"] = random.randint(-3, 3)
+                            break
+                if not damage:
+                    cleaned_bullets.append(bullet)
+                continue
+            # 通常ボス
+                # 扇セクタ判定: 頂点 = (boss_x,boss_y), 方向 = tri_base_angle, 角度幅 = tri_angle_span, 半径 = boss_radius
+                dx = bullet["rect"].centerx - boss_x
+                dy = bullet["rect"].centery - boss_y
+                r2 = dx*dx + dy*dy
+                if r2 <= boss_radius * boss_radius:
+                    ang = math.atan2(dy, dx)
+                    base_angle = boss_info.get('tri_base_angle', -math.pi/2)
+                    span = boss_info.get('tri_angle_span', math.radians(140))
+                    diff = ((ang - base_angle + math.pi) % (2*math.pi)) - math.pi
+                    if abs(diff) <= span / 2:
+                        boss_hp -= bullet.get("power", 1.0)
+                        boss_explosion_pos.append((bullet["rect"].centerx, bullet["rect"].centery))
+                        if boss_hp <= 0:
+                            boss_alive = False
+                            boss_explosion_timer = 0
+                            explosion_pos = (boss_x, boss_y)
+                        damage = True
+            else:
+                dx = bullet["rect"].centerx - boss_x
+                dy = bullet["rect"].centery - boss_y
+                if dx*dx + dy*dy < boss_radius*boss_radius:
+                    boss_hp -= bullet.get("power", 1.0)
+                    boss_explosion_pos.append((bullet["rect"].centerx, bullet["rect"].centery))
+                    if boss_hp <= 0:
+                        boss_alive = False
+                        boss_explosion_timer = 0
+                        explosion_pos = (boss_x, boss_y)
+                    damage = True
+                    # バウンドボス: HP5ごと縮小 & 速度上昇
+                    if boss_info and boss_info.get("name") == "バウンドボス" and boss_hp > 0:
+                        # 基準HPとの差異で段数計算 (初期HPからの減少量)
+                        initial_hp = boss_info.get('initial_hp') or boss_info.setdefault('initial_hp', boss_info['hp'])
+                        reduced = initial_hp - boss_hp
+                        new_stage = int(reduced // 5)
+                        if new_stage != boss_info.get('shrink_stage', 0):
+                            boss_info['shrink_stage'] = new_stage
+                            # 半径縮小 (割合減少)
+                            boss_radius = int(boss_info['base_radius'] * (1 - BOUNCE_BOSS_SHRINK_STEP * new_stage))
+                            boss_radius = max(25, boss_radius)
+                            # 速度再計算（方向保持）
+                            speed_now = boss_info['base_speed'] * (1 + BOUNCE_BOSS_SPEED_STEP * new_stage)
+                            vx = boss_info.get('bounce_vx',0)
+                            vy = boss_info.get('bounce_vy',0)
+                            cur_speed = math.hypot(vx, vy) or 1
+                            scale = speed_now / cur_speed
+                            boss_info['bounce_vx'] = vx * scale
+                            boss_info['bounce_vy'] = vy * scale
+            if not damage:
+                cleaned_bullets.append(bullet)
+        bullets = cleaned_bullets
+    # ボス撃破後の爆発演出
+    if not boss_alive and boss_explosion_timer < BOSS_EXPLOSION_DURATION:
+        boss_explosion_timer += 1
+    # ボスキャラの攻撃パターン
+    if boss_alive:
+        boss_attack_timer += 1
+        # 扇ボス 新攻撃ステート（フレーム毎1回更新）
+        if boss_info and boss_info.get('name') == '扇ボス':
+            bi = boss_info
+            if 'attack_state' not in bi:
+                bi['attack_state'] = 'idle'
+                bi['attack_timer'] = 0
+                bi['attack_cooldowns'] = {'dive':180,'iai':200,'crescent':240,'hito':320}
+                now = -9999
+                bi['attack_last_used'] = {k:now for k in bi['attack_cooldowns']}
+                bi['telegraphs'] = []
+                bi.setdefault('active_slashes', [])
+                bi['sword_detached'] = False
+                bi['sword_projectile'] = None
+                bi['attack_history'] = []
+                bi.setdefault('tri_base_angle', -math.pi/2)
+                bi.setdefault('tri_angle_span', math.radians(140))
+                bi['dive_params'] = {'prep':25,'drop_speed':12,'slash_ttl':14,'recover':40}
+                bi['iai_params'] = {'charge':55,'beam_ttl':8}
+                bi['crescent_params'] = {'charge':50,'waves':1,'count':3,'speed':7,'spread_angle':math.radians(40)}
+                bi['hito_params'] = {'throw_speed':10,'throw_time':50,'split_count':6,'mini_speed':5,'return_speed':9}
+                bi['cooldown_time'] = 50
+                bi['new_attack_enabled'] = True
+            # TTL update for slashes
+            new_sl = []
+            for sl in bi.get('active_slashes', []):
+                sl['ttl'] -= 1
+                if sl['ttl'] > 0:
+                    new_sl.append(sl)
+            bi['active_slashes'] = new_sl
+            if bi.get('new_attack_enabled'):
+                bi['attack_timer'] += 1
+                state = bi['attack_state']
+                t = bi['attack_timer']
+                frame = boss_attack_timer
+                # State machine (same logic as before but centralized)
+                if state == 'idle':
+                    if t > 90:
+                        bi['attack_state'] = 'select'; bi['attack_timer'] = 0
+                elif state == 'select':
+                    cd = bi['attack_cooldowns']; last = bi['attack_last_used']
+                    opts = [o for o in cd if frame - last.get(o,-9999) >= cd[o]]
+                    if not opts:
+                        bi['attack_state'] = 'idle'; bi['attack_timer'] = 0
+                    else:
+                        hist = bi['attack_history'][-2:]
+                        prefer = [o for o in opts if o not in hist] or opts
+                        choice = random.choice(prefer)
+                        bi['attack_history'].append(choice)
+                        bi['attack_choice'] = choice
+                        if choice == 'dive':
+                            bi['attack_state'] = 'dive_prep'
+                        elif choice == 'iai':
+                            bi['attack_state'] = 'iai_charge'
+                        elif choice == 'crescent':
+                            bi['attack_state'] = 'crescent_charge'; bi['telegraphs'].append({'type':'crescent_charge','ttl':bi['crescent_params']['charge']})
+                        elif choice == 'hito':
+                            bi['attack_state'] = 'hito_throw'; bi['telegraphs'].append({'type':'hito_throw','ttl':20})
+                        bi['attack_timer'] = 0
+                        if choice == 'dive':
+                            target_y = player.centery - (boss_radius + 30)
+                            target_y = max(90, min(target_y, HEIGHT - boss_radius - 80))
+                            bi['dive_target_y_new'] = target_y
+                            bi['telegraphs'].append({'type':'dive_prep','ttl':bi['dive_params']['prep']})
+                elif state == 'dive_prep':
+                    prep = bi['dive_params']['prep']
+                    if t == 1: bi['dive_home_y'] = bi.get('dive_home_y', boss_y)
+                    if t < prep: boss_y -= 1.8
+                    else: bi['attack_state']='dive_drop'; bi['attack_timer']=0
+                elif state == 'dive_drop':
+                    target_y = bi.get('dive_target_y_new', boss_y)
+                    speed_y = max(4, int(bi['dive_params']['drop_speed']*0.55))
+                    if boss_y < target_y:
+                        boss_y += speed_y
+                        if boss_y > target_y: boss_y = target_y
+                    dxp = player.centerx - boss_x
+                    boss_x += max(-4, min(4, dxp*0.12))
+                    if abs(boss_y - target_y) < 4:
+                        slash_rect = pygame.Rect(int(boss_x-150//2), int(boss_y), 150, 120)
+                        bi['active_slashes'].append({'type':'dive','rect':slash_rect,'ttl':bi['dive_params']['slash_ttl']})
+                        bi['attack_state']='dive_slash'; bi['attack_timer']=0
+                elif state == 'dive_slash':
+                    if t > bi['dive_params']['slash_ttl'] + 6:
+                        bi['attack_state']='dive_recover'; bi['attack_timer']=0
+                elif state == 'dive_recover':
+                    home_y = bi.get('dive_home_y', boss_y)
+                    dist = boss_y - home_y
+                    if dist>0:
+                        asc = 2.6 if dist>90 else 2.2 if dist>60 else 1.8 if dist>30 else 1.2
+                        boss_y -= asc
+                        if boss_y < home_y: boss_y = home_y
+                    if abs(boss_y-home_y)<=0.5 and t> int(bi['dive_params']['recover']*0.4):
+                        bi['attack_last_used']['dive']=frame; bi['attack_state']='cooldown'; bi['attack_timer']=0
+                elif state == 'iai_charge':
+                    charge = bi['iai_params']['charge']
+                    if t==1: bi['telegraphs'].append({'type':'iai_charge','ttl':charge})
+                    if t>=charge:
+                        beam_y = boss_y + boss_radius//3
+                        beam_thick = 16
+                        beam_rect = pygame.Rect(0, int(beam_y - beam_thick//2), WIDTH, beam_thick)
+                        bi['active_slashes'].append({'type':'iai','rect':beam_rect,'ttl':bi['iai_params']['beam_ttl']})
+                        bi['attack_state']='iai_slash'; bi['attack_timer']=0
+                elif state == 'iai_slash':
+                    if t > bi['iai_params']['beam_ttl'] + 6:
+                        bi['attack_last_used']['iai']=frame; bi['attack_state']='cooldown'; bi['attack_timer']=0
+                elif state == 'crescent_charge':
+                    charge = bi['crescent_params']['charge']
+                    if t == 1:
+                        bi['telegraphs'].append({'type':'crescent_charge','ttl':charge})
+                    if t >= charge:
+                        waves = bi['crescent_params']['waves']
+                        count = bi['crescent_params']['count']
+                        spread = bi['crescent_params']['spread_angle']
+                        speed = bi['crescent_params']['speed']
+                        dxp = player.centerx - boss_x
+                        dyp = player.centery - boss_y
+                        base_angle = math.atan2(dyp, dxp)
+                        for w in range(waves):
+                            for i in range(count):
+                                ang = base_angle if count == 1 else (base_angle - spread/2 + spread * (i/(count-1)))
+                                vx = math.cos(ang) * speed
+                                vy = math.sin(ang) * speed
+                                rect = pygame.Rect(int(boss_x-6), int(boss_y-6),12,12)
+                                bullets.append({'rect':rect,'type':'enemy','subtype':'crescent','vx':vx,'vy':vy,'life':220})
+                        bi['attack_state']='crescent_fire'
+                        bi['attack_timer']=0
+                    else:
+                        prog = min(1.0, t/float(charge))
+                        # シンプルな引き( -0.6rad ) から 0 へ近づくカーブ
+                        bi['sword_angle_offset'] = -0.6 * (0.5 - 0.5*math.cos(math.pi*prog))
+                elif state == 'crescent_fire':
+                    if t>20:
+                        bi['attack_last_used']['crescent']=frame; bi['attack_state']='cooldown'; bi['attack_timer']=0
+                elif state == 'hito_throw':
+                    # (重複旧コード削除済み) hito_throw のロジックは後段統合版を使用
+                    pass
+                    wind_total = 30
+                    if t <= wind_total:
+                        prog = t/float(wind_total)
+                        if prog < 0.4:
+                            p = prog/0.4
+                            bi['sword_angle_offset'] = -0.85 * (0.5 - 0.5*math.cos(math.pi*p))
+                        elif prog < 0.7:
+                            p = (prog-0.4)/0.3
+                            bi['sword_angle_offset'] = -0.85 + ( -0.45 + 0.85 ) * p
+                        else:
+                            p = (prog-0.7)/0.3
+                            bi['sword_angle_offset'] = -0.45 + ( -0.15 + 0.45 ) * (0.5 - 0.5*math.cos(math.pi*p))
+                    if t == wind_total+1 and not bi['sword_detached']:
+                        bi['sword_detached']=True
+                        dxp=player.centerx-boss_x; dyp=player.centery-boss_y; dist=math.hypot(dxp,dyp) or 1
+                        spd=bi['hito_params']['throw_speed']; vx=spd*dxp/dist; vy=spd*dyp/dist
+                        bi['sword_projectile']={'phase':'out','x':boss_x,'y':boss_y,'vx':vx,'vy':vy,'life':bi['hito_params']['throw_time']}
+        # 扇ボス: 弾回避AI (横スライド)
+        if boss_info and boss_info.get("name") == "扇ボス":
+            bi = boss_info
+            # クールダウンタイマー
+            bi['dodge_timer'] = bi.get('dodge_timer',0) + 1
+            # 既存ターゲットへの移動
+            target_x = bi.get('dodge_target_x')
+            need_new_target = False
+            if target_x is None or boss_attack_timer > bi.get('dodge_active_until', -1):
+                need_new_target = True
+            elif abs(target_x - boss_x) < 4:
+                # 目標付近に来たら停止判定
+                need_new_target = True
+            # 弾脅威スキャン（再ターゲット可能なら）
+            if need_new_target and bi['dodge_timer'] >= bi.get('dodge_retarget_grace',8):
+                earliest_time = None
+                threat_x = None
+                predict_frames = bi.get('dodge_predict_frames',160)
+                min_time = bi.get('dodge_min_time',12)
+                # プレイヤー弾のみ対象 (type 未設定=普通弾想定、敵弾は除外)
+                for b in bullets:
+                    if b.get('type') in ('enemy','boss_beam'):  # 敵側弾は無視
+                        continue
+                    vx_b = b.get('vx',0)
+                    vy_b = b.get('vy', -7)
+                    # 下向き弾(負vy_b)のみ対象 (プレイヤー弾が上向きの場合は条件反転: ここではvy<0をプレイヤー弾と想定)
+                    if vy_b >= 0:
+                        continue
+                    # 何フレーム後に弾YがボスY帯( boss_y +/- boss_radius ) に到達するか
+                    # y(t) = y0 + vy*t  (vy<0) -> 到達 t = (boss_y - b.centerY)/vy_b
+                    by = b['rect'].centery
+                    t_hit = (boss_y - by) / vy_b if vy_b != 0 else None
+                    if not t_hit or t_hit < 0 or t_hit > predict_frames:
+                        continue
+                    if t_hit < min_time:
+                        continue
+                    # その時点のX予測
+                    bx = b['rect'].centerx + vx_b * t_hit
+                    # ボスXとの距離が半径以内であれば脅威
+                    if abs(bx - boss_x) <= boss_radius * 0.9:
+                        if earliest_time is None or t_hit < earliest_time:
+                            earliest_time = t_hit
+                            threat_x = bx
+                if threat_x is not None:
+                    # 回避方向決定（左右余白比較）
+                    padding = bi.get('dodge_padding',70)
+                    left_space = (boss_x - padding) - (boss_radius)
+                    right_space = (WIDTH - boss_x - padding) - (boss_radius)
+                    dir_choice = -1 if right_space > left_space else 1  # 空きの広い方へ逃げる（逆方向にする）
+                    # ただし脅威位置相対で調整: 脅威が左なら右へ
+                    if threat_x < boss_x:
+                        dir_choice = 1
+                    else:
+                        dir_choice = -1
+                    # 連続同方向が続く場合少しランダム補正
+                    if dir_choice == bi.get('dodge_last_dir',0):
+                        if random.random() < 0.25:
+                            dir_choice *= -1
+                    bi['dodge_last_dir'] = dir_choice
+                    # 目標X設定（境界内）
+                    target_x = boss_x + dir_choice * (boss_radius + bi.get('dodge_padding',70))
+                    target_x = max(boss_radius+20, min(WIDTH - boss_radius - 20, target_x))
+                    bi['dodge_target_x'] = target_x
+                    bi['dodge_active_until'] = boss_attack_timer + bi.get('dodge_cooldown',25)
+                    bi['dodge_timer'] = 0
+                else:
+                    # 脅威なし
+                    bi['dodge_target_x'] = None
+            # 移動適用
+            speed = bi.get('dodge_speed',6.0)
+            if target_x is not None:
+                dx = target_x - boss_x
+                step = max(-speed, min(speed, dx))
+                boss_x += step
+            else:
+                # ドリフト（中央へ戻る）
+                center_x = WIDTH//2
+                drift = bi.get('dodge_drift_speed',1.2)
+                if abs(center_x - boss_x) > 3:
+                    boss_x += drift if center_x > boss_x else -drift
+            # 攻撃ステートマシン
+            if not bi.get('new_attack_enabled'):
+                # --- Legacy fan_state system (disabled when new_attack_enabled=True) ---
+                if 'fan_state' not in bi:
+                    bi['fan_state'] = 'idle'
+                    bi['fan_state_timer'] = 0
+                    bi['fan_attack_cool'] = 120
+                    bi['fan_last_attack_frame'] = -9999
+                    bi['fan_next_type'] = 'dive'
+                    bi['active_slashes'] = []
+                # TTL update
+                new_sl = []
+                for sl in bi.get('active_slashes', []):
+                    sl['ttl'] -= 1
+                    if sl['ttl'] > 0:
+                        new_sl.append(sl)
+                bi['active_slashes'] = new_sl
+                state = bi['fan_state']
+                bi['fan_state_timer'] += 1
+                time_since_last = boss_attack_timer - bi.get('fan_last_attack_frame', -9999)
+                can_attack = (time_since_last >= bi.get('fan_attack_cool',120))
+                if state == 'idle' and can_attack:
+                    atk = bi.get('fan_next_type','dive')
+                    if atk == 'dive':
+                        bi['fan_state'] = 'dive_prep'
+                        bi['fan_state_timer'] = 0
+                        bi['fan_next_type'] = 'iai'
+                        target_y = player.centery - (boss_radius + 30)
+                        target_y = max(90, min(target_y, HEIGHT - boss_radius - 80))
+                        bi['dive_target_y'] = target_y
+                    else:
+                        bi['fan_state'] = 'iai_charge'
+                        bi['fan_state_timer'] = 0
+                        bi['fan_next_type'] = 'dive'
+                state = bi['fan_state']
+                if state == 'dive_prep':
+                    if bi['fan_state_timer'] < 12:
+                        boss_y -= 2
+                    else:
+                        bi['fan_state'] = 'dive_move'
+                        bi['fan_state_timer'] = 0
+                elif state == 'dive_move':
+                    target_y = bi.get('dive_target_y', boss_y)
+                    speed_y = 10
+                    if boss_y < target_y:
+                        boss_y += speed_y
+                        if boss_y > target_y:
+                            boss_y = target_y
+                    dxp = player.centerx - boss_x
+                    boss_x += max(-6, min(6, dxp*0.15))
+                    if abs(boss_y - target_y) < 3:
+                        bi['fan_state'] = 'dive_swing'
+                        bi['fan_state_timer'] = 0
+                        sw_w = 140
+                        sw_h = 110
+                        slash_rect = pygame.Rect(int(boss_x - sw_w//2), int(boss_y), sw_w, sw_h)
+                        bi['active_slashes'].append({'type':'dive','rect':slash_rect,'ttl':14})
+                        bi['fan_last_attack_frame'] = boss_attack_timer
+                elif state == 'dive_swing':
+                    if bi['fan_state_timer'] > 18:
+                        bi['fan_state'] = 'dive_recover'
+                        bi['fan_state_timer'] = 0
+                elif state == 'dive_recover':
+                    boss_y -= 3
+                    if bi['fan_state_timer'] > 25:
+                        bi['fan_state'] = 'idle'
+                        bi['fan_state_timer'] = 0
+                elif state == 'iai_charge':
+                    charge_dur = 50
+                    if bi['fan_state_timer'] == charge_dur:
+                        bi['fan_state'] = 'iai_release'
+                        bi['fan_state_timer'] = 0
+                        beam_y = boss_y + boss_radius//3
+                        beam_thick = 16
+                        beam_rect = pygame.Rect(0, int(beam_y - beam_thick//2), WIDTH, beam_thick)
+                        bi['active_slashes'].append({'type':'iai','rect':beam_rect,'ttl':6})
+                        bi['fan_last_attack_frame'] = boss_attack_timer
+                elif state == 'iai_release':
+                    if bi['fan_state_timer'] > 8:
+                        bi['fan_state'] = 'iai_recover'
+                        bi['fan_state_timer'] = 0
+                elif state == 'iai_recover':
+                    if boss_y > 110:
+                        boss_y -= 2
+                    if bi['fan_state_timer'] > 40:
+                        bi['fan_state'] = 'idle'
+                        bi['fan_state_timer'] = 0
+        
+        # 新・回転型ボス
+        ROTATE_SEGMENTS_NUM = 5
+        ROTATE_RADIUS = boss_radius + 30
+        ROTATE_SPEED = 0.03
+        if 'rotate_angle' not in globals():
+            rotate_angle = 0.0
+        rotate_angle += ROTATE_SPEED
+        # Boss A: 横移動＋攻撃パターン
+        if boss_info and boss_info["name"] == "Boss A":
+            # 踏み潰し攻撃状態遷移
+            if 'stomp_state' not in boss_info:
+                boss_info['stomp_state'] = 'idle'   # idle -> prelift -> descending -> pause -> ascending -> cooldown
+                boss_info['stomp_timer'] = 0
+                boss_info['stomp_target_y'] = None
+                boss_info['home_y'] = boss_y
+                boss_info['stomp_interval'] = 120  # 約2秒
+                boss_info['last_stomp_frame'] = 0   # 初回即発動防止
+                boss_info['stomp_grace'] = 180      # 初回猶予フレーム
+            else:
+                # 既存辞書に欠けている場合の安全補填
+                boss_info.setdefault('last_stomp_frame', -9999)
+                boss_info.setdefault('stomp_interval', 120)
+                boss_info.setdefault('stomp_grace', 180)
+            state = boss_info['stomp_state']
+            # 共通: idle / cooldown 中はX追従
+            TRACK_SPEED = 6
+            if state in ('idle', 'cooldown'):
+                dx_track = player.centerx - boss_x
+                if abs(dx_track) > TRACK_SPEED:
+                    boss_x += TRACK_SPEED if dx_track > 0 else -TRACK_SPEED
+                else:
+                    boss_x = player.centerx
+            # 状態遷移
+            if state == 'idle':
+                # 一定間隔後、プレイヤーとのX差が小さければ予備動作へ
+                if boss_attack_timer >= boss_info.get('stomp_grace',0) and \
+                   boss_attack_timer - boss_info['last_stomp_frame'] >= boss_info['stomp_interval'] and \
+                   abs(player.centerx - boss_x) < boss_radius * 1.8:
+                    boss_info['stomp_state'] = 'prelift'
+                    boss_info['stomp_timer'] = 0
+            elif state == 'prelift':
+                # 上に少し持ち上がる（予備動作）
+                boss_info['stomp_timer'] += 1
+                lift_amount = 12
+                target_up = boss_info['home_y'] - lift_amount
+                if boss_y > target_up:
+                    boss_y -= 7  # 予備上昇さらに加速
+                if boss_info['stomp_timer'] > 10:  # 10F後に下降開始
+                    boss_info['stomp_state'] = 'descending'
+                    # プレイヤー直上まで踏み込む（中心がプレイヤーの少し上に来るよう調整）
+                    target_center = player.centery - (boss_radius - 10)
+                    target_center = min(target_center, HEIGHT - boss_radius - 20)
+                    target_center = max(target_center, boss_info.get('home_y', 60) + 80)
+                    boss_info['stomp_target_y'] = target_center
+            elif state == 'descending':
+                # 動的にプレイヤーを追尾して更に深く潜る余地（プレイヤーが下がったら更新）
+                dynamic_target = player.centery - (boss_radius - 10)
+                dynamic_target = min(dynamic_target, HEIGHT - boss_radius - 20)
+                if dynamic_target > boss_info.get('stomp_target_y', dynamic_target):
+                    boss_info['stomp_target_y'] = dynamic_target
+                boss_y += 22  # 下降さらに加速
+                if boss_info['stomp_target_y'] is not None and boss_y >= boss_info['stomp_target_y']:
+                    boss_y = boss_info['stomp_target_y']
+                    boss_info['stomp_state'] = 'pause'
+                    boss_info['stomp_timer'] = 0
+            elif state == 'pause':
+                boss_info['stomp_timer'] += 1  # 溜め短縮
+                if boss_info['stomp_timer'] > 8:
+                    boss_info['stomp_state'] = 'ascending'
+            elif state == 'ascending':
+                boss_y -= 12  # 上昇さらに加速
+                if boss_y <= boss_info.get('home_y', 60):
+                    boss_y = boss_info.get('home_y', 60)
+                    boss_info['stomp_state'] = 'cooldown'
+                    boss_info['stomp_timer'] = 0
+                    boss_info['last_stomp_frame'] = boss_attack_timer
+            elif state == 'cooldown':
+                boss_info['stomp_timer'] += 1  # クールダウン短縮
+                if boss_info['stomp_timer'] > 30:
+                    boss_info['stomp_state'] = 'idle'
+            # 弾幕なし
+        # Boss2 蛇: Boss1 と似た踏み潰し＋X追従（回転体節を保持）
+        if boss_info and boss_info["name"] == "蛇":
+            # 初期セットアップ（不足分補填）
+            if 'snake_stomp_state' not in boss_info:
+                boss_info['snake_stomp_state'] = 'idle'
+                boss_info['snake_stomp_timer'] = 0
+                boss_info['snake_stomp_target_y'] = None
+                boss_info['snake_home_y'] = boss_y
+                boss_info['snake_stomp_interval'] = 150
+                boss_info['snake_last_stomp_frame'] = 0
+                boss_info['snake_stomp_grace'] = 210
+            else:
+                boss_info.setdefault('snake_last_stomp_frame', 0)
+                boss_info.setdefault('snake_stomp_interval', 150)
+                boss_info.setdefault('snake_stomp_grace', 210)
+            s_state = boss_info['snake_stomp_state']
+            TRACK_SPEED2 = 5
+            if s_state in ('idle','cooldown'):
+                dx_track = player.centerx - boss_x
+                if abs(dx_track) > TRACK_SPEED2:
+                    boss_x += TRACK_SPEED2 if dx_track > 0 else -TRACK_SPEED2
+                else:
+                    boss_x = player.centerx
+            if s_state == 'idle':
+                if boss_attack_timer >= boss_info['snake_stomp_grace'] and \
+                   boss_attack_timer - boss_info['snake_last_stomp_frame'] >= boss_info['snake_stomp_interval'] and \
+                   abs(player.centerx - boss_x) < boss_radius * 2.0:
+                    boss_info['snake_stomp_state'] = 'prelift'
+                    boss_info['snake_stomp_timer'] = 0
+            elif s_state == 'prelift':
+                boss_info['snake_stomp_timer'] += 1
+                lift_amount = 16
+                target_up = boss_info['snake_home_y'] - lift_amount
+                if boss_y > target_up:
+                    boss_y -= 6
+                if boss_info['snake_stomp_timer'] > 8:
+                    boss_info['snake_stomp_state'] = 'descending'
+                    target_center = player.centery - (boss_radius - 6)
+                    target_center = min(target_center, HEIGHT - boss_radius - 30)
+                    target_center = max(target_center, boss_info.get('snake_home_y', 60) + 90)
+                    boss_info['snake_stomp_target_y'] = target_center
+            elif s_state == 'descending':
+                dyn_target = player.centery - (boss_radius - 6)
+                dyn_target = min(dyn_target, HEIGHT - boss_radius - 30)
+                if dyn_target > boss_info.get('snake_stomp_target_y', dyn_target):
+                    boss_info['snake_stomp_target_y'] = dyn_target
+                boss_y += 18
+                if boss_info['snake_stomp_target_y'] is not None and boss_y >= boss_info['snake_stomp_target_y']:
+                    boss_y = boss_info['snake_stomp_target_y']
+                    boss_info['snake_stomp_state'] = 'pause'
+                    boss_info['snake_stomp_timer'] = 0
+            elif s_state == 'pause':
+                boss_info['snake_stomp_timer'] += 1
+                if boss_info['snake_stomp_timer'] > 6:
+                    boss_info['snake_stomp_state'] = 'ascending'
+            elif s_state == 'ascending':
+                boss_y -= 11
+                if boss_y <= boss_info.get('snake_home_y', 60):
+                    boss_y = boss_info.get('snake_home_y', 60)
+                    boss_info['snake_stomp_state'] = 'cooldown'
+                    boss_info['snake_stomp_timer'] = 0
+                    boss_info['snake_last_stomp_frame'] = boss_attack_timer
+            elif s_state == 'cooldown':
+                boss_info['snake_stomp_timer'] += 1
+                if boss_info['snake_stomp_timer'] > 40:
+                    boss_info['snake_stomp_state'] = 'idle'
+            # （弾幕なし、既存反射ギミックのみ）
+         # ここに楕円ボスの移動ロジックを追加
+        if boss_info and boss_info["name"] == "楕円ボス":
+            # --- 基本左右移動 ---
+            if 'move_dir' not in boss_info:
+                boss_info['move_dir'] = 1
+            boss_x += boss_info['move_dir'] * boss_speed
+            if boss_x < boss_radius + 40:
+                boss_x = boss_radius + 40
+                boss_info['move_dir'] = 1
+            elif boss_x > WIDTH - boss_radius - 40:
+                boss_x = WIDTH - boss_radius - 40
+                boss_info['move_dir'] = -1
+
+            # --- 小楕円の向き（プレイヤー追尾 + 発射時ロック） ---
+            boss_info.setdefault('left_angle', 0.0)
+            boss_info.setdefault('right_angle', math.pi)
+
+            # --- ビーム状態管理（左右同期版） ---
+            # 共有ステート: idle -> telegraph -> firing -> cooldown
+            if 'beam_shared_state' not in boss_info:
+                boss_info['beam_shared_state'] = 'idle'
+                boss_info['beam_shared_timer'] = 0
+            if 'left_beam' not in boss_info:
+                boss_info['left_beam'] = {'state':'idle','timer':0,'telegraph':30,'firing':55,'cooldown':70,'target':None,'origin':None}
+            if 'right_beam' not in boss_info:
+                boss_info['right_beam'] = {'state':'idle','timer':0,'telegraph':30,'firing':55,'cooldown':70,'target':None,'origin':None}
+
+            small_w = boss_radius//2
+            small_h = boss_radius*2//3
+            left_center = (boss_x - boss_radius, boss_y)
+            right_center = (boss_x + boss_radius, boss_y)
+
+            # 共有ステート更新
+            boss_info['beam_shared_timer'] += 1
+            shared = boss_info['beam_shared_state']
+            # 角度更新（idle/cooldown のみ追尾）
+            for side, center in (('left', left_center), ('right', right_center)):
+                angle_key = 'left_angle' if side=='left' else 'right_angle'
+                if shared in ('idle','cooldown'):
+                    dxp = player.centerx - center[0]
+                    dyp = player.centery - center[1]
+                    boss_info[angle_key] = math.atan2(dyp, dxp)
+            # 状態遷移 (共有)
+            if shared == 'idle' and boss_info['beam_shared_timer'] >= OVAL_BEAM_INTERVAL:
+                # 双方ターゲット確定
+                for side, center in (('left', left_center), ('right', right_center)):
+                    beam = boss_info[f'{side}_beam']
+                    beam['target'] = (player.centerx, player.centery)
+                    dx = beam['target'][0] - center[0]
+                    dy = beam['target'][1] - center[1]
+                    boss_info['left_angle' if side=='left' else 'right_angle'] = math.atan2(dy, dx)
+                    beam['timer'] = 0
+                    beam['state'] = 'telegraph'
+                boss_info['beam_shared_state'] = 'telegraph'
+                boss_info['beam_shared_timer'] = 0
+            elif shared == 'telegraph':
+                # telegraph 長は left_beam の telegraph 値使用（同じ設定）
+                if boss_info['left_beam']['timer'] >= boss_info['left_beam']['telegraph']:
+                    for side in ('left','right'):
+                        b = boss_info[f'{side}_beam']
+                        b['state'] = 'firing'
+                        b['timer'] = 0
+                    boss_info['beam_shared_state'] = 'firing'
+            elif shared == 'firing':
+                # ダメージ判定 & firing 終了
+                for side, center in (('left', left_center), ('right', right_center)):
+                    beam = boss_info[f'{side}_beam']
+                    if beam.get('origin') and beam.get('target') and not player_invincible:
+                        px, py = player.centerx, player.centery
+                        ox, oy = beam['origin']
+                        tx, ty = beam['target']
+                        vx, vy = tx-ox, ty-oy
+                        if vx*vx + vy*vy > 0:
+                            t = max(0, min(1, ((px-ox)*vx + (py-oy)*vy)/(vx*vx+vy*vy)))
+                            cx = ox + vx*t
+                            cy = oy + vy*t
+                            if (px-cx)**2 + (py-cy)**2 < 14*14:
+                                player_lives -= 1
+                                player_invincible = True
+                                player_invincible_timer = 0
+                                explosion_timer = 0
+                                explosion_pos = (player.centerx, player.centery)
+                                player.x = WIDTH//2 - 15
+                                player.y = HEIGHT - 40
+                if boss_info['left_beam']['timer'] >= boss_info['left_beam']['firing']:
+                    for side in ('left','right'):
+                        b = boss_info[f'{side}_beam']
+                        b['state'] = 'cooldown'
+                        b['timer'] = 0
+                    boss_info['beam_shared_state'] = 'cooldown'
+                    boss_info['beam_shared_timer'] = 0
+            elif shared == 'cooldown':
+                if boss_info['beam_shared_timer'] >= boss_info['left_beam']['cooldown']:
+                    boss_info['beam_shared_state'] = 'idle'
+                    boss_info['beam_shared_timer'] = 0
+            # 個別タイマー加算 & origin 更新
+            for side, center in (('left', left_center), ('right', right_center)):
+                beam = boss_info[f'{side}_beam']
+                beam['timer'] += 1
+                ang = boss_info['left_angle' if side=='left' else 'right_angle']
+                tip_x = center[0] + (small_w//2) * math.cos(ang)
+                tip_y = center[1] + (small_w//2) * math.sin(ang)
+                if beam['state'] in ('telegraph','firing'):
+                    beam['origin'] = (tip_x, tip_y)
+
+            # --- コア開閉＆拡散弾 ---
+            # ステートが無い場合安全初期化
+            if 'core_state' not in boss_info:
+                boss_info['core_state'] = 'closed'
+                boss_info['core_timer'] = 0
+                boss_info['core_gap'] = 0
+                boss_info['core_gap_target'] = OVAL_CORE_GAP_TARGET
+                boss_info['core_cycle_interval'] = OVAL_CORE_CYCLE_INTERVAL
+                boss_info['core_firing_duration'] = OVAL_CORE_FIRING_DURATION
+                boss_info['core_open_hold'] = OVAL_CORE_OPEN_HOLD
+            cs = boss_info['core_state']
+            boss_info['core_timer'] += 1
+            gap = boss_info.get('core_gap',0)
+            # 状態遷移
+            if cs == 'closed':
+                if boss_info['core_timer'] >= boss_info['core_cycle_interval']:
+                    boss_info['core_state'] = 'opening'
+                    boss_info['core_timer'] = 0
+            elif cs == 'opening':
+                gap += OVAL_CORE_GAP_STEP
+                if gap >= boss_info['core_gap_target']:
+                    gap = boss_info['core_gap_target']
+                    boss_info['core_state'] = 'firing'
+                    boss_info['core_timer'] = 0
+                boss_info['core_gap'] = gap
+            elif cs == 'firing':
+                # 一定間隔で拡散弾リング
+                if boss_info['core_timer'] % 12 == 1:  # 12 も後で定数化候補
+                    core_cx, core_cy = boss_x, boss_y
+                    RING_NUM = 10
+                    speed = 4
+                    for i in range(RING_NUM):
+                        ang = 2*math.pi*i/RING_NUM + (boss_info['core_timer']//12)*0.3
+                        vx = int(speed * math.cos(ang))
+                        vy = int(speed * math.sin(ang))
+                        bullets.append({
+                            'rect': pygame.Rect(core_cx-4, core_cy-4, 8, 8),
+                            'type': 'enemy',
+                            'power': 1.0,
+                            'vx': vx,
+                            'vy': vy
+                        })
+                if boss_info['core_timer'] >= boss_info['core_firing_duration']:
+                    boss_info['core_state'] = 'open_hold'
+                    boss_info['core_timer'] = 0
+            elif cs == 'open_hold':
+                if boss_info['core_timer'] >= boss_info['core_open_hold']:
+                    boss_info['core_state'] = 'closing'
+                    boss_info['core_timer'] = 0
+            elif cs == 'closing':
+                gap -= OVAL_CORE_GAP_STEP
+                if gap <= 0:
+                    gap = 0
+                    boss_info['core_state'] = 'closed'
+                    boss_info['core_timer'] = 0
+                boss_info['core_gap'] = gap
+            # gap を保持
+            boss_info['core_gap'] = gap
+
+            # （オリジンへの補正戻しなし＝回転しつつ周期的に狙う）
+
+        # バウンドボス: 直進突撃→バウンド運動
+        if boss_info and boss_info["name"] == "バウンドボス":
+            r = boss_radius
+            # 潰れ演出中
+            if boss_info.get('squish_state') == 'squish':
+                boss_info['squish_timer'] += 1
+                # 一定フレーム経過で復帰（移動再開）
+                if boss_info['squish_timer'] >= BOUNCE_BOSS_SQUISH_DURATION:
+                    boss_info['squish_state'] = 'normal'
+                    boss_info['squish_timer'] = 0
+                # 潰れ中は移動しない
+            else:
+                # 初回発射方向決定
+                if not boss_info.get('bounce_started'):
+                    # 初回は真下へ落下(速度はYのみ)
+                    boss_info['bounce_vx'] = 0
+                    boss_info['bounce_vy'] = BOUNCE_BOSS_SPEED
+                    boss_info['bounce_started'] = True
+                boss_x += boss_info['bounce_vx']
+                boss_y += boss_info['bounce_vy']
+                bounced = None
+                # 画面端衝突判定
+                if boss_x - r < 0:
+                    boss_x = r
+                    boss_info['bounce_vx'] *= -1
+                    bounced = 'left'
+                elif boss_x + r > WIDTH:
+                    boss_x = WIDTH - r
+                    boss_info['bounce_vx'] *= -1
+                    bounced = 'right'
+                if boss_y - r < 0 and not boss_info.get('first_drop'):
+                    boss_y = r
+                    boss_info['bounce_vy'] *= -1
+                    bounced = 'top'
+                elif boss_y + r > HEIGHT:
+                    boss_y = HEIGHT - r
+                    if boss_info.get('first_drop'):
+                        # 初回底面到達: 方向をランダム斜めに変換し first_drop 終了
+                        boss_info['first_drop'] = False
+                        base_ang = math.radians(random.choice([120, 150, 210, 240]))  # 上向き4方向
+                        speed = math.hypot(boss_info['bounce_vx'], boss_info['bounce_vy']) or BOUNCE_BOSS_SPEED
+                        boss_info['bounce_vx'] = speed * math.cos(base_ang)
+                        boss_info['bounce_vy'] = speed * math.sin(base_ang)
+                        bounced = 'bottom'  # ここでは弾幕無し（仕様通り）
+                    else:
+                        boss_info['bounce_vy'] *= -1
+                        bounced = 'bottom'
+                if bounced:
+                    # 反射角にランダムばらつき
+                    speed = math.hypot(boss_info['bounce_vx'], boss_info['bounce_vy'])
+                    ang = math.atan2(boss_info['bounce_vy'], boss_info['bounce_vx'])
+                    # 1次ジッター + 追加で微小再ジッター
+                    jitter = math.radians(random.uniform(-BOUNCE_BOSS_ANGLE_JITTER_DEG, BOUNCE_BOSS_ANGLE_JITTER_DEG))
+                    ang += jitter
+                    ang += math.radians(random.uniform(-12, 12)) * 0.4
+                    nvx = speed * math.cos(ang)
+                    nvy = speed * math.sin(ang)
+                    # 垂直成分が極端に小さくなりすぎるとゲームが水平往復になるので最小比率を確保
+                    min_vert = 0.25 * speed
+                    if abs(nvy) < min_vert:
+                        nvy = min_vert if nvy >= 0 else -min_vert
+                        # 水平成分再計算して速度維持
+                        horiz = math.sqrt(max(speed**2 - nvy**2, 0.1))
+                        nvx = horiz if nvx >= 0 else -horiz
+                    boss_info['bounce_vx'] = nvx
+                    boss_info['bounce_vy'] = nvy
+                    # 潰れ状態遷移 & 弾幕生成（下端以外）
+                    if bounced != 'bottom':
+                        # first_drop解除前は弾を出さない（落下演出中）
+                        if not boss_info.get('first_drop') and boss_attack_timer - boss_info.get('bounce_cool', 0) >= 4:
+                            cx, cy = boss_x, boss_y
+                            for i in range(BOUNCE_BOSS_RING_COUNT):
+                                bang = 2*math.pi*i/BOUNCE_BOSS_RING_COUNT
+                                bspeed = 4
+                                vx = int(bspeed * math.cos(bang))
+                                vy = int(bspeed * math.sin(bang))
+                                bullets.append({
+                                    'rect': pygame.Rect(int(cx-4), int(cy-4), 8, 8),
+                                    'type': 'enemy',
+                                    'power': 1.0,
+                                    'vx': vx,
+                                    'vy': vy
+                                })
+                            boss_info['bounce_cool'] = boss_attack_timer
+                    # 全方向バウンドでウィンドウシェイク（下端は既に弾幕無しだが揺れは発生）
+                    if bounced and _game_window:
+                        _window_shake_timer = WINDOW_SHAKE_DURATION
+                        _window_shake_intensity = WINDOW_SHAKE_INTENSITY
+                    boss_info['squish_state'] = 'squish'
+                    boss_info['squish_timer'] = 0
+
+    # プレイヤーとボスの当たり判定
+    if boss_alive and not player_invincible:
+        # 跳ね返り弾のみプレイヤー判定
+        for bullet in bullets:
+            if bullet.get("reflect", False) or bullet.get("type") == "enemy":
+                if player.colliderect(bullet["rect"]):
+                    player_lives -= 1
+                    player_invincible = True
+                    player_invincible_timer = 0
+                    explosion_timer = 0
+                    explosion_pos = (player.centerx, player.centery)
+                    # プレイヤーを初期位置に戻す
+                    player.x = WIDTH//2 - 15
+                    player.y = HEIGHT - 40
+                    bullets.remove(bullet)
+                    break
+        # 通常のボス接触判定
+        if boss_info and boss_info.get("name") == "扇ボス":
+            # プレイヤー中心が扇セクタ内か判定
+            dx = player.centerx - boss_x
+            dy = player.centery - boss_y
+            r2 = dx*dx + dy*dy
+            if r2 <= (boss_radius + max(player.width, player.height)//2)**2:  # 半径近傍のみ角度計算
+                ang = math.atan2(dy, dx)
+                base_angle = boss_info.get('tri_base_angle', -math.pi/2)
+                span = boss_info.get('tri_angle_span', math.radians(140))
+                diff = ((ang - base_angle + math.pi) % (2*math.pi)) - math.pi
+                # プレイヤーサイズを考慮して少し緩め (span/2 + マージン)
+                margin = math.radians(6)
+                if abs(diff) <= span/2 + margin:
+                    player_lives -= 1
+                    player_invincible = True
+                    player_invincible_timer = 0
+                    explosion_timer = 0
+                    explosion_pos = (player.centerx, player.centery)
+                    player.x = WIDTH//2 - 15
+                    player.y = HEIGHT - 40
+            # 追加: 斬撃当たり判定
+            for sl in boss_info.get('active_slashes', []):
+                if sl['rect'].colliderect(player):
+                    player_lives -= 1
+                    player_invincible = True
+                    player_invincible_timer = 0
+                    explosion_timer = 0
+                    explosion_pos = (player.centerx, player.centery)
+                    player.x = WIDTH//2 - 15
+                    player.y = HEIGHT - 40
+        else:
+            dx = player.centerx - boss_x
+            dy = player.centery - boss_y
+            if dx*dx + dy*dy < (boss_radius + max(player.width, player.height)//2)**2:
+                player_lives -= 1
+                player_invincible = True
+                player_invincible_timer = 0
+                explosion_timer = 0
+                explosion_pos = (player.centerx, player.centery)
+                player.x = WIDTH//2 - 15
+                player.y = HEIGHT - 40
+            player_lives -= 1
+            player_invincible = True
+            player_invincible_timer = 0
+            explosion_timer = 0
+            explosion_pos = (player.centerx, player.centery)
+            # プレイヤーを初期位置に戻す
+            player.x = WIDTH//2 - 15
+            player.y = HEIGHT - 40
+
+    # 無敵時間管理
+    if player_invincible:
+        player_invincible_timer += 1
+        if player_invincible_timer >= PLAYER_INVINCIBLE_DURATION and dash_state['invincible_timer'] <= 0:
+            player_invincible = False
+
+    # 爆発表示管理
+    if explosion_timer < EXPLOSION_DURATION and explosion_pos:
+        explosion_timer += 1
+
+    # ゲームオーバー・クリア判定
+    if player_lives <= 0 or (not boss_alive and boss_explosion_timer >= BOSS_EXPLOSION_DURATION):
+        result = "win" if not boss_alive else "lose"
+        reward_text = None
+        # 報酬文
+        if result == "win" and boss_info and not level_cleared[selected_level]:
+            if boss_info["name"] == "Boss A":
+                reward_text = "ホーミング弾解放! V切替 威力0.5/追尾"
+            elif boss_info["name"] == "蛇":
+                reward_text = "リーフシールド獲得! 自機周囲で敵/弾を防ぐ"
+            elif boss_info["name"] == "楕円ボス":
+                reward_text = "拡散弾(3WAY) 解放! Vで切替 威力0.5x3 敵弾相殺"
+            elif boss_info["name"] == "バウンドボス":
+                reward_text = "緊急回避(ダッシュ) 解放! ←← / →→ で瞬間移動&無敵"
+        # 星マーク
+        if result == "win":
+            level_cleared[selected_level] = True
+        # 爆発表示（最後の爆発）
+        for i in range(EXPLOSION_DURATION):
+            screen.fill(BLACK)
+            if explosion_pos:
+                pygame.draw.circle(screen, RED, explosion_pos, 30)
+            if result == "win":
+                font = jp_font(50)
+                text = font.render("GAME CLEAR!", True, (0,255,0))
+                text_rect = text.get_rect(center=(WIDTH//2, HEIGHT//2-80))
+                screen.blit(text, text_rect)
+            else:
+                font = jp_font(50)
+                text = font.render("GAME OVER", True, RED)
+                text_rect = text.get_rect(center=(WIDTH//2, HEIGHT//2-60))
+                screen.blit(text, text_rect)
+            if reward_text:
+                font_reward = jp_font(26)
+                def split_reward(text):
+                    parts = text.split(' ')
+                    lines = []
+                    cur = ''
+                    for p in parts:
+                        test = (cur + ' ' + p).strip()
+                        w, _ = font_reward.size(test)
+                        if w > WIDTH - 40 and cur:
+                            lines.append(cur)
+                            cur = p
+                        else:
+                            cur = test
+                    if cur:
+                        lines.append(cur)
+                    return lines
+                lines = split_reward(reward_text)
+                line_h = font_reward.get_linesize()
+                total_h = line_h * len(lines)
+                # 爆発演出中も同様に下へずらす
+                start_y = (HEIGHT // 2 - 10) - total_h // 2 + line_h // 2
+                for li, line in enumerate(lines):
+                    surf = font_reward.render(line, True, (0,255,0))
+                    rect = surf.get_rect(center=(WIDTH//2, start_y + li*line_h))
+                    screen.blit(surf, rect)
+            pygame.display.flip()
+            pygame.time.wait(20)
+        pygame.time.wait(1000)
+        # 選択メニュー
+        while True:
+            draw_end_menu(screen, result, reward_text)
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_t:
+                        if boss_alive:
+                            # 即時爆発デバッグ: HP を 0 にし爆発シーケンスへ
+                            boss_hp = 0
+                            boss_alive = False
+                            boss_explosion_timer = 0
+                            explosion_pos = (boss_x, boss_y)
+                    if event.key == pygame.K_1:
+                        # メニューへ戻る
+                        menu_mode = True
+                        break
+                    if event.key == pygame.K_2:
+                        retry = True
+                        break
+                    if event.key == pygame.K_3:
+                        pygame.quit()
+                        sys.exit()
+            if menu_mode or retry:
+                break
+        continue
+
+    # 描画
+    screen.fill(BLACK)
+    # 爆発表示
+    if explosion_timer < EXPLOSION_DURATION and explosion_pos:
+        pygame.draw.circle(screen, RED, explosion_pos, 30)
+    # プレイヤー（無敵時は半透明）
+    if not player_invincible or (player_invincible_timer//10)%2 == 0:
+        pygame.draw.rect(screen, WHITE, player)
+        # リーフシールド描画
+        if has_leaf_shield:
+            # 回転をさらに遅くして存在感を抑える
+            leaf_angle += 0.015
+            leaf_hit_boxes = []
+            for i in range(2):
+                angle = leaf_angle + math.pi * i
+                leaf_radius = 40
+                leaf_x = player.centerx + leaf_radius * math.cos(angle)
+                leaf_y = player.centery + leaf_radius * math.sin(angle)
+                r = pygame.Rect(leaf_x-14, leaf_y-10, 28, 20)
+                leaf_hit_boxes.append(r)
+                pygame.draw.ellipse(screen, (0,200,0), r)
+            # シールドで敵弾/反射弾を弾く（削除）
+            filtered = []
+            for b in bullets:
+                if (b.get("reflect") or b.get("type") == "enemy") and any(r.colliderect(b["rect"]) for r in leaf_hit_boxes):
+                    # 葉に当たった弾は消す
+                    continue
+                filtered.append(b)
+            bullets = filtered
+    for bullet in bullets:
+        if bullet["type"] == "boss_beam":
+            continue
+        btype = bullet.get("type")
+        if bullet.get("reflect"):
+            color = BULLET_COLOR_REFLECT
+        elif btype == "normal":
+            color = BULLET_COLOR_NORMAL
+        elif btype == "homing":
+            color = BULLET_COLOR_HOMING
+        elif btype == "enemy":
+            # サブタイプで色変化
+            subtype = bullet.get('subtype')
+            if subtype == 'crescent':
+                color = (255, 200, 80)
+            elif subtype == 'mini_hito':
+                color = (255, 120, 120)
+            else:
+                color = BULLET_COLOR_ENEMY
+        elif btype == "spread":
+            color = BULLET_COLOR_SPREAD
+        else:
+            color = WHITE
+        pygame.draw.rect(screen, color, bullet["rect"])
+
+    # --- Telegraph描画 & 追加エフェクト（簡易） ---
+    if boss_alive and boss_info and boss_info.get('name') == '扇ボス':
+        bi = boss_info
+        # Telegraph ttl 更新 & 描画
+        if 'telegraphs' in bi:
+            new_t = []
+            for tg in bi['telegraphs']:
+                tg['ttl'] -= 1
+                if tg['ttl'] > 0:
+                    new_t.append(tg)
+            bi['telegraphs'] = new_t
+        # 分離刀描画
+        if bi.get('sword_detached') and bi.get('sword_projectile'):
+            sp = bi['sword_projectile']
+            pygame.draw.rect(screen, (255,160,160), pygame.Rect(int(sp['x']-6), int(sp['y']-18), 12, 36))
+    # 楕円ボス 新ビーム描画
+    if boss_alive and boss_info and boss_info["name"] == "楕円ボス":
+        for side in ('left','right'):
+            beam = boss_info.get(f'{side}_beam')
+            if not beam: continue
+            if not beam.get('origin') or not beam.get('target'): continue
+            ox, oy = beam['origin']
+            tx, ty = beam['target']
+            if beam['state'] == 'telegraph':
+                # 点滅赤予告（フレームごとに表示/非表示）
+                if (beam['timer'] // 5) % 2 == 0:
+                    pygame.draw.line(screen, (255,60,60), (ox, oy), (tx, ty), 4)
+            elif beam['state'] == 'firing':
+                pygame.draw.line(screen, (0,255,255), (ox, oy), (tx, ty), 14)
+        # コア開閉描画（gap に応じて半楕円が左右へ割れる）
+        gap = boss_info.get('core_gap', 0)
+        # 新ヘルパーで半楕円分割を実現（gap=0 でもそのまま一体表示）
+        draw_split_ellipse(screen, boss_x, boss_y, boss_radius, gap, boss_color)
+        # 開いている間コア表示
+        if boss_info.get('core_state') in ('opening','firing','open_hold'):
+            pygame.draw.circle(screen, (255,80,80), (boss_x, boss_y), OVAL_CORE_RADIUS)
+    # ボスキャラ
+    if boss_alive:
+        # Boss A: 台形
+        if boss_info and boss_info["name"] == "Boss A":
+            top_width = boss_radius
+            bottom_width = boss_radius * 2
+            height = boss_radius * 1.5
+            points = [
+                (boss_x - top_width//2, boss_y - int(height//2)),
+                (boss_x + top_width//2, boss_y - int(height//2)),
+                (boss_x + bottom_width//2, boss_y + int(height//2)),
+                (boss_x - bottom_width//2, boss_y + int(height//2)),
+            ]
+            pygame.draw.polygon(screen, boss_color, points)
+        elif boss_info and boss_info["name"] == "蛇":
+            # 衝突判定は既にロジック上部で処理済みなのでここでは描画のみ
+            main_size = int(boss_radius * 1.2)
+            main_rect = pygame.Rect(boss_x - main_size//2, boss_y - main_size//2, main_size, main_size)
+            pygame.draw.rect(screen, (128, 0, 128), main_rect)
+            rotate_angle_local = globals().get("rotate_angle", 0.0)
+            for i in range(ROTATE_SEGMENTS_NUM):
+                angle = rotate_angle_local + (2 * math.pi * i / ROTATE_SEGMENTS_NUM)
+                seg_x = boss_x + ROTATE_RADIUS * math.cos(angle)
+                seg_y = boss_y + ROTATE_RADIUS * math.sin(angle)
+                seg_rect = pygame.Rect(int(seg_x-20), int(seg_y-20), 40, 40)
+                pygame.draw.rect(screen, (180, 0, 180), seg_rect)
+        elif boss_info and boss_info["name"] == "楕円ボス":
+            # 旧本体描画は分割描画セクションで済んでいるためここでは小楕円のみ可動表示（緑）
+            small_w, small_h = boss_radius//2, boss_radius*2//3
+            left_rect = pygame.Rect(boss_x - boss_radius - small_w//2, boss_y - small_h//2, small_w, small_h)
+            right_rect = pygame.Rect(boss_x + boss_radius - small_w//2, boss_y - small_h//2, small_w, small_h)
+            pygame.draw.ellipse(screen, (0,200,0), left_rect)
+            pygame.draw.ellipse(screen, (0,200,0), right_rect)
+        elif boss_info and boss_info["name"] == "バウンドボス":
+            # 潰れ演出: squish_state中は縦に潰し・横に拡げる
+            if boss_info.get('squish_state') == 'squish':
+                t = boss_info.get('squish_timer',0)
+                ratio = 1 - (t / max(1, BOUNCE_BOSS_SQUISH_DURATION))
+                # 直前のバウンド面を推定: 速度ベクトルの符号から反射面を判断（速度成分の絶対値大きい軸）
+                vx = boss_info.get('bounce_vx',0)
+                vy = boss_info.get('bounce_vy',0)
+                horizontal_hit = abs(vy) > abs(vx)  # 上下反射後は縦速度が大, 左右反射後は横速度が大
+                if horizontal_hit:
+                    # 上下バウンド: 従来（縦潰れ）
+                    squash = 0.45 + 0.55 * ratio
+                    stretch = 1.0 + (1 - ratio) * 0.5
+                else:
+                    # 左右バウンド: 横潰れ / 縦伸び
+                    stretch = 0.45 + 0.55 * ratio  # 横縮小
+                    squash = 1.0 + (1 - ratio) * 0.5  # 縦拡張
+                w = int(boss_radius * 2 * stretch)
+                h = int(boss_radius * 2 * squash)
+                rect = pygame.Rect(0,0,w,h)
+                rect.center = (int(boss_x), int(boss_y))
+                pygame.draw.ellipse(screen, boss_color, rect)
+            else:
+                pygame.draw.circle(screen, boss_color, (int(boss_x), int(boss_y)), boss_radius)
+        elif boss_info and boss_info["name"] == "扇ボス":
+            # 円弧を持つ扇形（セクタ）＋左右腕
+            cx, cy = int(boss_x), int(boss_y)
+            span = boss_info.get('tri_angle_span', math.radians(140))
+            base_ang = boss_info.get('tri_base_angle', -math.pi/2)
+            r = boss_radius
+            a1 = base_ang - span/2
+            a2 = base_ang + span/2
+            SEG = 28  # 円弧分割（見た目向上）
+            arc_points = []
+            for i in range(SEG+1):
+                t = i/SEG
+                ang = a1 + (a2 - a1)*t
+                arc_points.append((cx + int(r*math.cos(ang)), cy + int(r*math.sin(ang))))
+            poly = [(cx, cy)] + arc_points
+            pygame.draw.polygon(screen, boss_color, poly)
+            # 既存の腕角は兜の「つば」(brim) として薄く描画
+            left_ang_old = boss_info.get('arm_left_angle', base_ang - 0.9)
+            right_ang_old = boss_info.get('arm_right_angle', base_ang + 0.9)
+            brim_len = int(r * 0.55)
+            brim_color = (180,180,190)
+            bl_end = (cx + int(brim_len*math.cos(left_ang_old)), cy + int(brim_len*math.sin(left_ang_old)))
+            br_end = (cx + int(brim_len*math.cos(right_ang_old)), cy + int(brim_len*math.sin(right_ang_old)))
+            pygame.draw.line(screen, brim_color, (cx,cy), bl_end, 5)
+            pygame.draw.line(screen, brim_color, (cx,cy), br_end, 5)
+            # 新しい「腕」: 各母線(a1, a2)の中点からその線に垂直な外向き法線方向へ伸ばす
+            arm_len = boss_info.get('arm_len',70)
+            arm_color = (200,220,255)
+            # 母線 a1: 中心 -> arc先頭点(arc_points[0])
+            p1 = (cx, cy)
+            p2 = arc_points[0]
+            # 中点
+            mid_left = ((p1[0]+p2[0])//2, (p1[1]+p2[1])//2)
+            # ベクトル (p1->p2)
+            vx_left = p2[0]-p1[0]
+            vy_left = p2[1]-p1[1]
+            # 法線 (外向き) を決めたい: セクタ内部は次の母線方向に向かう側なので、外向きはその逆側
+            # 簡易的に (vy, -vx) と (-vy, vx) のどちらがより中心から遠ざかるかで選択
+            cand_left = [(vy_left, -vx_left), (-vy_left, vx_left)]
+            best_n_left = cand_left[0]
+            best_dist = -1
+            for nx, ny in cand_left:
+                tx = mid_left[0] + nx
+                ty = mid_left[1] + ny
+                d = (tx-cx)**2 + (ty-cy)**2
+                if d > best_dist:
+                    best_dist = d
+                    best_n_left = (nx, ny)
+            nlx, nly = best_n_left
+            norm = math.hypot(nlx, nly) or 1
+            nlx /= norm
+            nly /= norm
+            left_tip = (int(mid_left[0] + nlx*arm_len), int(mid_left[1] + nly*arm_len))
+            pygame.draw.line(screen, arm_color, mid_left, left_tip, 7)
+            # 母線 a2: 中心 -> arc末尾点(arc_points[-1])
+            p3 = (cx, cy)
+            p4 = arc_points[-1]
+            mid_right = ((p3[0]+p4[0])//2, (p3[1]+p4[1])//2)
+            # 右腕: 左腕法線を扇中央軸(base_ang)で鏡映して対称方向を得る
+            fdx = math.cos(base_ang)
+            fdy = math.sin(base_ang)
+            dot_l = nlx*fdx + nly*fdy  # 左法線と前方向の内積
+            # 鏡映 v' = 2*(v·a)*a - v
+            rx_dir = 2*dot_l*fdx - nlx
+            ry_dir = 2*dot_l*fdy - nly
+            norm_r = math.hypot(rx_dir, ry_dir) or 1
+            rx_dir /= norm_r
+            ry_dir /= norm_r
+            right_tip = (int(mid_right[0] + rx_dir*arm_len), int(mid_right[1] + ry_dir*arm_len))
+            pygame.draw.line(screen, arm_color, mid_right, right_tip, 7)
+            # 刀基点は腕先端（right_tip）
+            r_end = right_tip
+            boss_info['arm_left_end'] = left_tip
+            boss_info['arm_right_end'] = right_tip
+            # 右手の刀
+            sword_len = boss_info.get('sword_length',85)
+            blade_w = boss_info.get('sword_blade_width',10)
+            hilt_len = boss_info.get('sword_hilt_length',18)
+            hilt_w = boss_info.get('sword_hilt_width',16)
+            col_blade = boss_info.get('sword_color_blade',(230,230,255))
+            col_hilt = boss_info.get('sword_color_hilt',(160,120,60))
+            col_guard = boss_info.get('sword_color_guard',(200,180,90))
+            # 刀の基準: 右腕終点 r_end から right_ang 方向へ
+            # 刀基点: 腕先端
+            sx, sy = r_end
+            # 右腕方向(rx_dir, ry_dir)に対しさらに90度回転した方向を刀向きとする（外側→下方イメージ）
+            # 回転 (x,y)->(-y,x) と (y,-x) のどちらか; より画面下側へ向く方を採用
+            cand_dirs = [(-ry_dir, rx_dir), (ry_dir, -rx_dir)]
+            best = cand_dirs[0]
+            if cand_dirs[1][1] > cand_dirs[0][1]:  # y成分大きい(下)方を選ぶ
+                best = cand_dirs[1]
+            dirx, diry = best
+            # 攻撃ステートでの角度オフセット（右回り正: screen座標で上向きが負y）
+            # offsetは dirベクトルを反時計回り回転 (数学的+角) させる: 2D回転 (x,y)->(x cos - y sin, x sin + y cos)
+            if not boss_info.get('sword_detached'):
+                ang_off = boss_info.get('sword_angle_offset', 0.0)
+                if ang_off != 0.0:
+                    coso = math.cos(ang_off); sino = math.sin(ang_off)
+                    ndx = dirx * coso - diry * sino
+                    ndy = dirx * sino + diry * coso
+                    dirx, diry = ndx, ndy
+            # 垂直方向ベクトル（幅表現）
+            px = -diry
+            py = dirx
+            # 柄の前後中心位置
+            hilt_back = (sx - dirx*4, sy - diry*4)
+            hilt_front = (hilt_back[0] + dirx*hilt_len, hilt_back[1] + diry*hilt_len)
+            # 柄ポリゴン（長方形）
+            hw2 = hilt_w/2
+            hilt_poly = [
+                (hilt_back[0] + px*hw2, hilt_back[1] + py*hw2),
+                (hilt_back[0] - px*hw2, hilt_back[1] - py*hw2),
+                (hilt_front[0] - px*hw2, hilt_front[1] - py*hw2),
+                (hilt_front[0] + px*hw2, hilt_front[1] + py*hw2),
+            ]
+            pygame.draw.polygon(screen, col_hilt, [(int(x),int(y)) for x,y in hilt_poly])
+            # 鍔 (guard) 円
+            guard_r = hilt_w * 0.55
+            guard_center = (int(hilt_front[0]), int(hilt_front[1]))
+            pygame.draw.circle(screen, col_guard, guard_center, int(guard_r))
+            # 日本刀風: ゆるい反り + 刃と棟の2本ライン、内側にハモン、先端を鋭く
+            blade_start = hilt_front
+            curve = 0.18  # 反り係数（基本）
+            segments = 10
+            bw2 = blade_w/2
+            spine_points = []  # 棟
+            edge_points = []   # 刃側
+            for i in range(segments+1):
+                t = i/segments
+                # 進行距離
+                dist = sword_len * t
+                # 反り: distの二乗に比例し法線方向へオフセット
+                # 法線(刃方向へ外側) は px,py を利用（後で edge/spine で符号調整）
+                # ここでは棟を正側、刃を負側と仮定
+                offset = (t) * (1 - t) * curve * sword_len  # 緩い放物線 (0と1で0)
+                # ボス中心方向へ僅かに引き寄せる補正: 刀基点->ボス中心ベクトルを利用
+                to_center_x = cx - blade_start[0]
+                to_center_y = cy - blade_start[1]
+                # 刀進行方向への直交正規ベクトル(既存 px,py)と中心方向を内積で判定し、内側へ向く符号を選択
+                sign_center = 1 if (to_center_x*px + to_center_y*py) > 0 else -1
+                inward = sign_center * offset * 0.4  # 内向き寄せ量（係数0.4）
+                # 基本中心線位置 + 反り + 内向き補正
+                cx_b = blade_start[0] + dirx*dist + px*(offset*0.5 + inward)
+                cy_b = blade_start[1] + diry*dist + py*(offset*0.5 + inward)
+                # 棟/刃幅方向
+                spine_points.append((cx_b + px*bw2, cy_b + py*bw2))
+                taper = 1 - 0.55*t  # 先端へ細く
+                edge_points.append((cx_b - px*bw2*taper, cy_b - py*bw2*taper))
+            # ポリゴン生成（棟 -> 先端 -> 刃逆順）
+            blade_poly = spine_points + edge_points[::-1]
+            pygame.draw.polygon(screen, col_blade, [(int(x),int(y)) for x,y in blade_poly])
+            # 輪郭ライン（薄いグレー）
+            outline_col = (180,180,190)
+            pygame.draw.lines(screen, outline_col, False, [(int(x),int(y)) for x,y in spine_points], 1)
+            pygame.draw.lines(screen, outline_col, False, [(int(x),int(y)) for x,y in edge_points], 1)
+            # ハモン (刃側に白点)
+            for i in range(0, len(edge_points), 2):
+                ex, ey = edge_points[i]
+                pygame.draw.circle(screen, (250,250,255), (int(ex), int(ey)), 2)
+            # 柄巻きパターン: hiltポリゴン上にダイヤ風（斜めライン交差）
+            # 柄ポリゴンの中心線近くに等間隔ライン
+            wrap_steps = 5
+            for i in range(wrap_steps):
+                wt = (i+0.5)/wrap_steps
+                wx = hilt_back[0] + dirx*hilt_len*wt
+                wy = hilt_back[1] + diry*hilt_len*wt
+                off = hilt_w*0.45
+                c1 = (int(wx + px*off), int(wy + py*off))
+                c2 = (int(wx - px*off), int(wy - py*off))
+                col = (50,50,50) if i%2==0 else (90,90,90)
+                pygame.draw.line(screen, col, c1, c2, 2)
         # ボスへの小爆発
         for pos in boss_explosion_pos:
             pygame.draw.circle(screen, (255,255,0), pos, 15)
