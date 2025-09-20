@@ -1,4 +1,26 @@
-import pygame, sys, random, math
+import sys, random, math, subprocess
+
+# --- Auto-install required packages (pygame) at startup ---
+def _ensure_pygame(min_ver=(2, 5, 0)):
+    try:
+        import pygame as _pg
+        ver = getattr(getattr(_pg, 'version', None), 'vernum', None)
+        if not isinstance(ver, tuple):
+            ver = (0, 0, 0)
+        if ver < min_ver:
+            raise ImportError(f"pygame too old: {ver} < {min_ver}")
+        return
+    except Exception:
+        print("[setup] pygame が見つからないか古いので、インストール/更新します (pygame>=%d.%d.%d)..." % min_ver)
+        try:
+            # Allow output so user sees progress; may take a while on first run
+            subprocess.check_call([sys.executable, "-m", "pip", "install", f"pygame>={min_ver[0]}.{min_ver[1]}.{min_ver[2]}"])
+        except Exception as e:
+            print("[setup] 自動インストールに失敗しました。インターネット接続や権限を確認し、以下を実行してください:\n  python3 -m pip install 'pygame>=%d.%d.%d'" % min_ver)
+            raise
+
+_ensure_pygame()
+import pygame
 from constants import (
     WIDTH, HEIGHT,
     EXPLOSION_DURATION, BOSS_EXPLOSION_DURATION, PLAYER_INVINCIBLE_DURATION,
@@ -104,6 +126,8 @@ unlocked_leaf_shield = False
 unlocked_spread = False
 unlocked_dash = False
 reward_granted = False
+frame_count = 0  # フレームカウンタ（ダッシュ二度押し判定などに使用）
+fire_cooldown = 0  # 連射クールダウン（フレーム）
 while True:
     events = pygame.event.get()
     if menu_mode:
@@ -141,6 +165,13 @@ while True:
                         boss_speed = 4
                         boss_dir = 1
                         boss_state = "track"
+                        # ダッシュ状態初期化（統一）
+                        dash_state = {
+                            'cooldown': 0,
+                            'invincible_timer': 0,
+                            'active': False,
+                            'last_tap': {'left': -9999, 'right': -9999},
+                        }
                         if boss_info and boss_info["name"] == "バウンドボス":
                             boss_info['bounce_vx'] = 0
                             boss_info['bounce_vy'] = 0
@@ -154,9 +185,10 @@ while True:
                             boss_info['hp_last_segment'] = boss_hp
                             boss_info['initial_hp'] = boss_hp
                             boss_info['first_drop'] = True
+                        # 旧ダッシュUI用変数は毎フレーム dash_state から同期する
                         dash_cooldown = 0
                         dash_invincible_timer = 0
-                        dash_last_tap = { 'left': -9999, 'right': -9999 }
+                        dash_last_tap = dash_state['last_tap']
                         dash_active = False
                         if boss_info["name"] == "Boss A":
                             boss_info['stomp_state'] = 'idle'
@@ -196,6 +228,7 @@ while True:
                         player = pygame.Rect(WIDTH // 2 - 15, HEIGHT - 40, 30, 15)
                         player_speed = 5
                         bullet_speed = 7
+                        fire_cooldown = 0
                         waiting_for_space = True
                         menu_mode = False
         continue
@@ -241,6 +274,57 @@ while True:
                     })
                     waiting_for_space = False
         # 重複ブロック削除跡（不要なインデント混入を除去）
+
+    # --- 通常プレイ時の入力処理／移動／射撃／ダッシュ ---
+    frame_count += 1
+    # イベント処理（終了・武器切替・ダッシュ）
+    for event in events:
+        if event.type == pygame.QUIT:
+            pygame.quit(); sys.exit()
+        if event.type == pygame.KEYDOWN:
+            # ESC / Q で即終了
+            if event.key == pygame.K_ESCAPE or event.key == pygame.K_q:
+                pygame.quit(); sys.exit()
+            # 武器切替（V）
+            if event.key == pygame.K_v:
+                available = ["normal"]
+                if has_homing:
+                    available.append("homing")
+                if has_spread:
+                    available.append("spread")
+                try:
+                    i = available.index(bullet_type)
+                    bullet_type = available[(i+1) % len(available)]
+                except ValueError:
+                    bullet_type = available[0]
+            # ダッシュ（左右キーの二度押し）
+            if event.key == pygame.K_LEFT:
+                if attempt_dash(dash_state, 'left', frame_count, player, has_dash, WIDTH):
+                    player_invincible = True  # ダッシュ発動時は無敵付与
+            if event.key == pygame.K_RIGHT:
+                if attempt_dash(dash_state, 'right', frame_count, player, has_dash, WIDTH):
+                    player_invincible = True
+
+    # 押下状態取得（移動・連射）
+    keys = pygame.key.get_pressed()
+    dx = (keys[pygame.K_RIGHT] - keys[pygame.K_LEFT]) * player_speed
+    dy = (keys[pygame.K_DOWN] - keys[pygame.K_UP]) * player_speed
+    player.x = max(0, min(WIDTH - player.width, player.x + dx))
+    player.y = max(0, min(HEIGHT - player.height, player.y + dy))
+
+    # 連射（Z or SPACE）
+    if fire_cooldown > 0:
+        fire_cooldown -= 1
+    if keys[pygame.K_z] or keys[pygame.K_SPACE]:
+        if fire_cooldown <= 0:
+            spawn_player_bullets(bullets, player, bullet_type, bullet_speed)
+            fire_cooldown = 8
+
+    # ダッシュタイマー更新（UI同期）
+    if 'dash_state' in globals():
+        update_dash_timers(dash_state)
+        dash_cooldown = dash_state.get('cooldown', 0)
+        dash_active = dash_state.get('active', False)
 
     # プレイヤーとボスの当たり判定
     if boss_alive and not player_invincible:
@@ -1677,525 +1761,6 @@ while True:
     if explosion_timer < EXPLOSION_DURATION and explosion_pos:
         explosion_timer += 1
 
-    # ゲームオーバー・クリア判定
-    if player_lives <= 0 or (not boss_alive and boss_explosion_timer >= BOSS_EXPLOSION_DURATION):
-        result = "win" if not boss_alive else "lose"
-        reward_text = None
-        # 報酬文
-        if result == "win" and boss_info and not level_cleared[selected_level]:
-            if boss_info["name"] == "Boss A":
-                reward_text = "ホーミング弾解放! V切替 威力0.5/追尾"
-            elif boss_info["name"] == "蛇":
-                reward_text = "リーフシールド獲得! 自機周囲で敵/弾を防ぐ"
-            elif boss_info["name"] == "楕円ボス":
-                reward_text = "拡散弾(3WAY) 解放! Vで切替 威力0.5x3 敵弾相殺"
-            elif boss_info["name"] == "バウンドボス":
-                reward_text = "緊急回避(ダッシュ) 解放! ←← / →→ で瞬間移動&無敵"
-        # 星マーク
-        if result == "win":
-            level_cleared[selected_level] = True
-        # 爆発表示（最後の爆発）
-        for i in range(EXPLOSION_DURATION):
-            screen.fill(BLACK)
-            if explosion_pos:
-                pygame.draw.circle(screen, RED, explosion_pos, 30)
-            if result == "win":
-                font = jp_font(50)
-                text = font.render("GAME CLEAR!", True, (0,255,0))
-                text_rect = text.get_rect(center=(WIDTH//2, HEIGHT//2-80))
-                screen.blit(text, text_rect)
-            else:
-                font = jp_font(50)
-                text = font.render("GAME OVER", True, RED)
-                text_rect = text.get_rect(center=(WIDTH//2, HEIGHT//2-60))
-                screen.blit(text, text_rect)
-            if reward_text:
-                font_reward = jp_font(26)
-                def split_reward(text):
-                    parts = text.split(' ')
-                    lines = []
-                    cur = ''
-                    for p in parts:
-                        test = (cur + ' ' + p).strip()
-                        w, _ = font_reward.size(test)
-                        if w > WIDTH - 40 and cur:
-                            lines.append(cur)
-                            cur = p
-                        else:
-                            cur = test
-                    if cur:
-                        lines.append(cur)
-                    return lines
-                lines = split_reward(reward_text)
-                line_h = font_reward.get_linesize()
-                total_h = line_h * len(lines)
-                # 爆発演出中も同様に下へずらす
-                start_y = (HEIGHT // 2 - 10) - total_h // 2 + line_h // 2
-                for li, line in enumerate(lines):
-                    surf = font_reward.render(line, True, (0,255,0))
-                    rect = surf.get_rect(center=(WIDTH//2, start_y + li*line_h))
-                    screen.blit(surf, rect)
-            pygame.display.flip()
-            pygame.time.wait(20)
-        pygame.time.wait(1000)
-        # 選択メニュー
-        while True:
-            draw_end_menu(screen, result, reward_text)
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    sys.exit()
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_t:
-                        if boss_alive:
-                            # 即時爆発デバッグ: HP を 0 にし爆発シーケンスへ
-                            boss_hp = 0
-                            boss_alive = False
-                            boss_explosion_timer = 0
-                            explosion_pos = (boss_x, boss_y)
-                    if event.key == pygame.K_1:
-                        # メニューへ戻る
-                        menu_mode = True
-                        break
-                    if event.key == pygame.K_2:
-                        retry = True
-                        break
-                    if event.key == pygame.K_3:
-                        pygame.quit()
-                        sys.exit()
-            if menu_mode or retry:
-                break
-        continue
-
-    # 描画
-    screen.fill(BLACK)
-    # 爆発表示
-    if explosion_timer < EXPLOSION_DURATION and explosion_pos:
-        pygame.draw.circle(screen, RED, explosion_pos, 30)
-    # プレイヤー（無敵時は半透明）
-    if not player_invincible or (player_invincible_timer//10)%2 == 0:
-        pygame.draw.rect(screen, WHITE, player)
-        # リーフシールド描画
-        if has_leaf_shield:
-            # 回転をさらに遅くして存在感を抑える
-            leaf_angle += 0.015
-            leaf_hit_boxes = []
-            for i in range(2):
-                angle = leaf_angle + math.pi * i
-                leaf_radius = 40
-                leaf_x = player.centerx + leaf_radius * math.cos(angle)
-                leaf_y = player.centery + leaf_radius * math.sin(angle)
-                r = pygame.Rect(leaf_x-14, leaf_y-10, 28, 20)
-                leaf_hit_boxes.append(r)
-                pygame.draw.ellipse(screen, (0,200,0), r)
-            # シールドで敵弾/反射弾を弾く（削除）
-            filtered = []
-            for b in bullets:
-                if (b.get("reflect") or b.get("type") == "enemy") and any(r.colliderect(b["rect"]) for r in leaf_hit_boxes):
-                    # 葉に当たった弾は消す
-                    continue
-                filtered.append(b)
-            bullets = filtered
-    for bullet in bullets:
-        if bullet["type"] == "boss_beam":
-            continue
-        btype = bullet.get("type")
-        if bullet.get("reflect"):
-            color = BULLET_COLOR_REFLECT
-        elif btype == "normal":
-            color = BULLET_COLOR_NORMAL
-        elif btype == "homing":
-            color = BULLET_COLOR_HOMING
-        elif btype == "enemy":
-            # サブタイプで色変化
-            subtype = bullet.get('subtype')
-            if subtype == 'crescent':
-                color = (255, 200, 80)
-            elif subtype == 'mini_hito':
-                color = (255, 120, 120)
-            else:
-                color = BULLET_COLOR_ENEMY
-        elif btype == "spread":
-            color = BULLET_COLOR_SPREAD
-        else:
-            color = WHITE
-        pygame.draw.rect(screen, color, bullet["rect"])
-
-    # 扇ボス telegraph/刀描画削除（六角形のみ）
-    # 楕円ボス 新ビーム描画
-    if boss_alive and boss_info and boss_info["name"] == "楕円ボス":
-        for side in ('left','right'):
-            beam = boss_info.get(f'{side}_beam')
-            if not beam: continue
-            if not beam.get('origin') or not beam.get('target'): continue
-            ox, oy = beam['origin']
-            tx, ty = beam['target']
-            if beam['state'] == 'telegraph':
-                # 点滅赤予告（フレームごとに表示/非表示）
-                if (beam['timer'] // 5) % 2 == 0:
-                    pygame.draw.line(screen, (255,60,60), (ox, oy), (tx, ty), 4)
-            elif beam['state'] == 'firing':
-                pygame.draw.line(screen, (0,255,255), (ox, oy), (tx, ty), 14)
-        # コア開閉描画（gap に応じて半楕円が左右へ割れる）
-        gap = boss_info.get('core_gap', 0)
-        # 新ヘルパーで半楕円分割を実現（gap=0 でもそのまま一体表示）
-        draw_split_ellipse(screen, boss_x, boss_y, boss_radius, gap, boss_color)
-        # 開いている間コア表示
-        if boss_info.get('core_state') in ('opening','firing','open_hold'):
-            pygame.draw.circle(screen, (255,80,80), (boss_x, boss_y), OVAL_CORE_RADIUS)
-    # ボスキャラ
-    if boss_alive:
-        # Boss A: 台形
-        if boss_info and boss_info["name"] == "Boss A":
-            top_width = boss_radius
-            bottom_width = boss_radius * 2
-            height = boss_radius * 1.5
-            points = [
-                (boss_x - top_width//2, boss_y - int(height//2)),
-                (boss_x + top_width//2, boss_y - int(height//2)),
-                (boss_x + bottom_width//2, boss_y + int(height//2)),
-                (boss_x - bottom_width//2, boss_y + int(height//2)),
-            ]
-            pygame.draw.polygon(screen, boss_color, points)
-        elif boss_info and boss_info["name"] == "蛇":
-            # 衝突判定は既にロジック上部で処理済みなのでここでは描画のみ
-            main_size = int(boss_radius * 1.2)
-            main_rect = pygame.Rect(boss_x - main_size//2, boss_y - main_size//2, main_size, main_size)
-            pygame.draw.rect(screen, (128, 0, 128), main_rect)
-            rotate_angle_local = globals().get("rotate_angle", 0.0)
-            for i in range(ROTATE_SEGMENTS_NUM):
-                angle = rotate_angle_local + (2 * math.pi * i / ROTATE_SEGMENTS_NUM)
-                seg_x = boss_x + ROTATE_RADIUS * math.cos(angle)
-                seg_y = boss_y + ROTATE_RADIUS * math.sin(angle)
-                seg_rect = pygame.Rect(int(seg_x-20), int(seg_y-20), 40, 40)
-                pygame.draw.rect(screen, (180, 0, 180), seg_rect)
-        elif boss_info and boss_info["name"] == "楕円ボス":
-            # 旧本体描画は分割描画セクションで済んでいるためここでは小楕円のみ可動表示（緑）
-            small_w, small_h = boss_radius//2, boss_radius*2//3
-            left_rect = pygame.Rect(boss_x - boss_radius - small_w//2, boss_y - small_h//2, small_w, small_h)
-            right_rect = pygame.Rect(boss_x + boss_radius - small_w//2, boss_y - small_h//2, small_w, small_h)
-            pygame.draw.ellipse(screen, (0,200,0), left_rect)
-            pygame.draw.ellipse(screen, (0,200,0), right_rect)
-        elif boss_info and boss_info["name"] == "バウンドボス":
-            # 潰れ演出: squish_state中は縦に潰し・横に拡げる
-            if boss_info.get('squish_state') == 'squish':
-                t = boss_info.get('squish_timer',0)
-                ratio = 1 - (t / max(1, BOUNCE_BOSS_SQUISH_DURATION))
-                # 直前のバウンド面を推定: 速度ベクトルの符号から反射面を判断（速度成分の絶対値大きい軸）
-                vx = boss_info.get('bounce_vx',0)
-                vy = boss_info.get('bounce_vy',0)
-                horizontal_hit = abs(vy) > abs(vx)  # 上下反射後は縦速度が大, 左右反射後は横速度が大
-                if horizontal_hit:
-                    # 上下バウンド: 従来（縦潰れ）
-                    squash = 0.45 + 0.55 * ratio
-                    stretch = 1.0 + (1 - ratio) * 0.5
-                else:
-                    # 左右バウンド: 横潰れ / 縦伸び
-                    stretch = 0.45 + 0.55 * ratio  # 横縮小
-                    squash = 1.0 + (1 - ratio) * 0.5  # 縦拡張
-                w = int(boss_radius * 2 * stretch)
-                h = int(boss_radius * 2 * squash)
-                rect = pygame.Rect(0,0,w,h)
-                rect.center = (int(boss_x), int(boss_y))
-                pygame.draw.ellipse(screen, boss_color, rect)
-            else:
-                pygame.draw.circle(screen, boss_color, (int(boss_x), int(boss_y)), boss_radius)
-        elif boss_info and boss_info["name"] == "扇ボス":
-            # 円弧を持つ扇形（セクタ）＋左右腕
-            cx, cy = int(boss_x), int(boss_y)
-            span = boss_info.get('tri_angle_span', math.radians(140))
-            base_ang = boss_info.get('tri_base_angle', -math.pi/2)
-            r = boss_radius
-            a1 = base_ang - span/2
-            a2 = base_ang + span/2
-            SEG = 28  # 円弧分割（見た目向上）
-            arc_points = []
-            for i in range(SEG+1):
-                t = i/SEG
-                ang = a1 + (a2 - a1)*t
-                arc_points.append((cx + int(r*math.cos(ang)), cy + int(r*math.sin(ang))))
-            poly = [(cx, cy)] + arc_points
-            pygame.draw.polygon(screen, boss_color, poly)
-            # 既存の腕角は兜の「つば」(brim) として薄く描画
-            left_ang_old = boss_info.get('arm_left_angle', base_ang - 0.9)
-            right_ang_old = boss_info.get('arm_right_angle', base_ang + 0.9)
-            brim_len = int(r * 0.55)
-            brim_color = (180,180,190)
-            bl_end = (cx + int(brim_len*math.cos(left_ang_old)), cy + int(brim_len*math.sin(left_ang_old)))
-            br_end = (cx + int(brim_len*math.cos(right_ang_old)), cy + int(brim_len*math.sin(right_ang_old)))
-            pygame.draw.line(screen, brim_color, (cx,cy), bl_end, 5)
-            pygame.draw.line(screen, brim_color, (cx,cy), br_end, 5)
-            # 新しい「腕」: 各母線(a1, a2)の中点からその線に垂直な外向き法線方向へ伸ばす
-            arm_len = boss_info.get('arm_len',70)
-            arm_color = (200,220,255)
-            # 母線 a1: 中心 -> arc先頭点(arc_points[0])
-            p1 = (cx, cy)
-            p2 = arc_points[0]
-            # 中点
-            mid_left = ((p1[0]+p2[0])//2, (p1[1]+p2[1])//2)
-            # ベクトル (p1->p2)
-            vx_left = p2[0]-p1[0]
-            vy_left = p2[1]-p1[1]
-            # 法線 (外向き) を決めたい: セクタ内部は次の母線方向に向かう側なので、外向きはその逆側
-            # 簡易的に (vy, -vx) と (-vy, vx) のどちらがより中心から遠ざかるかで選択
-            cand_left = [(vy_left, -vx_left), (-vy_left, vx_left)]
-            best_n_left = cand_left[0]
-            best_dist = -1
-            for nx, ny in cand_left:
-                tx = mid_left[0] + nx
-                ty = mid_left[1] + ny
-                d = (tx-cx)**2 + (ty-cy)**2
-                if d > best_dist:
-                    best_dist = d
-                    best_n_left = (nx, ny)
-            nlx, nly = best_n_left
-            norm = math.hypot(nlx, nly) or 1
-            nlx /= norm
-            nly /= norm
-            left_tip = (int(mid_left[0] + nlx*arm_len), int(mid_left[1] + nly*arm_len))
-            pygame.draw.line(screen, arm_color, mid_left, left_tip, 7)
-            # 母線 a2: 中心 -> arc末尾点(arc_points[-1])
-            p3 = (cx, cy)
-            p4 = arc_points[-1]
-            mid_right = ((p3[0]+p4[0])//2, (p3[1]+p4[1])//2)
-            # 右腕: 左腕法線を扇中央軸(base_ang)で鏡映して対称方向を得る
-            fdx = math.cos(base_ang)
-            fdy = math.sin(base_ang)
-            dot_l = nlx*fdx + nly*fdy  # 左法線と前方向の内積
-            # 鏡映 v' = 2*(v·a)*a - v
-            rx_dir = 2*dot_l*fdx - nlx
-            ry_dir = 2*dot_l*fdy - nly
-            norm_r = math.hypot(rx_dir, ry_dir) or 1
-            rx_dir /= norm_r
-            ry_dir /= norm_r
-            right_tip = (int(mid_right[0] + rx_dir*arm_len), int(mid_right[1] + ry_dir*arm_len))
-            pygame.draw.line(screen, arm_color, mid_right, right_tip, 7)
-            # 刀基点は腕先端（right_tip）
-            r_end = right_tip
-            boss_info['arm_left_end'] = left_tip
-            boss_info['arm_right_end'] = right_tip
-            # 右手の刀
-            sword_len = boss_info.get('sword_length',85)
-            blade_w = boss_info.get('sword_blade_width',10)
-            hilt_len = boss_info.get('sword_hilt_length',18)
-            hilt_w = boss_info.get('sword_hilt_width',16)
-            col_blade = boss_info.get('sword_color_blade',(230,230,255))
-            col_hilt = boss_info.get('sword_color_hilt',(160,120,60))
-            col_guard = boss_info.get('sword_color_guard',(200,180,90))
-            # 刀の基準: 右腕終点 r_end から right_ang 方向へ
-            # 刀基点: 腕先端
-            sx, sy = r_end
-            # 右腕方向(rx_dir, ry_dir)に対しさらに90度回転した方向を刀向きとする（外側→下方イメージ）
-            # 回転 (x,y)->(-y,x) と (y,-x) のどちらか; より画面下側へ向く方を採用
-            cand_dirs = [(-ry_dir, rx_dir), (ry_dir, -rx_dir)]
-            best = cand_dirs[0]
-            if cand_dirs[1][1] > cand_dirs[0][1]:  # y成分大きい(下)方を選ぶ
-                best = cand_dirs[1]
-            dirx, diry = best
-            # 攻撃ステートでの角度オフセット（右回り正: screen座標で上向きが負y）
-            # offsetは dirベクトルを反時計回り回転 (数学的+角) させる: 2D回転 (x,y)->(x cos - y sin, x sin + y cos)
-            if not boss_info.get('sword_detached'):
-                ang_off = boss_info.get('sword_angle_offset', 0.0)
-                if ang_off != 0.0:
-                    coso = math.cos(ang_off); sino = math.sin(ang_off)
-                    ndx = dirx * coso - diry * sino
-                    ndy = dirx * sino + diry * coso
-                    dirx, diry = ndx, ndy
-            # 垂直方向ベクトル（幅表現）
-            px = -diry
-            py = dirx
-            # 柄の前後中心位置
-            hilt_back = (sx - dirx*4, sy - diry*4)
-            hilt_front = (hilt_back[0] + dirx*hilt_len, hilt_back[1] + diry*hilt_len)
-            # 柄ポリゴン（長方形）
-            hw2 = hilt_w/2
-            hilt_poly = [
-                (hilt_back[0] + px*hw2, hilt_back[1] + py*hw2),
-                (hilt_back[0] - px*hw2, hilt_back[1] - py*hw2),
-                (hilt_front[0] - px*hw2, hilt_front[1] - py*hw2),
-                (hilt_front[0] + px*hw2, hilt_front[1] + py*hw2),
-            ]
-            pygame.draw.polygon(screen, col_hilt, [(int(x),int(y)) for x,y in hilt_poly])
-            # 鍔 (guard) 円
-            guard_r = hilt_w * 0.55
-            guard_center = (int(hilt_front[0]), int(hilt_front[1]))
-            pygame.draw.circle(screen, col_guard, guard_center, int(guard_r))
-            # 日本刀風: ゆるい反り + 刃と棟の2本ライン、内側にハモン、先端を鋭く
-            blade_start = hilt_front
-            curve = 0.18  # 反り係数（基本）
-            segments = 10
-            bw2 = blade_w/2
-            spine_points = []  # 棟
-            edge_points = []   # 刃側
-            for i in range(segments+1):
-                t = i/segments
-                # 進行距離
-                dist = sword_len * t
-                # 反り: distの二乗に比例し法線方向へオフセット
-                # 法線(刃方向へ外側) は px,py を利用（後で edge/spine で符号調整）
-                # ここでは棟を正側、刃を負側と仮定
-                offset = (t) * (1 - t) * curve * sword_len  # 緩い放物線 (0と1で0)
-                # ボス中心方向へ僅かに引き寄せる補正: 刀基点->ボス中心ベクトルを利用
-                to_center_x = cx - blade_start[0]
-                to_center_y = cy - blade_start[1]
-                # 刀進行方向への直交正規ベクトル(既存 px,py)と中心方向を内積で判定し、内側へ向く符号を選択
-                sign_center = 1 if (to_center_x*px + to_center_y*py) > 0 else -1
-                inward = sign_center * offset * 0.4  # 内向き寄せ量（係数0.4）
-                # 基本中心線位置 + 反り + 内向き補正
-                cx_b = blade_start[0] + dirx*dist + px*(offset*0.5 + inward)
-                cy_b = blade_start[1] + diry*dist + py*(offset*0.5 + inward)
-                # 棟/刃幅方向
-                spine_points.append((cx_b + px*bw2, cy_b + py*bw2))
-                taper = 1 - 0.55*t  # 先端へ細く
-                edge_points.append((cx_b - px*bw2*taper, cy_b - py*bw2*taper))
-            # ポリゴン生成（棟 -> 先端 -> 刃逆順）
-            blade_poly = spine_points + edge_points[::-1]
-            pygame.draw.polygon(screen, col_blade, [(int(x),int(y)) for x,y in blade_poly])
-            # 輪郭ライン（薄いグレー）
-            outline_col = (180,180,190)
-            pygame.draw.lines(screen, outline_col, False, [(int(x),int(y)) for x,y in spine_points], 1)
-            pygame.draw.lines(screen, outline_col, False, [(int(x),int(y)) for x,y in edge_points], 1)
-            # ハモン (刃側に白点)
-            for i in range(0, len(edge_points), 2):
-                ex, ey = edge_points[i]
-                pygame.draw.circle(screen, (250,250,255), (int(ex), int(ey)), 2)
-            # 柄巻きパターン: hiltポリゴン上にダイヤ風（斜めライン交差）
-            # 柄ポリゴンの中心線近くに等間隔ライン
-            wrap_steps = 5
-            for i in range(wrap_steps):
-                wt = (i+0.5)/wrap_steps
-                wx = hilt_back[0] + dirx*hilt_len*wt
-                wy = hilt_back[1] + diry*hilt_len*wt
-                off = hilt_w*0.45
-                c1 = (int(wx + px*off), int(wy + py*off))
-                c2 = (int(wx - px*off), int(wy - py*off))
-                col = (50,50,50) if i%2==0 else (90,90,90)
-                pygame.draw.line(screen, col, c1, c2, 2)
-        # ボスへの小爆発
-        for pos in boss_explosion_pos:
-            pygame.draw.circle(screen, (255,255,0), pos, 15)
-        # 小爆発は一瞬だけ表示
-        if boss_explosion_pos:
-            boss_explosion_pos = []
-    # デバッグヒント表示
-    # デバッグヒント(削除済み)
-    # ボス撃破後の派手な爆発
-    if not boss_alive and boss_explosion_timer < BOSS_EXPLOSION_DURATION:
-        for i in range(12):
-            angle = i * 30
-            x = int(boss_x + boss_radius * 1.5 * math.cos(math.radians(angle)))
-            y = int(boss_y + boss_radius * 1.5 * math.sin(math.radians(angle)))
-            pygame.draw.circle(screen, (255, 100, 0), (x, y), 40)
-        pygame.draw.circle(screen, (255,255,0), (boss_x, boss_y), 60)
-    # ゲームクリア表示
-    if not boss_alive and boss_explosion_timer >= BOSS_EXPLOSION_DURATION:
-        font = pygame.font.SysFont(None, 50)
-        text = font.render("GAME CLEAR!", True, (0,255,0))
-        text_rect = text.get_rect(center=(WIDTH//2, HEIGHT//2))
-        screen.blit(text, text_rect)
-        pygame.display.flip()
-        pygame.time.wait(2000)
-        # リトライ待ち
-        font = pygame.font.SysFont(None, 32)
-        text = font.render("Press Enter to Retry", True, WHITE)
-        text_rect = text.get_rect(center=(WIDTH//2, HEIGHT//2+60))
-        screen.blit(text, text_rect)
-        pygame.display.flip()
-        waiting = True
-        while waiting:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    sys.exit()
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_RETURN:
-                        retry = True
-                        waiting = False
-            pygame.time.wait(50)
-        continue
-
-    # 残機表示（画面右下）
-    font = pygame.font.SysFont(None, 26)
-    lives_text = f"Lives: {player_lives}"
-    text_surf = font.render(lives_text, True, WHITE)
-    text_rect = text_surf.get_rect(bottomright=(WIDTH-10, HEIGHT-10))
-    screen.blit(text_surf, text_rect)
-    # 弾種表示
-    font = pygame.font.SysFont(None, 20)
-    # 武器アイコン表示（解放済みのもののみ）
-    weapon_icons = []  # (label, color, active)
-    weapon_icons.append(("N", BULLET_COLOR_NORMAL, bullet_type == "normal"))
-    if has_homing:
-        weapon_icons.append(("H", BULLET_COLOR_HOMING, bullet_type == "homing"))
-    if has_spread:
-        weapon_icons.append(("S", BULLET_COLOR_SPREAD, bullet_type == "spread"))
-    icon_size = 22
-    pad = 6
-    base_x = 20
-    base_y = HEIGHT - 50
-    for i,(lbl,col,active) in enumerate(weapon_icons):
-        x = base_x + i*(icon_size+pad)
-        rect = pygame.Rect(x, base_y, icon_size, icon_size)
-        pygame.draw.rect(screen, col, rect, 0 if active else 2)
-        if not active:
-            pygame.draw.rect(screen, WHITE, rect, 2)
-        f2 = pygame.font.SysFont(None, 18)
-        ts = f2.render(lbl, True, BLACK if active else col)
-        ts_rect = ts.get_rect(center=rect.center)
-        screen.blit(ts, ts_rect)
-    hint_font = pygame.font.SysFont(None, 18)
-    hint = hint_font.render("V:切替", True, WHITE)
-    screen.blit(hint, (base_x, base_y - 18))
-
-    # ダッシュクールダウン表示
-    if 'has_dash' in globals() and has_dash:
-        # 円形メーター (右下ライフの左側)
-        cx = WIDTH - 80
-        cy = HEIGHT - 70
-        radius = 24
-        # 外枠
-        pygame.draw.circle(screen, (200,200,200), (cx, cy), radius, 2)
-        # クール残割合
-        if dash_cooldown > 0:
-            ratio = dash_cooldown / DASH_COOLDOWN_FRAMES
-            # 12分割(アイコンの足=セグメント)埋め
-            segs = DASH_ICON_SEGMENTS
-            filled = int(segs * ratio + 0.999)
-            for i in range(filled):
-                ang0 = (2*math.pi * i / segs) - math.pi/2
-                ang1 = (2*math.pi * (i+1) / segs) - math.pi/2
-                inner = radius - 8
-                pts = [
-                    (cx + inner * math.cos(ang0), cy + inner * math.sin(ang0)),
-                    (cx + radius * math.cos(ang0), cy + radius * math.sin(ang0)),
-                    (cx + radius * math.cos(ang1), cy + radius * math.sin(ang1)),
-                    (cx + inner * math.cos(ang1), cy + inner * math.sin(ang1)),
-                ]
-                pygame.draw.polygon(screen, (120,180,255), pts)
-        else:
-            # READY 表示
-            font_ready = pygame.font.SysFont(None, 18)
-            txt = font_ready.render("DASH", True, (120,200,255))
-            rect = txt.get_rect(center=(cx, cy))
-            screen.blit(txt, rect)
-        # 発動中ハイライトリング
-        if dash_active:
-            pygame.draw.circle(screen, (0,255,255), (cx, cy), radius+2, 2)
-
-    pygame.display.flip()
-    clock.tick(60)
-
-    # ウィンドウシェイク更新
-    if _game_window and _window_shake_timer > 0:
-        _window_shake_timer -= 1
-        progress = 1 - (_window_shake_timer / float(WINDOW_SHAKE_DURATION))
-        # ease-out 強め + ランダム揺れ合成
-        decay = (1 - progress)**0.4
-        jitter_phase = pygame.time.get_ticks()
-        ox = int((_window_shake_intensity * decay) * math.sin(jitter_phase*0.09) + random.randint(-3,3))
-        oy = int((_window_shake_intensity * decay) * math.cos(jitter_phase*0.11) + random.randint(-3,3))
-        _game_window.position = (_window_base_pos[0] + ox, _window_base_pos[1] + oy)
-    elif _game_window and _window_shake_timer == 0 and _game_window.position != _window_base_pos:
-        _game_window.position = _window_base_pos
+    
 
 
