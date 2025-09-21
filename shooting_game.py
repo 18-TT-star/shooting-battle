@@ -13,12 +13,10 @@ def _ensure_pygame(min_ver=(2, 5, 0)):
     except Exception:
         print("[setup] pygame が見つからないか古いので、インストール/更新します (pygame>=%d.%d.%d)..." % min_ver)
         try:
-            # Allow output so user sees progress; may take a while on first run
             subprocess.check_call([sys.executable, "-m", "pip", "install", f"pygame>={min_ver[0]}.{min_ver[1]}.{min_ver[2]}"])
         except Exception as e:
             print("[setup] 自動インストールに失敗しました。インターネット接続や権限を確認し、以下を実行してください:\n  python3 -m pip install 'pygame>=%d.%d.%d'" % min_ver)
             raise
-
 _ensure_pygame()
 import pygame
 from constants import (
@@ -37,7 +35,6 @@ from constants import (
     BOUNCE_BOSS_SHRINK_STEP, BOUNCE_BOSS_SPEED_STEP,
     WINDOW_SHAKE_DURATION, WINDOW_SHAKE_INTENSITY
 )
-import random
 
 # dash_state が存在しない環境でも NameError を避ける初期値
 if 'dash_state' not in globals():
@@ -232,9 +229,69 @@ while True:
                         waiting_for_space = True
                         menu_mode = False
         continue
+    # 早期リトライ処理（勝敗判定より先に完全初期化）
+    if retry:
+        # プレイヤー/一般状態
+        player_lives = 3
+        player_invincible = False
+        player_invincible_timer = 0
+        explosion_timer = 0
+        explosion_pos = None
+        bullets = []
+        fire_cooldown = 0
+        frame_count = 0
+        leaf_angle = 0.0
+        bullet_type = "normal"
+        # 画面状態
+        waiting_for_space = False
+        menu_mode = False
+        # ボス状態
+        boss_info = level_list[selected_level]["boss"] if 'level_list' in globals() else boss_info
+        boss_radius = boss_info["radius"] if boss_info else boss_radius
+        boss_color = boss_info["color"] if boss_info else boss_color
+        boss_alive = True
+        boss_x = WIDTH // 2
+        boss_y = 60
+        boss_state = "track"
+        boss_speed = 4
+        boss_dir = 1
+        boss_attack_timer = 0
+        boss_explosion_timer = 0
+        boss_explosion_pos = []
+        boss_origin_x = boss_x
+        boss_origin_y = boss_y
+        boss_hp = boss_info["hp"] if boss_info else 35
+        # プレイヤー座標リセット
+        player = pygame.Rect(WIDTH // 2 - 15, HEIGHT - 40, 30, 15)
+        player_speed = 5
+        bullet_speed = 7
+        # ダッシュ状態を再初期化
+        dash_state = {
+            'cooldown': 0,
+            'invincible_timer': 0,
+            'active': False,
+            'last_tap': {'left': -9999, 'right': -9999},
+        }
+        dash_cooldown = 0
+        dash_invincible_timer = 0
+        dash_last_tap = dash_state['last_tap']
+        dash_active = False
+        # ボス個別初期化
+        if boss_info and boss_info["name"] == "Boss A":
+            boss_info['stomp_state'] = 'idle'
+            boss_info['stomp_timer'] = 0
+            boss_info['stomp_target_y'] = None
+            boss_info['home_y'] = boss_y
+            boss_info['stomp_interval'] = 120
+            boss_info['last_stomp_frame'] = 0
+            boss_info['stomp_grace'] = 180
+        # 完了
+        retry = False
+        # このフレームはスキップして次フレームから通常進行
+        continue
     if waiting_for_space:
         screen.fill(BLACK)
-        font = pygame.font.SysFont(None, 42)
+        font = jp_font(42)
         text = font.render("Press SPACE to start!", True, WHITE)
         text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
         screen.blit(text, text_rect)
@@ -254,7 +311,7 @@ while True:
         continue
     if waiting_for_space:
         screen.fill(BLACK)
-        font = pygame.font.SysFont(None, 42)
+        font = jp_font(42)
         text = font.render("Press SPACE to start!", True, WHITE)
         text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
         screen.blit(text, text_rect)
@@ -379,6 +436,16 @@ while True:
                 reward_text = "拡散弾(3WAY) 解放! Vで切替 威力0.5x3 敵弾相殺"
             elif boss_info["name"] == "バウンドボス":
                 reward_text = "緊急回避(ダッシュ) 解放! ←← / →→ で瞬間移動&無敵"
+        # 報酬アンロック（セッション内持続）
+        if result == "win" and boss_info:
+            if boss_info["name"] == "Boss A":
+                unlocked_homing = True
+            elif boss_info["name"] == "蛇":
+                unlocked_leaf_shield = True
+            elif boss_info["name"] == "楕円ボス":
+                unlocked_spread = True
+            elif boss_info["name"] == "バウンドボス":
+                unlocked_dash = True
         # 星マーク
         if result == "win":
             level_cleared[selected_level] = True
@@ -441,14 +508,16 @@ while True:
                             boss_alive = False
                             boss_explosion_timer = 0
                             explosion_pos = (boss_x, boss_y)
-                    if event.key == pygame.K_1:
-                        # メニューへ戻る
+                    # メニューへ戻る（1 / テンキー1）
+                    if event.key in (pygame.K_1, pygame.K_KP_1):
                         menu_mode = True
                         break
-                    if event.key == pygame.K_2:
+                    # リトライ（2 / テンキー2 / Enter / R）
+                    if event.key in (pygame.K_2, pygame.K_KP_2, pygame.K_RETURN, pygame.K_r):
                         retry = True
                         break
-                    if event.key == pygame.K_3:
+                    # 終了（3 / テンキー3 / ESC）
+                    if event.key in (pygame.K_3, pygame.K_KP_3, pygame.K_ESCAPE):
                         pygame.quit()
                         sys.exit()
             if menu_mode or retry:
@@ -596,41 +665,16 @@ while True:
             y = int(boss_y + boss_radius * 1.5 * math.sin(math.radians(angle)))
             pygame.draw.circle(screen, (255, 100, 0), (x, y), 40)
         pygame.draw.circle(screen, (255,255,0), (boss_x, boss_y), 60)
-    # ゲームクリア表示
-    if not boss_alive and boss_explosion_timer >= BOSS_EXPLOSION_DURATION:
-        font = pygame.font.SysFont(None, 50)
-        text = font.render("GAME CLEAR!", True, (0,255,0))
-        text_rect = text.get_rect(center=(WIDTH//2, HEIGHT//2))
-        screen.blit(text, text_rect)
-        pygame.display.flip()
-        pygame.time.wait(2000)
-        # リトライ待ち
-        font = pygame.font.SysFont(None, 32)
-        text = font.render("Press Enter to Retry", True, WHITE)
-        text_rect = text.get_rect(center=(WIDTH//2, HEIGHT//2+60))
-        screen.blit(text, text_rect)
-        pygame.display.flip()
-        waiting = True
-        while waiting:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    sys.exit()
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_RETURN:
-                        retry = True
-                        waiting = False
-            pygame.time.wait(50)
-        continue
+    # クリア表示の重複ルートは削除（上のエンドメニューで統一）
 
     # 残機表示（画面右下）
-    font = pygame.font.SysFont(None, 26)
+    font = jp_font(26)
     lives_text = f"Lives: {player_lives}"
     text_surf = font.render(lives_text, True, WHITE)
     text_rect = text_surf.get_rect(bottomright=(WIDTH-10, HEIGHT-10))
     screen.blit(text_surf, text_rect)
     # 弾種表示
-    font = pygame.font.SysFont(None, 20)
+    font = jp_font(20)
     # 武器アイコン表示（解放済みのもののみ）
     weapon_icons = []  # (label, color, active)
     weapon_icons.append(("N", BULLET_COLOR_NORMAL, bullet_type == "normal"))
@@ -648,11 +692,11 @@ while True:
         pygame.draw.rect(screen, col, rect, 0 if active else 2)
         if not active:
             pygame.draw.rect(screen, WHITE, rect, 2)
-        f2 = pygame.font.SysFont(None, 18)
+        f2 = jp_font(18)
         ts = f2.render(lbl, True, BLACK if active else col)
         ts_rect = ts.get_rect(center=rect.center)
         screen.blit(ts, ts_rect)
-    hint_font = pygame.font.SysFont(None, 18)
+    hint_font = jp_font(18)
     hint = hint_font.render("V:切替", True, WHITE)
     screen.blit(hint, (base_x, base_y - 18))
 
@@ -683,7 +727,7 @@ while True:
                 pygame.draw.polygon(screen, (120,180,255), pts)
         else:
             # READY 表示
-            font_ready = pygame.font.SysFont(None, 18)
+            font_ready = jp_font(18)
             txt = font_ready.render("DASH", True, (120,200,255))
             rect = txt.get_rect(center=(cx, cy))
             screen.blit(txt, rect)
@@ -708,7 +752,7 @@ while True:
         _game_window.position = _window_base_pos
     if waiting_for_space:
         screen.fill(BLACK)
-        font = pygame.font.SysFont(None, 42)
+        font = jp_font(42)
         text = font.render("Press SPACE to start!", True, WHITE)
         text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
         screen.blit(text, text_rect)
@@ -728,13 +772,21 @@ while True:
                     })
                     waiting_for_space = False
     if retry:
+        # プレイヤー/一般状態
         player_lives = 3
         player_invincible = False
         player_invincible_timer = 0
         explosion_timer = 0
         explosion_pos = None
         bullets = []
-
+        fire_cooldown = 0
+        frame_count = 0
+        leaf_angle = 0.0
+        bullet_type = "normal"
+        # 画面状態
+        waiting_for_space = False
+        menu_mode = False
+        # ボス状態
         boss_alive = True
         boss_x = WIDTH // 2
         boss_y = 60
@@ -742,9 +794,27 @@ while True:
         boss_speed = 4
         boss_dir = 1
         boss_attack_timer = 0
+        boss_explosion_timer = 0
+        boss_explosion_pos = []
         boss_origin_x = boss_x
         boss_origin_y = boss_y
         boss_hp = boss_info["hp"] if boss_info else 35
+        # プレイヤー座標リセット
+        player = pygame.Rect(WIDTH // 2 - 15, HEIGHT - 40, 30, 15)
+        player_speed = 5
+        bullet_speed = 7
+        # ダッシュ状態を再初期化
+        dash_state = {
+            'cooldown': 0,
+            'invincible_timer': 0,
+            'active': False,
+            'last_tap': {'left': -9999, 'right': -9999},
+        }
+        dash_cooldown = 0
+        dash_invincible_timer = 0
+        dash_last_tap = dash_state['last_tap']
+        dash_active = False
+        # ボス個別初期化
         if boss_info and boss_info["name"] == "Boss A":
             boss_info['stomp_state'] = 'idle'
             boss_info['stomp_timer'] = 0
@@ -754,6 +824,9 @@ while True:
             boss_info['last_stomp_frame'] = 0
             boss_info['stomp_grace'] = 180
         # 扇ボス特別セクタ当たり/斬撃判定削除
+        # リトライフラグを下ろして次フレームへ（このフレームは描画スキップ）
+        retry = False
+        continue
     # dash_state 参照を安全化（未定義でも OK に）
     if 'dash_state' in globals():
         dash_invincible_timer = dash_state.get('invincible_timer', 0)
@@ -825,13 +898,14 @@ while True:
                 cleaned_bullets.append(bullet)
                 continue
             damage = False
-            # 楕円ボス: コア開放時のみ弱点ダメージ, それ以外は反射
+            # 楕円ボス: コア開放時は反射せず、楕円本体にもダメージ可
             if boss_info["name"] == "楕円ボス":
                 core_state = boss_info.get('core_state','closed')
                 gap = boss_info.get('core_gap',0)
                 cx, cy = boss_x, boss_y
+                central_open = (core_state in ('opening','firing','open_hold') and gap > OVAL_CORE_GAP_HIT_THRESHOLD)
                 # コア開放中 & 弾がコア円内ならダメージ
-                if core_state in ('opening','firing','open_hold') and gap > OVAL_CORE_GAP_HIT_THRESHOLD:
+                if central_open:
                     if (bullet["rect"].centerx - cx)**2 + (bullet["rect"].centery - cy)**2 < OVAL_CORE_RADIUS**2:
                         boss_hp -= bullet.get("power", 1.0)
                         boss_explosion_pos.append((bullet["rect"].centerx, bullet["rect"].centery))
@@ -841,33 +915,42 @@ while True:
                             explosion_pos = (boss_x, boss_y)
                         damage = True
                 if not damage:
-                    central_open = (core_state in ('opening','firing','open_hold') and gap > OVAL_CORE_GAP_HIT_THRESHOLD)
-                    # ホーミング弾だけは開放中でも反射判定を有効にする
-                    force_reflect = (bullet.get("type") == "homing")
-                    if central_open and not force_reflect:
-                        # 開放中 & 通常弾: スルー
-                        pass
+                    # 反射/ダメージ領域の幾何（中央楕円 + 左右楕円）
+                    R = boss_radius
+                    central_a = int(R * 0.6)
+                    central_b = int(R * 1.0)
+                    side_a = int(R * 0.4)
+                    side_b = int(R * 0.6)
+                    side_offset = int(R * 1.2)
+
+                    def inside_central(px, py):
+                        return ((px - cx)**2)/(central_a**2) + ((py - cy)**2)/(central_b**2) < 1
+
+                    def inside_side(px, py):
+                        for ox in (-side_offset, side_offset):
+                            ex = boss_x + ox - (side_a if ox>0 else -side_a)
+                            ey = boss_y
+                            if ((px - ex)**2)/(side_a**2) + ((py - ey)**2)/(side_b**2) < 1:
+                                return True
+                        return False
+
+                    bx, by = bullet["rect"].centerx, bullet["rect"].centery
+                    if central_open:
+                        # コア開放中: 反射しない。楕円本体に当たればダメージ。
+                        if inside_central(bx, by) or inside_side(bx, by):
+                            boss_hp -= bullet.get("power", 1.0)
+                            boss_explosion_pos.append((bx, by))
+                            if boss_hp <= 0:
+                                boss_alive = False
+                                boss_explosion_timer = 0
+                                explosion_pos = (boss_x, boss_y)
+                            damage = True
+                        # 当たっていなければそのまま通過（何もしない）
                     else:
-                        # Boss radius に応じて反射領域をスケール
-                        R = boss_radius  # 70 想定（可変対応）
-                        central_a = int(R * 0.6)   # 旧: 30 (R=50)
-                        central_b = int(R * 1.0)   # 旧: 50 (R=50)
-                        side_a = int(R * 0.4)      # 旧: 20 (R=50)
-                        side_b = int(R * 0.6)      # 旧: 30 (R=50)
-                        side_offset = int(R * 1.2) # 旧: 60 (R=50)
-                        reflected_here = False
-                        if ((bullet["rect"].centerx - cx)**2)/(central_a**2) + ((bullet["rect"].centery - cy)**2)/(central_b**2) < 1:
-                            reflected_here = True
-                        else:
-                            for ox in (-side_offset, side_offset):
-                                ex = boss_x + ox - (side_a if ox>0 else -side_a)
-                                ey = boss_y
-                                if ((bullet["rect"].centerx - ex)**2)/(side_a**2) + ((bullet["rect"].centery - ey)**2)/(side_b**2) < 1:
-                                    reflected_here = True
-                                    break
+                        # コア閉鎖中: 従来通り反射
+                        reflected_here = inside_central(bx, by) or inside_side(bx, by)
                         if reflected_here:
                             bullet["reflect"] = True
-                            # 反射後は通常弾化して再追尾しない
                             if bullet.get("type") == "homing":
                                 bullet["type"] = "normal"
                             bullet["vy"] = abs(bullet.get("vy", -7))

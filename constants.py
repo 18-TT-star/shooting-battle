@@ -39,11 +39,11 @@ BULLET_COLOR_SPREAD  = (255, 100, 255)  # 拡散弾（3WAY）
 # ボス / レベル定義
 # HP をメインファイル側の最新調整値に合わせ統一 (蛇:40 / 楕円:10)
 boss_list = [
-    {"name": "Boss A", "radius": 60, "hp": 35, "color": RED},
-    {"name": "蛇", "radius": 70, "hp": 40, "color": (128, 0, 128)},
-    {"name": "楕円ボス", "radius": 70, "hp": 10, "color": (255, 165, 0)},
-    {"name": "バウンドボス", "radius": 75, "hp": 45, "color": (0, 180, 255)},
-    {"name": "扇ボス", "radius": 90, "hp": 55, "color": (90, 200, 255)}  # レベル5新規（名称仮）
+    {"name": "Boss A", "radius": 60, "hp": 40, "color": RED},          # L1 目安 ~5-7秒
+    {"name": "蛇", "radius": 70, "hp": 55, "color": (128, 0, 128)},      # L2 ~7-9秒
+    {"name": "楕円ボス", "radius": 70, "hp": 70, "color": (255, 165, 0)}, # L3 ~9-11秒（開放中は本体にも通る前提）
+    {"name": "バウンドボス", "radius": 75, "hp": 85, "color": (0, 180, 255)}, # L4 ~11-13秒
+    {"name": "扇ボス", "radius": 90, "hp": 100, "color": (90, 200, 255)}  # L5 ~13-15秒
 ]
 
 # レベル数を 6 までに縮小。index は 1..MAX_LEVEL を使用（0 番は未使用保険で None）。
