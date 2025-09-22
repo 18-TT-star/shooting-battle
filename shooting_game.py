@@ -213,6 +213,10 @@ while True:
                                 boss_info['core_open_hold'] = OVAL_CORE_OPEN_HOLD
                                 boss_info['core_gap'] = 0
                                 boss_info['core_gap_target'] = OVAL_CORE_GAP_TARGET
+                        if boss_info and boss_info["name"] == "三日月形ボス":
+                            # 三日月形ボスは第1形態: 攻撃と回避AIを無効化
+                            boss_info['new_attack_enabled'] = False
+                            boss_info['dodge_ai'] = False
                         player_lives = 3
                         player_invincible = False
                         player_invincible_timer = 0
@@ -649,6 +653,16 @@ while True:
                 pygame.draw.ellipse(screen, boss_color, rect)
             else:
                 pygame.draw.circle(screen, boss_color, (int(boss_x), int(boss_y)), boss_radius)
+        elif boss_info and boss_info["name"] == "三日月形ボス":
+            # 三日月形（外円 - 内円）を Surface 合成で描画
+            outer_r = boss_radius
+            inner_r = int(boss_radius * 0.75)
+            offset = int(boss_radius * 0.45)  # 内円のオフセットで細さ調整
+            cres = pygame.Surface((outer_r*2+2, outer_r*2+2), pygame.SRCALPHA)
+            pygame.draw.circle(cres, boss_color, (outer_r+1, outer_r+1), outer_r)
+            # 内円は透明で塗りつぶして欠けを作る（左へオフセット）
+            pygame.draw.circle(cres, (0,0,0,0), (outer_r+1 - offset, outer_r+1), inner_r)
+            screen.blit(cres, (int(boss_x-outer_r-1), int(boss_y-outer_r-1)))
         # ボスへの小爆発
         for pos in boss_explosion_pos:
             pygame.draw.circle(screen, (255,255,0), pos, 15)
@@ -823,7 +837,7 @@ while True:
             boss_info['stomp_interval'] = 120
             boss_info['last_stomp_frame'] = 0
             boss_info['stomp_grace'] = 180
-        # 扇ボス特別セクタ当たり/斬撃判定削除
+    # 三日月形ボス特別セクタ当たり/斬撃判定削除
         # リトライフラグを下ろして次フレームへ（このフレームは描画スキップ）
         retry = False
         continue
@@ -989,18 +1003,33 @@ while True:
                     cleaned_bullets.append(bullet)
                 continue
             # 通常ボス
-                # 扇セクタ判定: 頂点 = (boss_x,boss_y), 方向 = tri_base_angle, 角度幅 = tri_angle_span, 半径 = boss_radius
-                dx = bullet["rect"].centerx - boss_x
-                dy = bullet["rect"].centery - boss_y
+                # 三日月形ボス: 外円内 かつ 内円外 をヒット領域とする
+                bx = bullet["rect"].centerx
+                by = bullet["rect"].centery
+                dx = bx - boss_x
+                dy = by - boss_y
                 r2 = dx*dx + dy*dy
-                if r2 <= boss_radius * boss_radius:
-                    ang = math.atan2(dy, dx)
-                    base_angle = boss_info.get('tri_base_angle', -math.pi/2)
-                    span = boss_info.get('tri_angle_span', math.radians(140))
-                    diff = ((ang - base_angle + math.pi) % (2*math.pi)) - math.pi
-                    if abs(diff) <= span / 2:
+                if boss_info.get('name') == '三日月形ボス':
+                    outer_r = boss_radius
+                    inner_r = int(boss_radius * 0.75)
+                    offset = int(boss_radius * 0.45)
+                    # 内円中心はボス中心から左に offset
+                    ix = boss_x - offset
+                    iy = boss_y
+                    inside_outer = r2 <= outer_r*outer_r
+                    inside_inner = (bx - ix)**2 + (by - iy)**2 <= inner_r*inner_r
+                    if inside_outer and not inside_inner:
                         boss_hp -= bullet.get("power", 1.0)
-                        boss_explosion_pos.append((bullet["rect"].centerx, bullet["rect"].centery))
+                        boss_explosion_pos.append((bx, by))
+                        if boss_hp <= 0:
+                            boss_alive = False
+                            boss_explosion_timer = 0
+                            explosion_pos = (boss_x, boss_y)
+                        damage = True
+                else:
+                    if r2 < boss_radius*boss_radius:
+                        boss_hp -= bullet.get("power", 1.0)
+                        boss_explosion_pos.append((bx, by))
                         if boss_hp <= 0:
                             boss_alive = False
                             boss_explosion_timer = 0
@@ -1045,8 +1074,8 @@ while True:
     # ボスキャラの攻撃パターン
     if boss_alive:
         boss_attack_timer += 1
-        # 扇ボス 新攻撃ステート（フレーム毎1回更新）
-        if boss_info and boss_info.get('name') == '扇ボス':
+        # 三日月形ボス 新攻撃ステート（第1形態: 今は無効化）
+        if boss_info and boss_info.get('name') == '三日月形ボス':
             bi = boss_info
             if 'attack_state' not in bi:
                 bi['attack_state'] = 'idle'
@@ -1059,15 +1088,17 @@ while True:
                 bi['sword_detached'] = False
                 bi['sword_projectile'] = None
                 bi['attack_history'] = []
+                # 第1形態: 三日月状（中心角狭め、外周沿い接触）
                 bi.setdefault('tri_base_angle', -math.pi/2)
-                bi.setdefault('tri_angle_span', math.radians(140))
+                bi.setdefault('tri_angle_span', math.radians(120))
                 bi['dive_params'] = {'prep':25,'drop_speed':12,'slash_ttl':14,'recover':40}
                 bi['iai_params'] = {'charge':55,'beam_ttl':8}
                 bi['crescent_params'] = {'charge':50,'waves':1,'count':3,'speed':7,'spread_angle':math.radians(40)}
                 bi['hito_params'] = {'throw_speed':10,'throw_time':50,'split_count':6,'mini_speed':5,'return_speed':9}
                 bi['cooldown_time'] = 50
-                bi['new_attack_enabled'] = True
-            # TTL update for slashes
+                # 攻撃は今は無効化
+                bi['new_attack_enabled'] = False
+            # TTL update for slashes（攻撃無効でも安全にTTLだけ減衰）
             new_sl = []
             for sl in bi.get('active_slashes', []):
                 sl['ttl'] -= 1
@@ -1197,8 +1228,8 @@ while True:
                         dxp=player.centerx-boss_x; dyp=player.centery-boss_y; dist=math.hypot(dxp,dyp) or 1
                         spd=bi['hito_params']['throw_speed']; vx=spd*dxp/dist; vy=spd*dyp/dist
                         bi['sword_projectile']={'phase':'out','x':boss_x,'y':boss_y,'vx':vx,'vy':vy,'life':bi['hito_params']['throw_time']}
-        # 扇ボス: 弾回避AI (横スライド)
-        if boss_info and boss_info.get("name") == "扇ボス":
+        # 三日月形ボス: 弾回避AI（今は無効。True のときのみ作動）
+        if boss_info and boss_info.get("name") == "三日月形ボス" and boss_info.get('dodge_ai', False):
             bi = boss_info
             # クールダウンタイマー
             bi['dodge_timer'] = bi.get('dodge_timer',0) + 1
@@ -1513,18 +1544,31 @@ while True:
                 if boss_info['snake_stomp_timer'] > 40:
                     boss_info['snake_stomp_state'] = 'idle'
             # （弾幕なし、既存反射ギミックのみ）
-         # ここに楕円ボスの移動ロジックを追加
-        if boss_info and boss_info["name"] == "楕円ボス":
-            # --- 基本左右移動 ---
-            if 'move_dir' not in boss_info:
-                boss_info['move_dir'] = 1
-            boss_x += boss_info['move_dir'] * boss_speed
-            if boss_x < boss_radius + 40:
-                boss_x = boss_radius + 40
-                boss_info['move_dir'] = 1
-            elif boss_x > WIDTH - boss_radius - 40:
-                boss_x = WIDTH - boss_radius - 40
-                boss_info['move_dir'] = -1
+            # ここに三日月形/楕円ボスの移動ロジックを追加
+            if boss_info and boss_info["name"] == "三日月形ボス":
+                # --- 基本左右移動（往復） ---
+                if 'move_dir' not in boss_info:
+                    boss_info['move_dir'] = 1
+                boss_x += boss_info['move_dir'] * boss_speed
+                margin = 40
+                if boss_x < boss_radius + margin:
+                    boss_x = boss_radius + margin
+                    boss_info['move_dir'] = 1
+                elif boss_x > WIDTH - boss_radius - margin:
+                    boss_x = WIDTH - boss_radius - margin
+                    boss_info['move_dir'] = -1
+
+            if boss_info and boss_info["name"] == "楕円ボス":
+                # --- 基本左右移動 ---
+                if 'move_dir' not in boss_info:
+                    boss_info['move_dir'] = 1
+                boss_x += boss_info['move_dir'] * boss_speed
+                if boss_x < boss_radius + 40:
+                    boss_x = boss_radius + 40
+                    boss_info['move_dir'] = 1
+                elif boss_x > WIDTH - boss_radius - 40:
+                    boss_x = WIDTH - boss_radius - 40
+                    boss_info['move_dir'] = -1
 
             # --- 小楕円の向き（プレイヤー追尾 + 発射時ロック） ---
             boss_info.setdefault('left_angle', 0.0)
@@ -1791,26 +1835,25 @@ while True:
                     bullets.remove(bullet)
                     break
         # 通常のボス接触判定
-        if boss_info and boss_info.get("name") == "扇ボス":
-            # プレイヤー中心が扇セクタ内か判定
-            dx = player.centerx - boss_x
-            dy = player.centery - boss_y
+        if boss_info and boss_info.get("name") == "三日月形ボス":
+            # プレイヤー中心が三日月領域に入ったらダメージ
+            bx = player.centerx; by = player.centery
+            dx = bx - boss_x; dy = by - boss_y
             r2 = dx*dx + dy*dy
-            if r2 <= (boss_radius + max(player.width, player.height)//2)**2:  # 半径近傍のみ角度計算
-                ang = math.atan2(dy, dx)
-                base_angle = boss_info.get('tri_base_angle', -math.pi/2)
-                span = boss_info.get('tri_angle_span', math.radians(140))
-                diff = ((ang - base_angle + math.pi) % (2*math.pi)) - math.pi
-                # プレイヤーサイズを考慮して少し緩め (span/2 + マージン)
-                margin = math.radians(6)
-                if abs(diff) <= span/2 + margin:
-                    player_lives -= 1
-                    player_invincible = True
-                    player_invincible_timer = 0
-                    explosion_timer = 0
-                    explosion_pos = (player.centerx, player.centery)
-                    player.x = WIDTH//2 - 15
-                    player.y = HEIGHT - 40
+            outer_r = boss_radius
+            inner_r = int(boss_radius * 0.75)
+            offset = int(boss_radius * 0.45)
+            ix = boss_x - offset; iy = boss_y
+            inside_outer = r2 <= (outer_r + max(player.width, player.height)//2)**2
+            inside_inner = (bx - ix)**2 + (by - iy)**2 <= (inner_r - max(player.width, player.height)//2)**2
+            if inside_outer and not inside_inner:
+                player_lives -= 1
+                player_invincible = True
+                player_invincible_timer = 0
+                explosion_timer = 0
+                explosion_pos = (player.centerx, player.centery)
+                player.x = WIDTH//2 - 15
+                player.y = HEIGHT - 40
             # 追加: 斬撃当たり判定
             for sl in boss_info.get('active_slashes', []):
                 if sl['rect'].colliderect(player):
@@ -1822,7 +1865,7 @@ while True:
                     player.x = WIDTH//2 - 15
                     player.y = HEIGHT - 40
         else:
-            # 扇ボスでない通常ボス接触判定
+            # 三日月形ボスでない通常ボス接触判定
             dx = player.centerx - boss_x
             dy = player.centery - boss_y
             if dx*dx + dy*dy < (boss_radius + max(player.width, player.height)//2)**2:
