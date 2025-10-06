@@ -59,7 +59,7 @@ try:
     _window_warp_active = False
     _window_warp_timer = 0
     _window_warp_index = 0
-    _window_warp_interval = 180  # about 3 seconds at 60fps
+    _window_warp_interval = 150  # baseline ~2.5 seconds at 60fps (phase-based overrides apply)
     _window_warp_vertices = []   # relative offsets from base position
 except Exception:
     _game_window = None
@@ -69,7 +69,7 @@ except Exception:
     _window_warp_active = False
     _window_warp_timer = 0
     _window_warp_index = 0
-    _window_warp_interval = 180
+    _window_warp_interval = 150
     _window_warp_vertices = []
 selected_level = 1  # 1..MAX_LEVEL を使用
 menu_mode = True
@@ -162,7 +162,9 @@ unlocked_homing = False
 unlocked_leaf_shield = False
 unlocked_spread = False
 unlocked_dash = False
+unlocked_hp_boost = False
 reward_granted = False
+leaf_orb_positions = []
 frame_count = 0  # フレームカウンタ（ダッシュ二度押し判定などに使用）
 fire_cooldown = 0  # 連射クールダウン（フレーム）
 while True:
@@ -202,6 +204,8 @@ while True:
                         has_leaf_shield = unlocked_leaf_shield
                         has_spread = unlocked_spread
                         has_dash = unlocked_dash
+                        # 残機は報酬アンロックで5に増加（デフォルト3）
+                        player_lives = 5 if unlocked_hp_boost else 3
                         bullet_type = "normal"
                         reward_granted = False
                         leaf_angle = 0.0
@@ -230,7 +234,7 @@ while True:
                                     boss_info[key] = math.pi/2  # 下向き初期（下=+Y）
                                 # firing 状態中は角度固定（予告/発射の向き維持）
                                 beam = boss_info.get(f'{side}_beam')
-                                if not (boss_info.get('core_state') == 'firing' and beam and beam.get('state') in ('telegraph','firing')):
+                                if not (boss_info.get('beam_state') in ('telegraph','firing') and beam and beam.get('state') in ('telegraph','firing')):
                                     cx, cy = ((boss_x - boss_radius), boss_y) if side=='left' else ((boss_x + boss_radius), boss_y)
                                     theta = math.atan2(player.centery - cy, player.centerx - cx)
                                     boss_info[key] = theta
@@ -265,14 +269,25 @@ while True:
                             boss_info['snake_stomp_grace'] = 210
                         if boss_info and boss_info["name"] == "楕円ボス":
                             boss_origin_x = boss_x
-                            if 'core_state' not in boss_info:
-                                boss_info['core_state'] = 'closed'
-                                boss_info['core_timer'] = 0
-                                boss_info['core_cycle_interval'] = OVAL_CORE_CYCLE_INTERVAL
-                                boss_info['core_firing_duration'] = OVAL_CORE_FIRING_DURATION
-                                boss_info['core_open_hold'] = OVAL_CORE_OPEN_HOLD
-                                boss_info['core_gap'] = 0
-                                boss_info['core_gap_target'] = OVAL_CORE_GAP_TARGET
+                            # 楕円ボスのコア/ビーム/角度を毎回リセット（持ち越し防止）
+                            boss_info['core_state'] = 'closed'
+                            boss_info['core_timer'] = 0
+                            boss_info['core_cycle_interval'] = OVAL_CORE_CYCLE_INTERVAL
+                            boss_info['core_firing_duration'] = OVAL_CORE_FIRING_DURATION
+                            boss_info['core_open_hold'] = OVAL_CORE_OPEN_HOLD
+                            boss_info['core_gap'] = 0
+                            boss_info['core_gap_target'] = OVAL_CORE_GAP_TARGET
+                            # ビーム状態リセット
+                            boss_info['left_beam'] = None
+                            boss_info['right_beam'] = None
+                            boss_info['beam_state'] = 'idle'
+                            boss_info['beam_timer'] = 0
+                            # 初手は撃たないため初期クールダウンを与える
+                            boss_info['beam_cd'] = 180
+                            boss_info['beam_focus'] = None
+                            # 小楕円（左右）の向きを初期化（下向き）
+                            boss_info['left_angle'] = math.pi/2
+                            boss_info['right_angle'] = math.pi/2
                         if boss_info and boss_info["name"] == "三日月形ボス":
                             # 三日月形ボスは第1形態で開始。第二形態関連を完全初期化
                             boss_info['new_attack_enabled'] = False
@@ -297,7 +312,8 @@ while True:
                             # 第三形態 分裂ボスの初期化（未分裂状態）
                             boss_info['phase3_split'] = False
                             boss_info['parts'] = []
-                        player_lives = 3
+                        # 残機は報酬アンロックで5に増加（デフォルト3）
+                        player_lives = 5 if unlocked_hp_boost else 3
                         player_invincible = False
                         player_invincible_timer = 0
                         explosion_timer = 0
@@ -324,7 +340,8 @@ while True:
     # 早期リトライ処理（勝敗判定より先に完全初期化）
     if retry:
         # プレイヤー/一般状態
-        player_lives = 3
+        # 残機は報酬アンロックで5に増加（デフォルト3）
+        player_lives = 5 if unlocked_hp_boost else 3
         player_invincible = False
         player_invincible_timer = 0
         explosion_timer = 0
@@ -356,6 +373,20 @@ while True:
         boss_origin_x = boss_x
         boss_origin_y = boss_y
         boss_hp = boss_info["hp"] if boss_info else 35
+        # 楕円ボスのビーム/コア/角度は必ずリセット（リトライ時の持ち越し防止）
+        if boss_info and boss_info.get('name') == '楕円ボス':
+            boss_info['left_beam'] = None
+            boss_info['right_beam'] = None
+            boss_info['beam_state'] = 'idle'
+            boss_info['beam_timer'] = 0
+            # 初手ビーム防止のためリトライ時も初期CDを設定
+            boss_info['beam_cd'] = 180
+            boss_info['beam_focus'] = None
+            boss_info['core_state'] = 'closed'
+            boss_info['core_timer'] = 0
+            boss_info['core_gap'] = 0
+            boss_info['left_angle'] = math.pi/2
+            boss_info['right_angle'] = math.pi/2
         # プレイヤー座標リセット
         player = pygame.Rect(WIDTH // 2 - 15, HEIGHT - 40, 30, 15)
         player_speed = 5
@@ -505,6 +536,12 @@ while True:
                     bullet_type = available[(i+1) % len(available)]
                 except ValueError:
                     bullet_type = available[0]
+            # デバッグ: T でボス即撃破
+            if event.key == pygame.K_t and boss_alive:
+                boss_hp = 0
+                boss_alive = False
+                boss_explosion_timer = 0
+                explosion_pos = (boss_x, boss_y)
             # ダッシュ（左右キーの二度押し）: 反転中は左右を入れ替える
             if event.key == pygame.K_LEFT:
                 dir_key = 'right' if controls_inverted else 'left'
@@ -587,22 +624,28 @@ while True:
                     explosion_pos = (player.centerx, player.centery)
                     player.x = WIDTH//2 - 15
                     player.y = HEIGHT - 40
-        # 跳ね返り弾のみプレイヤー判定
-        for bullet in bullets:
-            if (bullet.get("reflect", False) or bullet.get("type") == "enemy") and not bullet.get('harmless'):
-                if player.colliderect(bullet["rect"]):
-                    player_lives -= 1
-                    player_invincible = True
-                    player_invincible_timer = 0
-                    explosion_timer = 0
-                    explosion_pos = (player.centerx, player.centery)
-                    # プレイヤーを初期位置に戻す
-                    player.x = WIDTH//2 - 15
-                    player.y = HEIGHT - 40
-                    bullets.remove(bullet)
+                    # ビームで被弾したフレームは他の衝突判定をスキップ（多重減少防止）
                     break
-        # 第三形態: 2P への敵弾/反射弾の当たり判定
-        if boss_info and boss_info.get('name') == '三日月形ボス' and boss_info.get('phase',1) == 3 and player2:
+        # 被弾後はこのフレームの他の衝突をスキップ
+        if player_invincible:
+            pass
+        else:
+            # 跳ね返り弾のみプレイヤー判定
+            for bullet in bullets:
+                if (bullet.get("reflect", False) or bullet.get("type") == "enemy") and not bullet.get('harmless'):
+                    if player.colliderect(bullet["rect"]):
+                        player_lives -= 1
+                        player_invincible = True
+                        player_invincible_timer = 0
+                        explosion_timer = 0
+                        explosion_pos = (player.centerx, player.centery)
+                        # プレイヤーを初期位置に戻す
+                        player.x = WIDTH//2 - 15
+                        player.y = HEIGHT - 40
+                        bullets.remove(bullet)
+                        break
+        # 第三形態: 2P への敵弾/反射弾の当たり判定（被弾していなければ）
+        if not player_invincible and boss_info and boss_info.get('name') == '三日月形ボス' and boss_info.get('phase',1) == 3 and player2:
             for bullet in bullets:
                 if (bullet.get("reflect", False) or bullet.get("type") == "enemy") and not bullet.get('harmless'):
                     if player2.colliderect(bullet["rect"]):
@@ -616,21 +659,22 @@ while True:
                         player2.y = HEIGHT - 40
                         bullets.remove(bullet)
                         break
-        # 通常のボス接触判定
-        dx = player.centerx - boss_x
-        dy = player.centery - boss_y
-        if dx*dx + dy*dy < (boss_radius + max(player.width, player.height)//2)**2:
-            player_lives -= 1
-            player_invincible = True
-            player_invincible_timer = 0
-            explosion_timer = 0
-            explosion_pos = (player.centerx, player.centery)
-            # プレイヤーを初期位置に戻す
-            player.x = WIDTH//2 - 15
-            player.y = HEIGHT - 40
+        # 通常のボス接触判定（被弾していなければ）
+        if not player_invincible:
+            dx = player.centerx - boss_x
+            dy = player.centery - boss_y
+            if dx*dx + dy*dy < (boss_radius + max(player.width, player.height)//2)**2:
+                player_lives -= 1
+                player_invincible = True
+                player_invincible_timer = 0
+                explosion_timer = 0
+                explosion_pos = (player.centerx, player.centery)
+                # プレイヤーを初期位置に戻す
+                player.x = WIDTH//2 - 15
+                player.y = HEIGHT - 40
 
         # 星座線分への接触（太線近傍）
-        if boss_info and boss_info.get('name') == '三日月形ボス':
+    if not player_invincible and boss_info and boss_info.get('name') == '三日月形ボス':
             segs = boss_info.get('const_segments', [])
             if segs:
                 px, py = player.centerx, player.centery
@@ -679,6 +723,8 @@ while True:
                 reward_text = "拡散弾(3WAY) 解放! Vで切替 威力0.5x3 敵弾相殺"
             elif boss_info["name"] == "バウンドボス":
                 reward_text = "緊急回避(ダッシュ) 解放! ←← / →→ で瞬間移動&無敵"
+            elif boss_info["name"] == "三日月形ボス":
+                reward_text = "体力増加! 次回から残機が5に"
         # 報酬アンロック（セッション内持続）
         if result == "win" and boss_info:
             if boss_info["name"] == "Boss A":
@@ -689,6 +735,8 @@ while True:
                 unlocked_spread = True
             elif boss_info["name"] == "バウンドボス":
                 unlocked_dash = True
+            elif boss_info["name"] == "三日月形ボス":
+                unlocked_hp_boost = True
         # 星マーク
         if result == "win":
             level_cleared[selected_level] = True
@@ -776,6 +824,11 @@ while True:
     # プレイヤー（無敵時は半透明）
     if not player_invincible or (player_invincible_timer//10)%2 == 0:
         pygame.draw.rect(screen, WHITE, player)
+    if leaf_orb_positions:
+        for (ox, oy, rad) in leaf_orb_positions:
+            center = (int(ox), int(oy))
+            pygame.draw.circle(screen, (80, 255, 120), center, rad)
+            pygame.draw.circle(screen, (20, 120, 60), center, rad, 2)
     # 2P描画なし（単体モード）
     for bullet in bullets:
         if bullet["type"] == "boss_beam":
@@ -912,10 +965,13 @@ while True:
             if 'target' in beam:
                 tx, ty = beam['target']
             else:
-                # 角度から暫定ターゲット（表示/衝突用）
+                # 角度から暫定ターゲット（表示/衝突用）: 下先端方向に伸ばす
                 ang = beam.get('angle', -math.pi/2)
-                tx = int(ox + math.cos(ang) * 1200)
-                ty = int(oy + math.sin(ang) * 1200)
+                rot = ang - math.pi/2
+                dirx = -math.sin(rot)
+                diry =  math.cos(rot)
+                tx = int(ox + dirx * 1200)
+                ty = int(oy + diry * 1200)
             if beam['state'] == 'telegraph':
                 # 点滅赤予告（フレームごとに表示/非表示）
                 if (beam['timer'] // 5) % 2 == 0:
@@ -961,19 +1017,19 @@ while True:
                 pygame.draw.rect(screen, (180, 0, 180), seg_rect)
         elif boss_info and boss_info["name"] == "楕円ボス":
             # 旧本体描画は分割描画セクションで済んでいるためここでは小楕円のみ可動表示（緑）。
-            # 各小楕円は角度 boss_info['left_angle'/'right_angle'] に合わせて下先端がプレイヤーを向く。
+            # 各小楕円は角度 boss_info['left_angle'/'right_angle'] に合わせて回転させる（下先端がプレイヤーを向く）。
             small_w, small_h = boss_radius//2, boss_radius*2//3
             for side in ('left','right'):
                 cx = boss_x - boss_radius if side=='left' else boss_x + boss_radius
                 cy = boss_y
                 ang = boss_info.get(f'{side}_angle', -math.pi/2)
-                # 回転楕円の簡易描画: 軸は回転させず、下先端方向に小さな三角で向きを示す
-                rect = pygame.Rect(int(cx - small_w//2), int(cy - small_h//2), small_w, small_h)
-                pygame.draw.ellipse(screen, (0,200,0), rect)
-                tipx = cx + (-math.sin(ang)) * (small_h/2)
-                tipy = cy + ( math.cos(ang)) * (small_h/2)
-                # 向きマーカー（小さなライン）
-                pygame.draw.line(screen, (0,255,0), (cx, cy), (int(tipx), int(tipy)), 3)
+                # 回転楕円の描画（Surfaceを回して中心にブリット）
+                esurf = pygame.Surface((small_w, small_h), pygame.SRCALPHA)
+                pygame.draw.ellipse(esurf, (0,200,0), (0, 0, small_w, small_h))
+                deg = math.degrees(ang) - 90.0
+                rsurf = pygame.transform.rotate(esurf, deg)
+                rrect = rsurf.get_rect(center=(int(cx), int(cy)))
+                screen.blit(rsurf, rrect)
         elif boss_info and boss_info["name"] == "バウンドボス":
             # 潰れ演出: squish_state中は縦に潰し・横に拡げる
             if boss_info.get('squish_state') == 'squish':
@@ -1040,6 +1096,9 @@ while True:
         weapon_icons.append(("H", BULLET_COLOR_HOMING, bullet_type == "homing"))
     if has_spread:
         weapon_icons.append(("S", BULLET_COLOR_SPREAD, bullet_type == "spread"))
+    if has_leaf_shield:
+        shield_color = (80, 255, 120)
+        weapon_icons.append(("L", shield_color, True))
     icon_size = 22
     pad = 6
     base_x = 20
@@ -1113,7 +1172,8 @@ while True:
                     _window_warp_timer = 0
                     _window_warp_index = 0
                     # 五芒星の外側5頂点（基準: 上向き）を半径Rで配置
-                    R = 140
+                    # 第二形態はより大きく動かす
+                    R = 220 if boss_info.get('phase',1) == 2 else 140
                     pts = []
                     for i in range(5):
                         ang = math.radians(-90 + 72*i)
@@ -1127,7 +1187,9 @@ while True:
                     _game_window.position = (_window_base_pos[0] + ox, _window_base_pos[1] + oy)
                 else:
                     _window_warp_timer += 1
-                    if _window_warp_timer >= _window_warp_interval:
+                    # 第二形態は移動間隔を短縮
+                    interval = 90 if boss_info.get('phase',1) == 2 else _window_warp_interval
+                    if _window_warp_timer >= interval:
                         _window_warp_timer = 0
                         _window_warp_index = (_window_warp_index + 1) % max(1, len(_window_warp_vertices) or 1)
             else:
@@ -1346,6 +1408,37 @@ while True:
             moved.append(b)
     bullets = moved + spawn_extras
 
+    # リーフシールド: 自機周囲に回転する防御オーブ
+    active_leaf_orbs = []
+    if has_leaf_shield:
+        leaf_angle = (leaf_angle + 0.08) % (2*math.pi)
+        orb_count = 4
+        shield_radius = max(32, player.width // 2 + 20)
+        orb_radius = 10
+        for i in range(orb_count):
+            ang = leaf_angle + (2*math.pi * i / orb_count)
+            ox = player.centerx + shield_radius * math.cos(ang)
+            oy = player.centery + shield_radius * math.sin(ang)
+            active_leaf_orbs.append((ox, oy, orb_radius))
+        # 敵弾をブロック
+        filtered_bullets = []
+        for b in bullets:
+            is_enemy_like = (b.get('type') == 'enemy') or b.get('reflect', False) or b.get('subtype') in ('crescent','mini_hito')
+            if is_enemy_like:
+                bx, by = b['rect'].center
+                blocked = False
+                for (ox, oy, rad) in active_leaf_orbs:
+                    if (bx - ox)**2 + (by - oy)**2 <= (rad + max(b['rect'].width, b['rect'].height)/2)**2:
+                        blocked = True
+                        break
+                if blocked:
+                    continue
+            filtered_bullets.append(b)
+        bullets = filtered_bullets
+    else:
+        leaf_angle = 0.0
+    leaf_orb_positions = active_leaf_orbs
+
     # 弾とボスの当たり判定（多重ヒット防止版）
     # 拡散弾: 敵弾( enemy ) と接触した場合双方消滅（ボス判定前）
     if any(b.get("type") == "spread" for b in bullets):
@@ -1539,7 +1632,8 @@ while True:
                             r2 = dx*dx + dy*dy
                             inside_outer = r2 <= pr*pr
                             inside_inner = (bx - ix)**2 + (by - py)**2 <= inner_r*inner_r
-                            if inside_outer and not inside_inner:
+                            if inside_outer and (not inside_inner or bullet.get('type') == 'homing'):
+                                # 内円内でもホーミング弾はダメージを与える
                                 p['hp'] = p.get('hp', 5) - bullet.get('power', 1.0)
                                 boss_explosion_pos.append((bx, by))
                                 any_hit = True
@@ -1560,7 +1654,8 @@ while True:
                         ix = boss_x - offset
                         inside_outer = r2 <= outer_r*outer_r
                         inside_inner = (bx - ix)**2 + (by - boss_y)**2 <= inner_r*inner_r
-                        if inside_outer and not inside_inner:
+                        if inside_outer and (not inside_inner or bullet.get('type') == 'homing'):
+                            # 内円内でもホーミング弾はダメージを与える
                             boss_hp -= bullet.get("power", 1.0)
                             boss_explosion_pos.append((bx, by))
                             # 形態遷移は廃止（ダメージ処理のみ）
@@ -1612,17 +1707,113 @@ while True:
         boss_attack_timer += 1
         # 楕円ボス: 水平往復移動 + コア開閉サイクル
         if boss_info and boss_info.get("name") == "楕円ボス":
-            # 左右往復（端で折り返し）
-            margin = 40
-            if 'move_dir' not in boss_info:
-                boss_info['move_dir'] = 1
-            boss_x += boss_info['move_dir'] * boss_speed
-            if boss_x < boss_radius + margin:
-                boss_x = boss_radius + margin
-                boss_info['move_dir'] = 1
-            elif boss_x > WIDTH - boss_radius - margin:
-                boss_x = WIDTH - boss_radius - margin
-                boss_info['move_dir'] = -1
+            # スタート待機中はビームAIを停止（カウントしない）
+            if waiting_for_space:
+                boss_x += boss_info.get('move_dir', 1) * boss_speed if 'move_dir' in boss_info else 0
+                # コアの開閉サイクルはそのまま/もしくは停止したいならここでreturn
+                # ここではビームのみ凍結
+            else:
+                # 左右往復（端で折り返し）
+                margin = 40
+                if 'move_dir' not in boss_info:
+                    boss_info['move_dir'] = 1
+            # ビーム独立クールダウン（コアと独立）
+                boss_info.setdefault('beam_state', 'idle')  # idle -> telegraph -> firing -> cooldown
+                boss_info.setdefault('beam_timer', 0)
+                boss_info.setdefault('beam_cd', 0)
+            # 目標: コア1ループに約2回撃てるチンポ（短め）
+                boss_info['beam_telegraph'] = 25
+                boss_info['beam_firing'] = 44
+                boss_info['beam_cooldown'] = 150
+            # 進行
+                if boss_info['beam_cd'] > 0:
+                    boss_info['beam_cd'] -= 1
+                state_b = boss_info.get('beam_state','idle')
+                if state_b == 'idle':
+                # 短めの間隔で攻撃開始（CDが0のとき）
+                    if boss_info.get('beam_cd',0) <= 0:
+                        # 予告開始（左右同時）
+                        # 収束点（フォーカス）を固定: 予告開始時のプレイヤー位置
+                        boss_info['beam_focus'] = (player.centerx, player.centery)
+                        for side in ('left','right'):
+                            cx, cy = ((boss_x - boss_radius), boss_y) if side=='left' else ((boss_x + boss_radius), boss_y)
+                            theta = math.atan2(player.centery - cy, player.centerx - cx)
+                            boss_info[f'{side}_beam'] = {'state':'telegraph','timer':0,'angle':theta}
+                        boss_info['beam_state'] = 'telegraph'
+                        boss_info['beam_timer'] = 0
+                elif state_b == 'telegraph':
+                    boss_info['beam_timer'] += 1
+                    done = False
+                    if boss_info['beam_timer'] >= boss_info['beam_telegraph']:
+                        # 発射開始（各サイドのビームも firing に遷移）
+                        boss_info['beam_state'] = 'firing'
+                        boss_info['beam_timer'] = 0
+                        for side in ('left','right'):
+                            beam = boss_info.get(f'{side}_beam')
+                            if beam:
+                                beam['state'] = 'firing'
+                                beam['timer'] = 0
+                    # 各ビームのorigin更新とターゲット初期化
+                    for side in ('left','right'):
+                        beam = boss_info.get(f'{side}_beam')
+                        if not beam: continue
+                        beam['timer'] = beam.get('timer',0) + 1
+                        small_h = boss_radius*2//3
+                        cx, cy = ((boss_x - boss_radius), boss_y) if side=='left' else ((boss_x + boss_radius), boss_y)
+                        ang = beam.get('angle', 0.0)
+                        rot = ang - math.pi/2
+                        ox = cx + (-math.sin(rot)) * (small_h/2)
+                        oy = cy + ( math.cos(rot)) * (small_h/2)
+                        beam['origin'] = (int(ox), int(oy))
+                        focus = boss_info.get('beam_focus')
+                        if focus:
+                            dx = focus[0] - ox; dy = focus[1] - oy
+                            l = math.hypot(dx, dy) or 1.0
+                            dirx = dx / l; diry = dy / l
+                            beam['target'] = (int(ox + dirx*1200), int(oy + diry*1200))
+                        elif 'target' not in beam:
+                            dirx = -math.sin(rot); diry = math.cos(rot)
+                            beam['target'] = (int(ox + dirx*1200), int(oy + diry*1200))
+                elif state_b == 'firing':
+                    boss_info['beam_timer'] += 1
+                    # 更新と当たりは既存の描画/衝突ロジックが参照
+                    for side in ('left','right'):
+                        beam = boss_info.get(f'{side}_beam')
+                        if not beam: continue
+                        beam['timer'] = beam.get('timer',0) + 1
+                        small_h = boss_radius*2//3
+                        cx, cy = ((boss_x - boss_radius), boss_y) if side=='left' else ((boss_x + boss_radius), boss_y)
+                        ang = beam.get('angle', 0.0)
+                        rot = ang - math.pi/2
+                        ox = cx + (-math.sin(rot)) * (small_h/2)
+                        oy = cy + ( math.cos(rot)) * (small_h/2)
+                        beam['origin'] = (int(ox), int(oy))
+                        focus = boss_info.get('beam_focus')
+                        if focus:
+                            dx = focus[0] - ox; dy = focus[1] - oy
+                            l = math.hypot(dx, dy) or 1.0
+                            dirx = dx / l; diry = dy / l
+                            beam['target'] = (int(ox + dirx*1200), int(oy + diry*1200))
+                    if boss_info['beam_timer'] >= boss_info['beam_firing']:
+                        boss_info['beam_state'] = 'cooldown'
+                        boss_info['beam_timer'] = 0
+                        # ビーム終了
+                        boss_info['left_beam'] = None
+                        boss_info['right_beam'] = None
+                        boss_info['beam_cd'] = boss_info['beam_cooldown']
+                        boss_info['beam_focus'] = None
+                elif state_b == 'cooldown':
+                    # クールダウン経過で待機へ
+                    if boss_info.get('beam_cd',0) <= 0:
+                        boss_info['beam_state'] = 'idle'
+                        boss_info['beam_timer'] = 0
+                boss_x += boss_info['move_dir'] * boss_speed
+                if boss_x < boss_radius + margin:
+                    boss_x = boss_radius + margin
+                    boss_info['move_dir'] = 1
+                elif boss_x > WIDTH - boss_radius - margin:
+                    boss_x = WIDTH - boss_radius - margin
+                    boss_info['move_dir'] = -1
             # コア開閉（シンプル周期）
             cs = boss_info.get('core_state','closed')
             boss_info['core_timer'] = boss_info.get('core_timer',0) + 1
@@ -1634,7 +1825,8 @@ while True:
             open_hold = boss_info.get('core_open_hold', OVAL_CORE_OPEN_HOLD)
             # 状態遷移
             if cs == 'closed':
-                if boss_info['core_timer'] >= cycle:
+                # 発射頻度を落とす: 待機を元サイクルより長めに
+                if boss_info['core_timer'] >= max(1, int(cycle * 1.25)):
                     boss_info['core_state'] = 'opening'
                     boss_info['core_timer'] = 0
             elif cs == 'opening':
@@ -1643,68 +1835,26 @@ while True:
                 if gap >= gap_target:
                     boss_info['core_state'] = 'open_hold'
                     boss_info['core_timer'] = 0
-                    # コアが開いた瞬間にリング弾を一斉発射
-                    ring_n = 10
-                    spd = 3.8
-                    for i in range(ring_n):
-                        ang = 2*math.pi*i/ring_n
-                        vx = spd*math.cos(ang); vy = spd*math.sin(ang)
-                        bullets.append({'rect': pygame.Rect(int(boss_x-4), int(boss_y-4), 8, 8),
-                                        'type':'enemy','vx':vx,'vy':vy,'life':240,'power':1.0})
+                    # コアが開いた瞬間に多層リング弾を一斉発射（層・数・速度・オフセット）
+                    layers = [
+                        {'n': 10, 'speed': 3.4, 'offset': 0.00},
+                        {'n': 14, 'speed': 4.0, 'offset': 0.10*math.pi},
+                        {'n': 18, 'speed': 4.6, 'offset': 0.20*math.pi},
+                        {'n': 22, 'speed': 5.0, 'offset': 0.30*math.pi},
+                        {'n': 26, 'speed': 5.4, 'offset': 0.40*math.pi},
+                    ]
+                    for layer in layers:
+                        n = layer['n']; spd = layer['speed']; off = layer['offset']
+                        for i in range(n):
+                            ang = off + 2*math.pi*i/n
+                            vx = spd*math.cos(ang); vy = spd*math.sin(ang)
+                            bullets.append({'rect': pygame.Rect(int(boss_x-4), int(boss_y-4), 8, 8),
+                                            'type':'enemy','vx':vx,'vy':vy,'life':260,'power':1.0})
             elif cs == 'open_hold':
                 if boss_info['core_timer'] >= open_hold:
-                    boss_info['core_state'] = 'firing'
-                    boss_info['core_timer'] = 0
-                    # 両側からビーム予告開始（方向は固定／下先端から発射）
-                    small_h = boss_radius*2//3
-                    for side in ('left','right'):
-                        cx, cy = ((boss_x - boss_radius), boss_y) if side=='left' else ((boss_x + boss_radius), boss_y)
-                        # プレイヤー方向に「下先端(0,+1)」が向く角度 ang（固定）。
-                        theta = math.atan2(player.centery - cy, player.centerx - cx)
-                        ang = theta
-                        boss_info[f'{side}_beam'] = {
-                            'state':'telegraph',
-                            'timer': 0,
-                            'angle': ang
-                        }
-            elif cs == 'firing':
-                # ビームタイミング更新（テレグラフ中も firing ステート継続）
-                finished = True
-                for side in ('left','right'):
-                    beam = boss_info.get(f'{side}_beam')
-                    if not beam:
-                        continue
-                    beam['timer'] = beam.get('timer',0) + 1
-                    # 下先端を角度 ang で固定。origin は毎フレーム位置のみ更新（角度は固定）。
-                    small_h = boss_radius*2//3
-                    cx, cy = ((boss_x - boss_radius), boss_y) if side=='left' else ((boss_x + boss_radius), boss_y)
-                    ang = beam.get('angle', 0.0)
-                    ox = cx + (-math.sin(ang)) * (small_h/2)
-                    oy = cy + ( math.cos(ang)) * (small_h/2)
-                    beam['origin'] = (int(ox), int(oy))
-                    if beam['state'] == 'telegraph':
-                        # 予告は固定（ターゲットは初回のみ算出）
-                        if 'target' not in beam:
-                            dirx = math.cos(ang)
-                            diry = math.sin(ang)
-                            tx = int(ox + dirx * 1200)
-                            ty = int(oy + diry * 1200)
-                            beam['target'] = (tx, ty)
-                        if beam['timer'] >= 30:
-                            beam['state'] = 'firing'
-                            beam['timer'] = 0
-                        # いずれにせよ終了ではない
-                        finished = False
-                    elif beam['state'] == 'firing':
-                        if beam['timer'] < fire_dur:
-                            finished = False
-                # firing期間が終わったら閉じる
-                if finished:
+                    # コアはビームと無関係に閉じる
                     boss_info['core_state'] = 'closing'
                     boss_info['core_timer'] = 0
-                    # ビーム終了
-                    boss_info['left_beam'] = None
-                    boss_info['right_beam'] = None
                 else:
                     # firing中は追加の狙い弾は出さない（ユーザー指定）。リング弾は開いた瞬間のみ。
                     pass
