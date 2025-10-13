@@ -1,9 +1,8 @@
 # constants.py
 # ゲーム全体で共有する定数・色・レベル/ボス定義
 
-# 画面サイズ
-WIDTH, HEIGHT = 480, 640
-
+# 画面サイズ (縦長レイアウト)
+WIDTH, HEIGHT = 500, 600
 # 時間/演出関連
 EXPLOSION_DURATION = 30        # 小爆発表示フレーム
 BOSS_EXPLOSION_DURATION = 60   # ボス撃破時派手演出
@@ -43,7 +42,8 @@ boss_list = [
     {"name": "蛇", "radius": 70, "hp": 55, "color": (128, 0, 128)},      # L2 ~7-9秒
     {"name": "楕円ボス", "radius": 70, "hp": 50, "color": (255, 165, 0)}, # L3 ~9-11秒（開放中は本体にも通る前提）
     {"name": "バウンドボス", "radius": 75, "hp": 85, "color": (0, 180, 255)}, # L4 ~11-13秒
-    {"name": "三日月形ボス", "radius": 70, "hp": 150, "color": (255, 220, 0)}  # L5 ~13-15秒（旧: 扇ボス）
+    {"name": "三日月形ボス", "radius": 70, "hp": 150, "color": (255, 220, 0)},  # L5 ~13-15秒（旧: 扇ボス）
+    {"name": "赤バツボス", "radius": 78, "hp": 180, "color": (255, 60, 60)}      # L6: 赤いバツ型ボス（制作開始）
 ]
 
 # レベル数を 6 までに縮小。index は 1..MAX_LEVEL を使用（0 番は未使用保険で None）。
@@ -55,7 +55,7 @@ level_list = [
     {"level": 3, "boss": boss_list[2]},
     {"level": 4, "boss": boss_list[3]},
     {"level": 5, "boss": boss_list[4]},
-    {"level": 6, "boss": None},
+    {"level": 6, "boss": boss_list[5]},
 ]
 
 # バウンドボス挙動用（簡易定数）

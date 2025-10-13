@@ -1,24 +1,12 @@
-import sys, random, math, subprocess
+import sys, random, math, subprocess, copy, colorsys
 
 # --- Auto-install required packages (pygame) at startup ---
-def _ensure_pygame(min_ver=(2, 5, 0)):
-    try:
-        import pygame as _pg
-        ver = getattr(getattr(_pg, 'version', None), 'vernum', None)
-        if not isinstance(ver, tuple):
-            ver = (0, 0, 0)
-        if ver < min_ver:
-            raise ImportError(f"pygame too old: {ver} < {min_ver}")
-        return
-    except Exception:
-        print("[setup] pygame が見つからないか古いので、インストール/更新します (pygame>=%d.%d.%d)..." % min_ver)
-        try:
-            subprocess.check_call([sys.executable, "-m", "pip", "install", f"pygame>={min_ver[0]}.{min_ver[1]}.{min_ver[2]}"])
-        except Exception as e:
-            print("[setup] 自動インストールに失敗しました。インターネット接続や権限を確認し、以下を実行してください:\n  python3 -m pip install 'pygame>=%d.%d.%d'" % min_ver)
-            raise
-_ensure_pygame()
-import pygame
+try:
+    import pygame
+except ImportError:  # Install pygame automatically if missing
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "pygame>=2.0.0"])
+    import pygame
+
 from constants import (
     WIDTH, HEIGHT,
     EXPLOSION_DURATION, BOSS_EXPLOSION_DURATION, PLAYER_INVINCIBLE_DURATION,
@@ -29,48 +17,162 @@ from constants import (
     WHITE, BLACK, GRAY, RED,
     BULLET_COLOR_NORMAL, BULLET_COLOR_HOMING, BULLET_COLOR_ENEMY, BULLET_COLOR_REFLECT,
     BULLET_COLOR_SPREAD,
-    boss_list, level_list,
+    boss_list, level_list, MAX_LEVEL,
     BOUNCE_BOSS_SPEED, BOUNCE_BOSS_RING_COUNT, BOUNCE_BOSS_NO_PATTERN_BOTTOM_MARGIN,
     BOUNCE_BOSS_SQUISH_DURATION, BOUNCE_BOSS_ANGLE_JITTER_DEG,
     BOUNCE_BOSS_SHRINK_STEP, BOUNCE_BOSS_SPEED_STEP,
-    WINDOW_SHAKE_DURATION, WINDOW_SHAKE_INTENSITY
-)
-
-# dash_state が存在しない環境でも NameError を避ける初期値
-if 'dash_state' not in globals():
-    dash_state = {'invincible_timer': 0, 'active': False}
-from constants import (
+    WINDOW_SHAKE_DURATION, WINDOW_SHAKE_INTENSITY,
     DASH_COOLDOWN_FRAMES, DASH_INVINCIBLE_FRAMES, DASH_DISTANCE,
     DASH_DOUBLE_TAP_WINDOW, DASH_ICON_SEGMENTS
 )
 from fonts import jp_font, text_surface
 from gameplay import spawn_player_bullets, move_player_bullets, update_dash_timers, attempt_dash
+from music import init_audio, play_enemy_hit, play_reflect
 
 pygame.init()
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("シューティングゲーム")
+if not pygame.font.get_init():
+    pygame.font.init()
+
+init_audio()
+
+DISPLAY_FLAGS = pygame.RESIZABLE | pygame.DOUBLEBUF
+display_surface = pygame.display.set_mode((WIDTH, HEIGHT), DISPLAY_FLAGS)
+screen = pygame.Surface((WIDTH, HEIGHT)).convert()
+pygame.display.set_caption("Bob's Big Adventure")
+is_fullscreen = False
+_border_starfield_cache = {}
+
+
+def set_display_mode(fullscreen: bool):
+    """Toggle between fullscreen and windowed modes while preserving surfaces."""
+    global display_surface, is_fullscreen
+    if fullscreen and not is_fullscreen:
+        try:
+            pygame.display.quit()
+            pygame.display.init()
+            display_surface = pygame.display.set_mode((WIDTH, HEIGHT), pygame.FULLSCREEN | pygame.DOUBLEBUF)
+            is_fullscreen = True
+        except Exception:
+            pygame.display.quit()
+            pygame.display.init()
+            display_surface = pygame.display.set_mode((WIDTH, HEIGHT), DISPLAY_FLAGS)
+            is_fullscreen = False
+    elif not fullscreen and is_fullscreen:
+        pygame.display.quit()
+        pygame.display.init()
+        display_surface = pygame.display.set_mode((WIDTH, HEIGHT), DISPLAY_FLAGS)
+        is_fullscreen = False
+    else:
+        flags = pygame.FULLSCREEN | pygame.DOUBLEBUF if fullscreen else DISPLAY_FLAGS
+        display_surface = pygame.display.set_mode((WIDTH, HEIGHT), flags)
+        is_fullscreen = fullscreen
+    pygame.display.set_caption("Bob's Big Adventure")
+
+
+def get_border_starfield(width, height):
+    """Return a cached starfield surface for letterboxed borders."""
+    if width <= 0 or height <= 0:
+        return None
+    key = (int(width), int(height))
+    cached = _border_starfield_cache.get(key)
+    if cached:
+        return cached
+    surface = pygame.Surface(key)
+    surface.fill((0, 0, 0))
+    star_count = max(8, (key[0] * key[1]) // 1600)
+    for _ in range(star_count):
+        x = random.randrange(0, key[0])
+        y = random.randrange(0, key[1])
+        shade = random.randint(180, 255)
+        surface.set_at((x, y), (shade, shade, shade))
+    _border_starfield_cache[key] = surface
+    return surface
+
+
+def present_frame():
+    if display_surface and display_surface is not screen:
+        display_width, display_height = display_surface.get_size()
+        scale = min(display_width / float(WIDTH), display_height / float(HEIGHT or 1))
+        scaled_width = max(1, int(WIDTH * scale))
+        scaled_height = max(1, int(HEIGHT * scale))
+        scaled_surface = pygame.transform.smoothscale(screen, (scaled_width, scaled_height))
+        offset_x = (display_width - scaled_width) // 2
+        offset_y = (display_height - scaled_height) // 2
+        display_surface.fill((0, 0, 0))
+        if offset_x > 0:
+            border_surface = get_border_starfield(offset_x, display_height)
+            if border_surface:
+                display_surface.blit(border_surface, (0, 0))
+                display_surface.blit(border_surface, (display_width - offset_x, 0))
+        if offset_y > 0:
+            top_border = get_border_starfield(display_width, offset_y)
+            bottom_border = get_border_starfield(display_width, offset_y)
+            if top_border:
+                display_surface.blit(top_border, (0, 0))
+            if bottom_border:
+                display_surface.blit(bottom_border, (0, display_height - offset_y))
+        display_surface.blit(scaled_surface, (offset_x, offset_y))
+        pygame.display.flip()
+    else:
+        pygame.display.flip()
+
+
 try:
-    from pygame._sdl2 import Window
-    _game_window = Window.from_display_module()
-    _window_shake_timer = 0
-    _window_shake_intensity = 0
-    _window_base_pos = _game_window.position
-    # Crescent boss low-HP window warp state
-    _window_warp_active = False
-    _window_warp_timer = 0
-    _window_warp_index = 0
-    _window_warp_interval = 150  # baseline ~2.5 seconds at 60fps (phase-based overrides apply)
-    _window_warp_vertices = []   # relative offsets from base position
-except Exception:
-    _game_window = None
-    _window_shake_timer = 0
-    _window_shake_intensity = 0
-    _window_base_pos = (0, 0)
-    _window_warp_active = False
-    _window_warp_timer = 0
-    _window_warp_index = 0
-    _window_warp_interval = 150
-    _window_warp_vertices = []
+    from pygame._sdl2.video import Window as SDLWindow
+except ImportError:  # SDL2 window manipulation is optional
+    SDLWindow = None
+
+_game_window = None
+_window_base_pos = (0, 0)
+if SDLWindow:
+    try:
+        _game_window = SDLWindow.from_display_module()
+    except Exception:
+        _game_window = None
+if _game_window:
+    try:
+        _window_base_pos = _game_window.position
+    except Exception:
+        _window_base_pos = (0, 0)
+
+_window_shake_timer = 0
+_window_shake_intensity = 0
+_window_warp_active = False
+_window_warp_timer = 0
+_window_warp_index = 0
+_window_warp_interval = 150
+_window_warp_vertices = []
+
+# dash_state が存在しない環境でも NameError を避ける初期値
+if 'dash_state' not in globals():
+    dash_state = {'invincible_timer': 0, 'active': False}
+
+
+def reset_boss_hazards_after_player_hit(boss_state):
+    """Remove lingering boss-specific hazards when the player respawns."""
+    if not boss_state:
+        return
+    if boss_state.get('name') == '赤バツボス':
+        falls = boss_state.get('cross_falls')
+        if falls:
+            falls.clear()
+        if boss_state.get('cross_wall_attack'):
+            boss_state['cross_wall_attack'] = None
+        state = boss_state.get('cross_phase2_state')
+        beams = boss_state.get('cross_phase2_moon_beams')
+        moons = boss_state.get('cross_phase2_moons')
+        if state in ('moon_intro', 'moon_attack', 'moon_cleanup'):
+            # プレイヤー被弾後も月レーザーを継続するためクリアしない
+            pass
+        starfield = boss_state.get('cross_phase3_starfield')
+        if starfield:
+            starfield.clear()
+        background = boss_state.get('cross_phase3_background')
+        if background:
+            background.clear()
+        boss_state['cross_phase3_overlay_alpha'] = 0
+        boss_state['cross_phase3_wave_clock'] = 0
+        boss_state['star_rain_active'] = False
 selected_level = 1  # 1..MAX_LEVEL を使用
 menu_mode = True
 level_cleared = [False]*7  # 0..6
@@ -81,20 +183,249 @@ from ui import draw_menu, draw_end_menu
 
 # --------- Utility: split ellipse drawing (for oval boss core opening) ---------
 def draw_split_ellipse(surface, center_x, center_y, radius, gap, color):
-    """Draw a vertical ellipse split into two half-ellipses separated by gap.
-    radius: width of original ellipse; height is radius*2 (existing design)."""
-    width = radius
-    height = radius * 2
-    surf = pygame.Surface((width, height), pygame.SRCALPHA)
-    pygame.draw.ellipse(surf, color, (0, 0, width, height))
+    """Draw a vertical ellipse that opens sideways by separating left/right halves."""
+    width = max(4, int(radius * 1.25))
+    height = max(6, int(radius * 2.0))
+    base = pygame.Surface((width, height), pygame.SRCALPHA)
+    pygame.draw.ellipse(base, color, (0, 0, width, height))
     half_w = width // 2
-    left_half = surf.subsurface((0, 0, half_w, height))
-    right_half = surf.subsurface((half_w, 0, width - half_w, height))
-    top = center_y - height // 2
-    left_x = center_x - width // 2 - gap // 2
-    right_x = center_x - width // 2 + half_w + gap // 2
-    surface.blit(left_half, (left_x, top))
-    surface.blit(right_half, (right_x, top))
+    left_half = base.subsurface((0, 0, half_w, height))
+    right_half = base.subsurface((half_w, 0, width - half_w, height))
+    gap_offset = max(0, gap // 2)
+    left_rect = left_half.get_rect(midright=(center_x - gap_offset, center_y))
+    right_rect = right_half.get_rect(midleft=(center_x + gap_offset, center_y))
+    surface.blit(left_half, left_rect)
+    surface.blit(right_half, right_rect)
+
+# --------- Staff roll & ending sequences ---------
+STAFF_ROLL_ENTRIES = [
+    ("ディレクター", "T.T"),
+    ("ゲームデザイン", "T.T"),
+    ("プログラミング", "No T.T"),
+    ("サウンド", "No T.T"),
+    ("グラフィック", "No T.T"),
+    ("Special Thanks", "T.T")
+]
+
+BOSS_PORTRAITS = [
+    {'shape': 'trapezoid', 'color': (255, 110, 110)},
+    {'shape': 'core_cluster', 'color': (150, 80, 200)},
+    {'shape': 'triple_oval', 'color': (255, 170, 80)},
+    {'shape': 'bounce', 'color': (255, 200, 80)},
+    {'shape': 'crescent', 'color': (200, 240, 255)},
+    {'shape': 'cross', 'color': (255, 90, 90)},
+    {'shape': 'rainbow_star', 'color': (255, 220, 120)}
+]
+
+def _draw_portrait_icon(surface, info):
+    w, h = surface.get_size()
+    cx, cy = w // 2, int(h * 0.44)
+    color = info.get('color', (255, 255, 255))
+    shape = info.get('shape', 'trapezoid')
+    if shape == 'trapezoid':
+        top_w = int(w * 0.45)
+        bottom_w = int(w * 0.75)
+        height = int(h * 0.5)
+        top_y = cy - height // 2
+        points = [
+            (cx - top_w // 2, top_y),
+            (cx + top_w // 2, top_y),
+            (cx + bottom_w // 2, top_y + height),
+            (cx - bottom_w // 2, top_y + height)
+        ]
+        pygame.draw.polygon(surface, color, points)
+    elif shape == 'orb_chain':
+        orb_r = max(6, int(min(w, h) * 0.18))
+        spacing = orb_r * 1.5
+        for i in range(-2, 3):
+            oy = cy + int(i * spacing)
+            pygame.draw.circle(surface, color, (cx, oy), orb_r)
+        core = pygame.Rect(0, 0, orb_r * 3, orb_r * 3)
+        core.center = (cx, cy)
+        pygame.draw.ellipse(surface, (255, 200, 255), core)
+    elif shape == 'core_cluster':
+        base = pygame.Rect(0, 0, int(w * 0.55), int(h * 0.55))
+        base.center = (cx, cy)
+        pygame.draw.rect(surface, color, base, border_radius=14)
+        small = max(8, int(min(w, h) * 0.18))
+        offsets = [(-small * 1.6, -small * 1.6), (small * 1.6, -small * 1.6),
+                   (-small * 1.6, small * 1.6), (small * 1.6, small * 1.6), (0, 0)]
+        for ox, oy in offsets:
+            rect = pygame.Rect(0, 0, small * 1.2, small * 1.2)
+            rect.center = (cx + int(ox), cy + int(oy))
+            pygame.draw.rect(surface, (200, 120, 240), rect, border_radius=6)
+    elif shape == 'triple_oval':
+        center_rect = pygame.Rect(0, 0, int(w * 0.38), int(h * 0.7))
+        center_rect.center = (cx, cy)
+        pygame.draw.ellipse(surface, (255, 160, 80), center_rect)
+        side_rect = center_rect.inflate(-center_rect.width * 0.35, -center_rect.height * 0.15)
+        side_rect.width = int(side_rect.width * 0.75)
+        side_rect.height = int(side_rect.height * 0.9)
+        left_rect = side_rect.copy(); left_rect.center = (cx - int(center_rect.width * 0.9), cy)
+        right_rect = side_rect.copy(); right_rect.center = (cx + int(center_rect.width * 0.9), cy)
+        for rect in (left_rect, right_rect):
+            pygame.draw.ellipse(surface, (90, 200, 120), rect)
+    elif shape == 'bounce':
+        radius = int(min(w, h) * 0.32)
+        pygame.draw.circle(surface, color, (cx, cy), radius)
+        mask = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
+        pygame.draw.circle(mask, (0, 0, 0, 0), (radius, radius), radius)
+        pygame.draw.circle(mask, (0, 0, 0, 255), (radius + radius // 2, radius), radius)
+        surface.blit(mask, (cx - radius, cy - radius), special_flags=pygame.BLEND_RGBA_SUB)
+    elif shape == 'cross':
+        arm_w = int(w * 0.2)
+        size = int(min(w, h) * 0.55)
+        vert = pygame.Rect(0, 0, arm_w, size)
+        vert.center = (cx, cy)
+        pygame.draw.rect(surface, color, vert)
+        horiz = pygame.Rect(0, 0, size, arm_w)
+        horiz.center = (cx, cy)
+        pygame.draw.rect(surface, color, horiz)
+    elif shape == 'rainbow_star':
+        size = int(min(w, h) * 0.9)
+        striped = pygame.Surface((size, size), pygame.SRCALPHA)
+        spectrum = [
+            (255, 80, 80),
+            (255, 150, 60),
+            (255, 220, 90),
+            (120, 240, 120),
+            (100, 190, 255),
+            (170, 120, 250)
+        ]
+        stripe_w = max(2, size // (len(spectrum) * 2))
+        x = 0
+        color_index = 0
+        while x < size:
+            col = spectrum[color_index % len(spectrum)]
+            pygame.draw.rect(striped, col, (x, 0, stripe_w, size))
+            x += stripe_w
+            color_index += 1
+        mask = pygame.Surface((size, size), pygame.SRCALPHA)
+        inner_radius = int(size * 0.25)
+        draw_star(mask, (size // 2, size // 2), size // 2, (255, 255, 255), inner_radius=inner_radius, rotation_deg=-90)
+        striped.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+        rect = striped.get_rect(center=(cx, cy))
+        surface.blit(striped, rect)
+        pts = []
+        rot = math.radians(-90)
+        outer_r = size // 2
+        inner_r = inner_radius
+        for i in range(10):
+            ang = rot + (math.pi / 5) * i
+            radius = outer_r if i % 2 == 0 else inner_r
+            px = rect.centerx + radius * math.cos(ang)
+            py = rect.centery + radius * math.sin(ang)
+            pts.append((px, py))
+        pygame.draw.lines(surface, (255, 255, 255), True, pts, 2)
+
+
+def render_boss_portraits(surface, alpha=255):
+    if not BOSS_PORTRAITS:
+        return
+    count = len(BOSS_PORTRAITS)
+    portrait_w = 90
+    portrait_h = 110
+    gap = 16
+    portraits_per_row = 4
+    row_gap = portrait_h + 30
+    for idx, info in enumerate(BOSS_PORTRAITS):
+        psurf = pygame.Surface((portrait_w, portrait_h), pygame.SRCALPHA)
+        _draw_portrait_icon(psurf, info)
+        psurf.set_alpha(alpha)
+        row = idx // portraits_per_row
+        col = idx % portraits_per_row
+        remaining = count - row * portraits_per_row
+        cols_this_row = min(remaining, portraits_per_row)
+        row_width = cols_this_row * portrait_w + gap * max(0, cols_this_row - 1)
+        start_x = int((WIDTH - row_width) / 2)
+        dest_x = start_x + col * (portrait_w + gap)
+        base_y = HEIGHT // 2 + 40 + row * row_gap
+        dest_y = base_y
+        surface.blit(psurf, (dest_x, dest_y))
+
+
+ENDING_SCENES = [
+    ("あなたはなんてものに", 200),
+    ("時間を費やしているんですか", 240),
+    ("これよりもやるべきものが", 220),
+    ("残っているだろうに", 220),
+    ("それはともかく", 210),
+    ("THANK YOU FOR PLAYING!", 300)
+]
+
+def _handle_common_events(skip_keys=None):
+    skip_keys = skip_keys or {pygame.K_SPACE, pygame.K_RETURN, pygame.K_z, pygame.K_x, pygame.K_ESCAPE}
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            sys.exit()
+        if event.type == pygame.KEYDOWN and event.key in skip_keys:
+            return True
+    return False
+
+def play_staff_roll():
+    clock = pygame.time.Clock()
+    title_font = jp_font(42)
+    role_font = jp_font(28)
+    name_font = jp_font(36)
+    title_surf = title_font.render("スタッフロール", True, (255, 255, 255))
+    entry_surfaces = []
+    for role, name in STAFF_ROLL_ENTRIES:
+        role_surf = role_font.render(role, True, (200, 200, 220))
+        name_surf = name_font.render(name, True, (255, 255, 255))
+        entry_surfaces.append((role_surf, name_surf))
+    spacing = 90
+    base_y = HEIGHT + 80
+    total_height = spacing * len(entry_surfaces) + 160
+    scroll_y = base_y
+    skip = False
+    while scroll_y > -total_height and not skip:
+        skip = _handle_common_events()
+        screen.fill(BLACK)
+        title_rect = title_surf.get_rect(center=(WIDTH // 2, int(scroll_y - 120)))
+        screen.blit(title_surf, title_rect)
+        for idx, (role_surf, name_surf) in enumerate(entry_surfaces):
+            y = scroll_y + idx * spacing
+            role_rect = role_surf.get_rect(center=(WIDTH // 2, int(y)))
+            name_rect = name_surf.get_rect(center=(WIDTH // 2, int(y + 36)))
+            screen.blit(role_surf, role_rect)
+            screen.blit(name_surf, name_rect)
+        scroll_y -= 1.6
+        present_frame()
+        clock.tick(60)
+    pygame.event.pump()
+
+def play_ending_sequence():
+    clock = pygame.time.Clock()
+    message_font = jp_font(40)
+    skip = False
+    for text, duration in ENDING_SCENES:
+        timer = 0
+        text_surface = message_font.render(text, True, (255, 255, 255))
+        while timer < duration and not skip:
+            skip = _handle_common_events()
+            screen.fill(BLACK)
+            if duration >= 120:
+                fade_frames = 60
+                if timer < fade_frames:
+                    alpha = int(255 * (timer / float(fade_frames)))
+                elif timer > duration - fade_frames:
+                    alpha = int(255 * max(0.0, (duration - timer) / float(fade_frames)))
+                else:
+                    alpha = 255
+            else:
+                alpha = 255
+            text_surface.set_alpha(alpha)
+            rect = text_surface.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+            screen.blit(text_surface, rect)
+            if text == "THANK YOU FOR PLAYING!":
+                render_boss_portraits(screen, alpha)
+            present_frame()
+            clock.tick(60)
+            timer += 1
+        if skip:
+            break
+    pygame.event.pump()
 
 # --------- Utility: draw 5-pointed star ---------
 def draw_star(surface, center, outer_radius, color, inner_radius=None, rotation_deg=-90):
@@ -114,6 +445,439 @@ def draw_star(surface, center, outer_radius, color, inner_radius=None, rotation_
         y = cy + r * math.sin(ang)
         pts.append((x, y))
     pygame.draw.polygon(surface, color, pts)
+
+
+def draw_player_ship(surface, rect, fill_color, outline_color):
+    """Render a simple ship silhouette for a player rectangle."""
+    nose = (rect.centerx, rect.top)
+    left = (rect.left, rect.bottom)
+    right = (rect.right, rect.bottom)
+    tail = (rect.centerx, rect.bottom - max(4, rect.height // 3))
+    points = (nose, left, tail, right)
+    pygame.draw.polygon(surface, fill_color, points)
+    pygame.draw.lines(surface, outline_color, True, points, 2)
+    engine = pygame.Rect(0, 0, max(4, rect.width // 3), max(4, rect.height // 3))
+    engine.center = (rect.centerx, rect.bottom - rect.height // 6)
+    pygame.draw.rect(surface, outline_color, engine, width=0)
+
+
+def _rgb(color):
+    if not color:
+        return (255, 255, 255)
+    if len(color) >= 3:
+        return int(color[0]), int(color[1]), int(color[2])
+    return (int(color[0]),) * 3
+
+
+def _tint(color, lighten=0.0):
+    base = _rgb(color)
+    if lighten <= 0:
+        return base
+    return tuple(min(255, int(c + (255 - c) * lighten)) for c in base)
+
+
+def _shade(color, factor=1.0):
+    base = _rgb(color)
+    return tuple(max(0, min(255, int(c * factor))) for c in base)
+
+
+def draw_bullet(surface, bullet):
+    rect = bullet.get('rect')
+    if not rect:
+        return
+    cx, cy = rect.center
+    color = bullet.get('color')
+    if color is None:
+        if bullet.get('reflect'):
+            color = BULLET_COLOR_REFLECT
+        else:
+            btype = bullet.get('type')
+            if btype == 'homing':
+                color = BULLET_COLOR_HOMING
+            elif btype == 'spread':
+                color = BULLET_COLOR_SPREAD
+            elif btype == 'normal':
+                color = BULLET_COLOR_NORMAL
+            else:
+                color = BULLET_COLOR_ENEMY
+    color = _rgb(color)
+    shape = bullet.get('shape')
+    if bullet.get('trail_ttl'):
+        glow_radius = max(rect.width, rect.height)
+        if glow_radius > 0:
+            glow_surface = pygame.Surface((glow_radius * 2, glow_radius * 2), pygame.SRCALPHA)
+            pygame.draw.circle(glow_surface, (*color, 90), (glow_radius, glow_radius), glow_radius)
+            surface.blit(glow_surface, glow_surface.get_rect(center=(int(cx), int(cy))))
+    if shape == 'star':
+        outer = max(6, int(max(rect.width, rect.height) * 0.6))
+        inner = max(3, int(outer * 0.5))
+        spin = (pygame.time.get_ticks() * 0.2) % 360
+        draw_star(surface, (cx, cy), outer, color, inner_radius=inner, rotation_deg=spin)
+        pygame.draw.circle(surface, _tint(color, 0.35), (int(cx), int(cy)), max(2, inner // 3))
+    elif shape == 'orb':
+        radius = max(rect.width, rect.height) // 2
+        radius = max(5, radius)
+        pygame.draw.circle(surface, color, (int(cx), int(cy)), radius)
+        highlight = _tint(color, 0.4)
+        pygame.draw.circle(surface, highlight, (int(cx + radius * 0.25), int(cy - radius * 0.25)), max(2, radius // 2))
+    else:
+        pygame.draw.rect(surface, color, rect)
+        if bullet.get('reflect'):
+            pygame.draw.rect(surface, _tint(color, 0.4), rect, 2)
+
+
+def draw_leaf_orb(surface, center, radius, angle_rad, base_color=(80, 255, 120)):
+    cx, cy = center
+    _ = angle_rad  # Provided for future orientation tweaks; orbit uses diagonal lock now
+    glow_radius = max(6, int(radius * 1.6))
+    if glow_radius > 0:
+        glow_surface = pygame.Surface((glow_radius * 2, glow_radius * 2), pygame.SRCALPHA)
+        pygame.draw.circle(glow_surface, (*_rgb(base_color), 70), (glow_radius, glow_radius), glow_radius)
+        surface.blit(glow_surface, glow_surface.get_rect(center=(int(cx), int(cy))))
+    length = max(6, int(radius * 2.8))
+    width = max(4, int(radius * 1.5))
+    leaf_surface = pygame.Surface((length, width), pygame.SRCALPHA)
+    main_rect = pygame.Rect(0, 0, length, width)
+    pygame.draw.ellipse(leaf_surface, _rgb(base_color), main_rect)
+    inner_rect = main_rect.inflate(-max(2, length // 4), -max(2, width // 3))
+    if inner_rect.width > 0 and inner_rect.height > 0:
+        pygame.draw.ellipse(leaf_surface, _tint(base_color, 0.25), inner_rect)
+    vein_color = _shade(base_color, 0.35)
+    pygame.draw.line(leaf_surface, vein_color, (length // 5, width // 2), (length - 4, width // 2), max(1, width // 7))
+    pygame.draw.line(leaf_surface, vein_color, (length // 2, width // 2), (int(length * 0.82), int(width * 0.32)), max(1, width // 12))
+    pygame.draw.line(leaf_surface, vein_color, (length // 2, width // 2), (int(length * 0.82), int(width * 0.68)), max(1, width // 12))
+    scaled = pygame.transform.smoothscale(leaf_surface, (max(2, int(length * 1.05)), max(2, int(width * 1.05))))
+    rotation = -45.0
+    rotated = pygame.transform.rotate(scaled, rotation)
+    surface.blit(rotated, rotated.get_rect(center=(int(cx), int(cy))))
+
+# 新・星降り弾幕フェーズ
+def update_star_rain_phase(boss_state, player_rect, bullets):
+    """大量の星が斜めに降ってくるフェーズ。Trueで終了。"""
+    if not boss_state:
+        return False
+    timer = boss_state.setdefault('star_rain_timer', 0)
+    phase_duration = 600
+    interval = max(1, boss_state.get('star_rain_interval', 8))
+    batch = max(1, boss_state.get('star_rain_batch', 12))
+    # 画面上部から斜めに星を降らせる
+    if timer % interval == 0:
+        fullscreen_mode = boss_state.get('cross_phase_mode') == 'fullscreen_starstorm'
+        for _ in range(batch):
+            x = random.randint(0, WIDTH)
+            if fullscreen_mode:
+                speed = random.uniform(3.8, 6.2)
+            else:
+                speed = random.uniform(6.5, 10.5)
+            angle = random.uniform(math.radians(70), math.radians(110))
+            vx = speed * math.cos(angle)
+            vy = speed * math.sin(angle)
+            size = random.randint(12, 20)
+            rect = pygame.Rect(int(x), -size, size, size)
+            bullets.append({
+                'rect': rect,
+                'type': 'enemy',
+                'vx': vx,
+                'vy': vy,
+                'power': 1.0,
+                'shape': 'star',
+                'color': (255, 230, 0),
+                'life': 420,
+            })
+    boss_state['star_rain_timer'] = timer + 1
+    # 終了条件
+    if timer > phase_duration:
+        boss_state['star_rain_timer'] = 0
+        return True
+    return False
+
+
+def distance_point_to_segment(px, py, ax, ay, bx, by):
+    vx = bx - ax
+    vy = by - ay
+    denom = vx * vx + vy * vy
+    if denom <= 1e-6:
+        dx = px - ax
+        dy = py - ay
+        return math.hypot(dx, dy), ax, ay
+    t = ((px - ax) * vx + (py - ay) * vy) / denom
+    t = max(0.0, min(1.0, t))
+    cx = ax + vx * t
+    cy = ay + vy * t
+    return math.hypot(px - cx, py - cy), cx, cy
+
+
+def build_rainbow_star_surface(outer_radius, color_sequence=None):
+    """Create a vibrant rainbow star surface centered on origin."""
+    outer_radius = max(outer_radius, 12)
+    size = int(outer_radius * 2) + 12
+    center = (size // 2, size // 2)
+
+    if color_sequence is None:
+        color_sequence = [
+            (255, 0, 0),        # red
+            (255, 127, 0),      # orange
+            (255, 255, 0),      # yellow
+            (0, 255, 0),        # green
+            (0, 0, 255),        # blue
+            (75, 0, 130),       # indigo
+            (148, 0, 211),      # violet
+        ]
+    else:
+        # Normalize provided colors to keep saturation high
+        normalized = []
+        for r, g, b in color_sequence:
+            h, s, v = colorsys.rgb_to_hsv(r / 255.0, g / 255.0, b / 255.0)
+            s = min(1.0, max(0.8, s * 1.1))
+            v = min(1.0, max(0.85, v * 1.05))
+            nr, ng, nb = colorsys.hsv_to_rgb(h, s, v)
+            normalized.append((int(nr * 255), int(ng * 255), int(nb * 255)))
+        color_sequence = normalized
+
+    # --- Build diagonally striped rainbow base ---
+    big_size = int(size * 1.8)
+    stripe_surface = pygame.Surface((big_size, big_size), pygame.SRCALPHA)
+    repeats_per_sequence = 12
+    stripe_width = max(2, int(math.ceil(big_size / max(1, len(color_sequence) * repeats_per_sequence))))
+    x = -big_size
+    color_index = 0
+    while x < big_size * 2:
+        rgb = color_sequence[color_index % len(color_sequence)]
+        rect = pygame.Rect(x, 0, stripe_width, big_size)
+        stripe_surface.fill((*rgb, 255), rect)
+        x += stripe_width
+        color_index += 1
+    rotated_stripes = pygame.transform.rotate(stripe_surface, -32)
+    rainbow_surface = pygame.Surface((size, size), pygame.SRCALPHA)
+    rainbow_surface.blit(rotated_stripes, rotated_stripes.get_rect(center=center))
+
+    # --- Mask stripes with star silhouette ---
+    mask = pygame.Surface((size, size), pygame.SRCALPHA)
+    draw_star(mask, center, outer_radius, (255, 255, 255, 255), inner_radius=outer_radius * 0.45)
+    rainbow_surface.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+    color_core = rainbow_surface.copy()
+
+    # --- Outline for crisp edges ---
+    outline = pygame.Surface((size, size), pygame.SRCALPHA)
+    pts = []
+    rot = math.radians(-90)
+    inner_r = outer_radius * 0.45
+    for i in range(10):
+        ang = rot + (math.pi / 5) * i
+        radius = outer_radius if i % 2 == 0 else inner_r
+        px = center[0] + radius * math.cos(ang)
+        py = center[1] + radius * math.sin(ang)
+        pts.append((px, py))
+    pygame.draw.polygon(outline, (30, 30, 30, 190), pts, width=max(2, int(outer_radius * 0.08)))
+    rainbow_surface.blit(outline, (0, 0))
+
+    # --- Inner highlights ---
+    inner_star = pygame.Surface((size, size), pygame.SRCALPHA)
+    draw_star(inner_star, center, outer_radius * 0.32, (255, 255, 255, 140), inner_radius=outer_radius * 0.14)
+    rainbow_surface.blit(inner_star, (0, 0))
+
+    # Soft glow derived from the colored star to avoid bleaching hues
+    blur_scale = max(8, int(size * 0.62))
+    glow = pygame.transform.smoothscale(color_core, (blur_scale, blur_scale))
+    glow = pygame.transform.smoothscale(glow, (size, size))
+    glow.set_alpha(120)
+    rainbow_surface.blit(glow, (0, 0))
+
+    return rainbow_surface
+
+
+def build_rainbow_disc_surface(radius, color_sequence=None):
+    """Create a vivid rainbow disc surface used during 赤バツボス phase2 transformation."""
+    radius = max(radius, 10)
+    size = int(radius * 2) + 12
+    center = (size // 2, size // 2)
+
+    if color_sequence is None:
+        color_sequence = [
+            (255, 0, 0),
+            (255, 127, 0),
+            (255, 255, 0),
+            (0, 255, 0),
+            (0, 0, 255),
+            (75, 0, 130),
+            (148, 0, 211),
+        ]
+
+    big_size = int(size * 1.6)
+    stripe_surface = pygame.Surface((big_size, big_size), pygame.SRCALPHA)
+    repeats_per_sequence = 10
+    stripe_width = max(2, int(math.ceil(big_size / max(1, len(color_sequence) * repeats_per_sequence))))
+    x = -big_size
+    color_index = 0
+    while x < big_size * 2:
+        rgb = color_sequence[color_index % len(color_sequence)]
+        rect = pygame.Rect(x, 0, stripe_width, big_size)
+        stripe_surface.fill((*rgb, 255), rect)
+        x += stripe_width
+        color_index += 1
+
+    rotated_stripes = pygame.transform.rotate(stripe_surface, -28)
+    disc_surface = pygame.Surface((size, size), pygame.SRCALPHA)
+    disc_surface.blit(rotated_stripes, rotated_stripes.get_rect(center=center))
+
+    mask = pygame.Surface((size, size), pygame.SRCALPHA)
+    pygame.draw.circle(mask, (255, 255, 255, 255), center, radius)
+    disc_surface.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+
+    outline_width = max(2, int(radius * 0.12))
+    pygame.draw.circle(disc_surface, (30, 30, 30, 200), center, radius, outline_width)
+
+    inner_radius = int(radius * 0.45)
+    glow_core = pygame.Surface((size, size), pygame.SRCALPHA)
+    pygame.draw.circle(glow_core, (255, 255, 255, 120), center, inner_radius)
+    disc_surface.blit(glow_core, (0, 0))
+
+    blur_scale = max(8, int(size * 0.5))
+    glow = pygame.transform.smoothscale(disc_surface, (blur_scale, blur_scale))
+    glow = pygame.transform.smoothscale(glow, (size, size))
+    glow.set_alpha(110)
+    disc_surface.blit(glow, (0, 0))
+
+    return disc_surface
+
+
+def build_rainbow_trapezoid_surface(width, height, color_sequence=None):
+    """Create a rainbow trapezoid surface reminiscent of Boss1's attack aura."""
+    width = max(40, int(width))
+    height = max(30, int(height))
+    top_width = int(width * 0.55)
+    base_width = width
+    size = (base_width + 20, height + 20)
+    surface = pygame.Surface(size, pygame.SRCALPHA)
+    cx, cy = size[0] // 2, size[1] // 2
+
+    if color_sequence is None:
+        color_sequence = [
+            (255, 0, 0),
+            (255, 120, 0),
+            (255, 230, 40),
+            (40, 220, 120),
+            (60, 140, 255),
+            (170, 70, 250)
+        ]
+
+    stripe_surface = pygame.Surface((size[0] * 2, size[1] * 2), pygame.SRCALPHA)
+    stripe_width = max(4, int(stripe_surface.get_width() / (len(color_sequence) * 10)))
+    x = -stripe_surface.get_width()
+    idx = 0
+    while x < stripe_surface.get_width() * 2:
+        color = color_sequence[idx % len(color_sequence)]
+        stripe_surface.fill((*color, 255), pygame.Rect(x, 0, stripe_width, stripe_surface.get_height()))
+        x += stripe_width
+        idx += 1
+
+    stripes = pygame.transform.rotate(stripe_surface, -18)
+    surface.blit(stripes, stripes.get_rect(center=(cx, cy)))
+
+    half_base = base_width / 2
+    half_top = top_width / 2
+    top_y = cy - height / 2
+    bottom_y = cy + height / 2
+    vertices = [
+        (cx - half_top, top_y),
+        (cx + half_top, top_y),
+        (cx + half_base, bottom_y),
+        (cx - half_base, bottom_y)
+    ]
+
+    mask = pygame.Surface(size, pygame.SRCALPHA)
+    pygame.draw.polygon(mask, (255, 255, 255, 255), vertices)
+    surface.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+
+    outline_width = max(2, int(height * 0.08))
+    pygame.draw.polygon(surface, (40, 40, 40, 200), vertices, width=outline_width)
+
+    inner = pygame.Surface(size, pygame.SRCALPHA)
+    inner_vertices = [
+        (cx - half_top * 0.8, top_y + height * 0.15),
+        (cx + half_top * 0.8, top_y + height * 0.15),
+        (cx + half_base * 0.78, bottom_y - height * 0.12),
+        (cx - half_base * 0.78, bottom_y - height * 0.12)
+    ]
+    pygame.draw.polygon(inner, (255, 255, 255, 120), inner_vertices)
+    surface.blit(inner, (0, 0))
+
+    glow = pygame.transform.smoothscale(surface, (int(size[0] * 0.45), int(size[1] * 0.45)))
+    glow = pygame.transform.smoothscale(glow, size)
+    glow.set_alpha(90)
+    surface.blit(glow, (0, 0))
+
+    return surface
+
+
+def build_rainbow_ellipse_surface(width, height, color_sequence=None):
+    width = max(40, int(width))
+    height = max(40, int(height))
+    surf = pygame.Surface((width + 20, height + 20), pygame.SRCALPHA)
+    cx = surf.get_width() // 2
+    cy = surf.get_height() // 2
+    if color_sequence is None:
+        color_sequence = [
+            (255, 90, 90),
+            (255, 170, 80),
+            (255, 250, 120),
+            (80, 255, 150),
+            (90, 180, 255),
+            (190, 90, 255)
+        ]
+    stripe = pygame.Surface((surf.get_width() * 2, surf.get_height() * 2), pygame.SRCALPHA)
+    stripe_w = max(4, int(stripe.get_width() / (len(color_sequence) * 9)))
+    x = -stripe.get_width()
+    idx = 0
+    while x < stripe.get_width() * 2:
+        color = color_sequence[idx % len(color_sequence)]
+        stripe.fill((*color, 255), pygame.Rect(x, 0, stripe_w, stripe.get_height()))
+        x += stripe_w
+        idx += 1
+    rotated = pygame.transform.rotate(stripe, -22)
+    surf.blit(rotated, rotated.get_rect(center=(cx, cy)))
+    mask = pygame.Surface(surf.get_size(), pygame.SRCALPHA)
+    rect = pygame.Rect(cx - width // 2, cy - height // 2, width, height)
+    pygame.draw.ellipse(mask, (255, 255, 255, 255), rect)
+    surf.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+    outline = max(2, int(min(width, height) * 0.08))
+    pygame.draw.ellipse(surf, (40, 40, 40, 210), rect, outline)
+    glow = pygame.transform.smoothscale(surf, (int(surf.get_width() * 0.45), int(surf.get_height() * 0.45)))
+    glow = pygame.transform.smoothscale(glow, surf.get_size())
+    glow.set_alpha(80)
+    surf.blit(glow, (0, 0))
+    return surf
+
+
+def build_orbit_moon_surface(radius, color=(255, 240, 200)):
+    radius = max(12, int(radius))
+    size = radius * 2 + 12
+    surf = pygame.Surface((size, size), pygame.SRCALPHA)
+    center = (size // 2, size // 2)
+    base_col = (225, 225, 215)
+    pygame.draw.circle(surf, base_col, center, radius)
+    shade = pygame.Surface((size, size), pygame.SRCALPHA)
+    pygame.draw.circle(shade, (40, 40, 40, 90), (center[0] - int(radius * 0.25), center[1] + int(radius * 0.2)), radius)
+    surf.blit(shade, (0, 0), special_flags=pygame.BLEND_RGBA_SUB)
+    glow = pygame.Surface((size, size), pygame.SRCALPHA)
+    pygame.draw.circle(glow, (255, 255, 255, 130), (center[0] + int(radius * 0.25), center[1] - int(radius * 0.3)), int(radius * 0.7))
+    surf.blit(glow, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
+    crater_layer = pygame.Surface((size, size), pygame.SRCALPHA)
+    crater_specs = [
+        (0.25, -0.15, 0.32, 180),
+        (-0.35, 0.25, 0.26, 160),
+        (0.05, 0.35, 0.18, 140),
+        (-0.12, -0.38, 0.22, 120)
+    ]
+    for ox, oy, scale, alpha in crater_specs:
+        cx = center[0] + int(radius * ox)
+        cy = center[1] + int(radius * oy)
+        r = max(2, int(radius * scale))
+        pygame.draw.circle(crater_layer, (150, 150, 150, alpha), (cx, cy), r)
+        inner = max(1, r - max(1, r // 3))
+        pygame.draw.circle(crater_layer, (230, 230, 230, alpha), (cx - int(r * 0.2), cy - int(r * 0.15)), inner)
+    surf.blit(crater_layer, (0, 0))
+    return surf
 
 clock = pygame.time.Clock()
 edge_move_flag = None
@@ -157,6 +921,7 @@ bullet_type = "normal"
 has_leaf_shield = False
 leaf_angle = 0.0
 has_spread = False
+has_dash = False
 boss_attack_timer = 0
 unlocked_homing = False
 unlocked_leaf_shield = False
@@ -167,10 +932,12 @@ reward_granted = False
 leaf_orb_positions = []
 frame_count = 0  # フレームカウンタ（ダッシュ二度押し判定などに使用）
 fire_cooldown = 0  # 連射クールダウン（フレーム）
+debug_infinite_hp = False
 while True:
     events = pygame.event.get()
     if menu_mode:
         draw_menu(screen, selected_level, level_cleared)
+        present_frame()
         for event in events:
             if event.type == pygame.QUIT:
                 pygame.quit(); sys.exit()
@@ -183,9 +950,27 @@ while True:
                     selected_level -= 1
                     if selected_level < 1:
                         selected_level = 6
+                if event.key == pygame.K_i:
+                    unlocked_homing = True
+                    unlocked_leaf_shield = True
+                    unlocked_spread = True
+                    unlocked_dash = True
+                    unlocked_hp_boost = True
+                    has_homing = True
+                    has_leaf_shield = True
+                    has_spread = True
+                    has_dash = True
+                    player_lives = max(player_lives, 5)
+                if event.key == pygame.K_h:
+                    debug_infinite_hp = not debug_infinite_hp
+                    if debug_infinite_hp:
+                        player_lives = max(player_lives, 5 if unlocked_hp_boost else 3)
                 if event.key == pygame.K_RETURN:
-                    boss_info = level_list[selected_level]["boss"]
+                    boss_template = level_list[selected_level]["boss"]
+                    boss_info = copy.deepcopy(boss_template) if boss_template else None
                     if boss_info:
+                        if is_fullscreen:
+                            set_display_mode(False)
                         # ヒントタイマー初期化（持ち越し防止）
                         controls_hint_timer = 0
                         controls_hint_mode = 'normal'
@@ -259,6 +1044,47 @@ while True:
                             boss_info['stomp_interval'] = 120
                             boss_info['last_stomp_frame'] = 0
                             boss_info['stomp_grace'] = 180
+                        if boss_info["name"] == "赤バツボス":
+                            boss_y = 140
+                            boss_info['cross_phase'] = 0.0
+                            boss_info['cross_angle'] = 0.0
+                            boss_info['cross_phase_speed'] = 0.015
+                            boss_info['cross_spin_speed'] = 0.05
+                            boss_info['cross_orbit'] = 80
+                            boss_info['cross_bob'] = 28
+                            boss_info['cross_base_y'] = boss_y
+                            boss_info['cross_falls'] = []
+                            boss_info['cross_attack_timer'] = 0
+                            boss_info['cross_attack_cooldown'] = 150
+                            boss_info['cross_wall_attack'] = None
+                            boss_info['cross_last_pattern'] = None
+                            boss_info['cross_transition_effects'] = []
+                            boss_info['cross_phase_mode'] = 'phase1'
+                            base_hp = boss_info.get('hp', 180)
+                            boss_info['cross_phase1_hp'] = base_hp
+                            boss_info['cross_phase2_hp'] = max(base_hp + 60, int(base_hp * 1.2))
+                            boss_info['cross_active_hp_max'] = base_hp
+                            boss_info['cross_transition_timer'] = 0
+                            boss_info['cross_phase2_intro_timer'] = 0
+                            boss_info['cross_blackout_alpha'] = 0
+                            boss_info['cross_phase2_started'] = False
+                            boss_info['cross_star_state'] = 'cross'
+                            boss_info['cross_star_progress'] = 0.0
+                            boss_info['cross_star_rotation'] = 0.0
+                            boss_info['cross_star_spin_speed'] = 1.6
+                            boss_info['cross_star_transition_speed'] = 0.02
+                            boss_info['cross_star_surface'] = None
+                            boss_info['cross_star_surface_radius'] = 0
+                            boss_info['cross_phase2_settings_applied'] = False
+                            boss_info['cross_phase3_triggered'] = False
+                            boss_info['cross_phase3_state'] = 'dormant'
+                            boss_info['cross_phase3_timer'] = 0
+                            boss_info['cross_phase3_starfield'] = []
+                            boss_info['cross_phase3_background'] = []
+                            boss_info['cross_phase3_overlay_alpha'] = 0
+                            boss_info['cross_phase3_invincible'] = False
+                            boss_info['star_rain_active'] = False
+                            boss_info['cross_phase2_fullscreen_done'] = False
                         if boss_info["name"] == "蛇":
                             boss_info['snake_stomp_state'] = 'idle'
                             boss_info['snake_stomp_timer'] = 0
@@ -339,6 +1165,8 @@ while True:
         continue
     # 早期リトライ処理（勝敗判定より先に完全初期化）
     if retry:
+        if is_fullscreen:
+            set_display_mode(False)
         # プレイヤー/一般状態
         # 残機は報酬アンロックで5に増加（デフォルト3）
         player_lives = 5 if unlocked_hp_boost else 3
@@ -358,7 +1186,11 @@ while True:
         player2 = None
         wasd_hint_timer = 0
         # ボス状態
-        boss_info = level_list[selected_level]["boss"] if 'level_list' in globals() else boss_info
+        if 'level_list' in globals():
+            boss_template = level_list[selected_level]["boss"]
+            boss_info = copy.deepcopy(boss_template) if boss_template else None
+        else:
+            boss_info = boss_info
         boss_radius = boss_info["radius"] if boss_info else boss_radius
         boss_color = boss_info["color"] if boss_info else boss_color
         boss_alive = True
@@ -376,6 +1208,7 @@ while True:
         # 楕円ボスのビーム/コア/角度は必ずリセット（リトライ時の持ち越し防止）
         if boss_info and boss_info.get('name') == '楕円ボス':
             boss_info['left_beam'] = None
+            boss_origin_y = boss_y
             boss_info['right_beam'] = None
             boss_info['beam_state'] = 'idle'
             boss_info['beam_timer'] = 0
@@ -414,6 +1247,40 @@ while True:
             boss_info['phase3_split'] = False
             boss_info['parts'] = []
             boss_info['const_segments'] = []
+        if boss_info and boss_info.get("name") == "赤バツボス":
+            boss_y = 140
+            boss_origin_y = boss_y
+            boss_info['cross_phase'] = 0.0
+            boss_info['cross_angle'] = 0.0
+            boss_info['cross_phase_speed'] = 0.015
+            boss_info['cross_spin_speed'] = 0.05
+            boss_info['cross_orbit'] = 80
+            boss_info['cross_bob'] = 28
+            boss_info['cross_base_y'] = boss_y
+            boss_info['cross_falls'] = []
+            boss_info['cross_attack_timer'] = 0
+            boss_info['cross_attack_cooldown'] = 150
+            boss_info['cross_wall_attack'] = None
+            boss_info['cross_last_pattern'] = None
+            boss_info['cross_transition_effects'] = []
+            boss_info['cross_phase_mode'] = 'phase1'
+            base_hp = boss_info.get('hp', 180)
+            boss_info['cross_phase1_hp'] = base_hp
+            boss_info['cross_phase2_hp'] = max(base_hp + 60, int(base_hp * 1.2))
+            boss_info['cross_active_hp_max'] = base_hp
+            boss_info['cross_transition_timer'] = 0
+            boss_info['cross_phase2_intro_timer'] = 0
+            boss_info['cross_blackout_alpha'] = 0
+            boss_info['cross_phase2_started'] = False
+            boss_info['cross_star_state'] = 'cross'
+            boss_info['cross_star_progress'] = 0.0
+            boss_info['cross_star_rotation'] = 0.0
+            boss_info['cross_star_spin_speed'] = 1.6
+            boss_info['cross_star_transition_speed'] = 0.02
+            boss_info['cross_star_surface'] = None
+            boss_info['cross_star_surface_radius'] = 0
+            boss_info['cross_phase2_settings_applied'] = False
+            boss_info['cross_phase2_fullscreen_done'] = False
         # ダッシュ状態を再初期化
         dash_state = {
             'cooldown': 0,
@@ -451,7 +1318,7 @@ while True:
         text = font.render("Press SPACE to start!", True, WHITE)
         text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
         screen.blit(text, text_rect)
-        pygame.display.flip()
+        present_frame()
         for event in events:
             if event.type == pygame.QUIT:
                 pygame.quit(); sys.exit()
@@ -470,6 +1337,21 @@ while True:
                 # 第三形態では2Pのヒントも開始
                 if boss_info and boss_info.get('name') == '三日月形ボス' and boss_info.get('phase',1) == 3:
                     wasd_hint_timer = CONTROLS_HINT_FRAMES
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_i:
+                    unlocked_homing = True
+                    unlocked_leaf_shield = True
+                    unlocked_spread = True
+                    unlocked_dash = True
+                    unlocked_hp_boost = True
+                    has_homing = True
+                    has_leaf_shield = True
+                    has_spread = True
+                    has_dash = True
+                    player_lives = max(player_lives, 5)
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_h:
+                    debug_infinite_hp = not debug_infinite_hp
+                    if debug_infinite_hp:
+                        player_lives = max(player_lives, 5 if unlocked_hp_boost else 3)
         continue
     if waiting_for_space:
         screen.fill(BLACK)
@@ -477,7 +1359,7 @@ while True:
         text = font.render("Press SPACE to start!", True, WHITE)
         text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
         screen.blit(text, text_rect)
-        pygame.display.flip()
+        present_frame()
         for event in events:
             if event.type == pygame.QUIT:
                 pygame.quit()
@@ -524,6 +1406,21 @@ while True:
             # ESC / Q で即終了
             if event.key == pygame.K_ESCAPE or event.key == pygame.K_q:
                 pygame.quit(); sys.exit()
+            if event.key == pygame.K_i:
+                unlocked_homing = True
+                unlocked_leaf_shield = True
+                unlocked_spread = True
+                unlocked_dash = True
+                unlocked_hp_boost = True
+                has_homing = True
+                has_leaf_shield = True
+                has_spread = True
+                has_dash = True
+                player_lives = max(player_lives, 5)
+            if event.key == pygame.K_h:
+                debug_infinite_hp = not debug_infinite_hp
+                if debug_infinite_hp:
+                    player_lives = max(player_lives, 5 if unlocked_hp_boost else 3)
             # 武器切替（V）
             if event.key == pygame.K_v:
                 available = ["normal"]
@@ -538,10 +1435,42 @@ while True:
                     bullet_type = available[0]
             # デバッグ: T でボス即撃破
             if event.key == pygame.K_t and boss_alive:
-                boss_hp = 0
-                boss_alive = False
-                boss_explosion_timer = 0
-                explosion_pos = (boss_x, boss_y)
+                if boss_info and boss_info.get('name') == '赤バツボス':
+                    cross_mode = boss_info.get('cross_phase_mode', 'phase1')
+                    if cross_mode == 'phase1':
+                        boss_info['cross_phase1_hp'] = 0
+                        boss_info['cross_phase_mode'] = 'transition_explosion'
+                        boss_info['cross_transition_timer'] = 0
+                        boss_info['cross_phase2_intro_timer'] = 0
+                        boss_info['cross_blackout_alpha'] = 0
+                        boss_info['cross_phase2_started'] = False
+                        boss_info['cross_phase2_settings_applied'] = False
+                        boss_info['cross_star_state'] = 'transition'
+                        boss_info['cross_star_progress'] = 0.0
+                        boss_info['cross_star_rotation'] = 0.0
+                        boss_info['cross_attack_timer'] = 0
+                        boss_info['cross_wall_attack'] = None
+                        boss_info['cross_falls'] = []
+                        boss_info['cross_last_pattern'] = None
+                        phase2_hp = boss_info.get('cross_phase2_hp')
+                        if not phase2_hp:
+                            phase2_hp = boss_info.get('hp', boss_hp)
+                        boss_info['cross_phase2_hp'] = phase2_hp
+                        boss_info['cross_active_hp_max'] = max(1, phase2_hp)
+                        boss_info['hp'] = phase2_hp
+                        boss_hp = phase2_hp
+                    else:
+                        boss_info['cross_phase2_hp'] = 0
+                        boss_info['hp'] = 0
+                        boss_hp = 0
+                        boss_alive = False
+                        boss_explosion_timer = 0
+                        explosion_pos = (boss_x, boss_y)
+                else:
+                    boss_hp = 0
+                    boss_alive = False
+                    boss_explosion_timer = 0
+                    explosion_pos = (boss_x, boss_y)
             # ダッシュ（左右キーの二度押し）: 反転中は左右を入れ替える
             if event.key == pygame.K_LEFT:
                 dir_key = 'right' if controls_inverted else 'left'
@@ -589,14 +1518,13 @@ while True:
                 half = max(1, boss_info.get('hline_thick', 26)//2)
                 # プレイヤー矩形と横帯の交差判定
                 if (y - half) <= player.bottom and (y + half) >= player.top:
-                    player_lives -= 1
+                    if not debug_infinite_hp:
+                        player_lives -= 1
                     player_invincible = True
                     player_invincible_timer = 0
                     explosion_timer = 0
                     explosion_pos = (player.centerx, player.centery)
-                    # プレイヤーを初期位置に戻す
-                    player.x = WIDTH//2 - 15
-                    player.y = HEIGHT - 40
+                    reset_boss_hazards_after_player_hit(boss_info)
         # 楕円ボス ビームの当たり判定（発射中のみ）
         if boss_info and boss_info.get('name') == '楕円ボス':
             for side in ('left','right'):
@@ -617,15 +1545,57 @@ while True:
                 dist2 = (px-cx)**2 + (py-cy)**2
                 thick = 14
                 if dist2 <= (thick//2 + max(player.width, player.height)//2)**2:
-                    player_lives -= 1
+                    if not debug_infinite_hp:
+                        player_lives -= 1
                     player_invincible = True
                     player_invincible_timer = 0
                     explosion_timer = 0
                     explosion_pos = (player.centerx, player.centery)
-                    player.x = WIDTH//2 - 15
-                    player.y = HEIGHT - 40
                     # ビームで被弾したフレームは他の衝突判定をスキップ（多重減少防止）
                     break
+        # 赤バツボスの落下パーツとの当たり判定
+        if boss_info and boss_info.get('name') == '赤バツボス':
+            for fall in list(boss_info.get('cross_falls', [])):
+                rect = fall.get('rect')
+                if rect:
+                    shrink_w = int(rect.width * 0.4)
+                    shrink_h = int(rect.height * 0.3)
+                    if shrink_w >= rect.width:
+                        shrink_w = rect.width - 2
+                    if shrink_h >= rect.height:
+                        shrink_h = rect.height - 2
+                    # 槍の当たり判定を視覚より小さくする
+                    hit_rect = rect.inflate(-shrink_w, -shrink_h) if rect.width > 2 and rect.height > 2 else rect
+                    if hit_rect.width <= 0 or hit_rect.height <= 0:
+                        hit_rect = rect
+                else:
+                    hit_rect = None
+                if hit_rect and hit_rect.colliderect(player):
+                    if not debug_infinite_hp:
+                        player_lives -= 1
+                    player_invincible = True
+                    player_invincible_timer = 0
+                    explosion_timer = 0
+                    explosion_pos = (player.centerx, player.centery)
+                    boss_info['cross_falls'].remove(fall)
+                    reset_boss_hazards_after_player_hit(boss_info)
+                    break
+            if not player_invincible:
+                wall_attack = boss_info.get('cross_wall_attack')
+                if wall_attack and wall_attack.get('state') in ('advance', 'hold', 'retract'):
+                    for spear in wall_attack.get('spears', []):
+                        rect = spear.get('rect')
+                        if rect and rect.colliderect(player):
+                            if not debug_infinite_hp:
+                                player_lives -= 1
+                            player_invincible = True
+                            player_invincible_timer = 0
+                            explosion_timer = 0
+                            explosion_pos = (player.centerx, player.centery)
+                            boss_info['cross_wall_attack'] = None
+                            reset_boss_hazards_after_player_hit(boss_info)
+                            break
+
         # 被弾後はこのフレームの他の衝突をスキップ
         if player_invincible:
             pass
@@ -634,14 +1604,13 @@ while True:
             for bullet in bullets:
                 if (bullet.get("reflect", False) or bullet.get("type") == "enemy") and not bullet.get('harmless'):
                     if player.colliderect(bullet["rect"]):
-                        player_lives -= 1
+                        if not debug_infinite_hp:
+                            player_lives -= 1
                         player_invincible = True
                         player_invincible_timer = 0
                         explosion_timer = 0
                         explosion_pos = (player.centerx, player.centery)
-                        # プレイヤーを初期位置に戻す
-                        player.x = WIDTH//2 - 15
-                        player.y = HEIGHT - 40
+                        reset_boss_hazards_after_player_hit(boss_info)
                         bullets.remove(bullet)
                         break
         # 第三形態: 2P への敵弾/反射弾の当たり判定（被弾していなければ）
@@ -649,7 +1618,8 @@ while True:
             for bullet in bullets:
                 if (bullet.get("reflect", False) or bullet.get("type") == "enemy") and not bullet.get('harmless'):
                     if player2.colliderect(bullet["rect"]):
-                        player_lives -= 1
+                        if not debug_infinite_hp:
+                            player_lives -= 1
                         player_invincible = True
                         player_invincible_timer = 0
                         explosion_timer = 0
@@ -657,6 +1627,7 @@ while True:
                         # 2Pも初期位置へ
                         player2.x = WIDTH//2 - 80
                         player2.y = HEIGHT - 40
+                        reset_boss_hazards_after_player_hit(boss_info)
                         bullets.remove(bullet)
                         break
         # 通常のボス接触判定（被弾していなければ）
@@ -664,14 +1635,13 @@ while True:
             dx = player.centerx - boss_x
             dy = player.centery - boss_y
             if dx*dx + dy*dy < (boss_radius + max(player.width, player.height)//2)**2:
-                player_lives -= 1
+                if not debug_infinite_hp:
+                    player_lives -= 1
                 player_invincible = True
                 player_invincible_timer = 0
                 explosion_timer = 0
                 explosion_pos = (player.centerx, player.centery)
-                # プレイヤーを初期位置に戻す
-                player.x = WIDTH//2 - 15
-                player.y = HEIGHT - 40
+                reset_boss_hazards_after_player_hit(boss_info)
 
         # 星座線分への接触（太線近傍）
     if not player_invincible and boss_info and boss_info.get('name') == '三日月形ボス':
@@ -690,13 +1660,13 @@ while True:
                     dist2 = (px-cx)**2 + (py-cy)**2
                     thick = max(3, s.get('thick', 6))
                     if dist2 <= (thick+6)**2:  # やや広めに
-                        player_lives -= 1
+                        if not debug_infinite_hp:
+                            player_lives -= 1
                         player_invincible = True
                         player_invincible_timer = 0
                         explosion_timer = 0
                         explosion_pos = (player.centerx, player.centery)
-                        player.x = WIDTH//2 - 15
-                        player.y = HEIGHT - 40
+                        reset_boss_hazards_after_player_hit(boss_info)
                         break
 
     # 無敵時間管理
@@ -725,6 +1695,8 @@ while True:
                 reward_text = "緊急回避(ダッシュ) 解放! ←← / →→ で瞬間移動&無敵"
             elif boss_info["name"] == "三日月形ボス":
                 reward_text = "体力増加! 次回から残機が5に"
+            elif boss_info["name"] == "赤バツボス":
+                reward_text = None
         # 報酬アンロック（セッション内持続）
         if result == "win" and boss_info:
             if boss_info["name"] == "Boss A":
@@ -737,6 +1709,8 @@ while True:
                 unlocked_dash = True
             elif boss_info["name"] == "三日月形ボス":
                 unlocked_hp_boost = True
+            elif boss_info["name"] == "赤バツボス":
+                pass
         # 星マーク
         if result == "win":
             level_cleared[selected_level] = True
@@ -781,12 +1755,17 @@ while True:
                     surf = font_reward.render(line, True, (0,255,0))
                     rect = surf.get_rect(center=(WIDTH//2, start_y + li*line_h))
                     screen.blit(surf, rect)
-            pygame.display.flip()
+            present_frame()
             pygame.time.wait(20)
         pygame.time.wait(1000)
+        if result == "win" and boss_info and boss_info.get('name') == '赤バツボス':
+            play_staff_roll()
+            play_ending_sequence()
+            pygame.event.clear()
         # 選択メニュー
         while True:
             draw_end_menu(screen, result, reward_text)
+            present_frame()
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
@@ -801,6 +1780,8 @@ while True:
                             explosion_pos = (boss_x, boss_y)
                     # メニューへ戻る（1 / テンキー1）
                     if event.key in (pygame.K_1, pygame.K_KP_1):
+                        if is_fullscreen:
+                            set_display_mode(False)
                         menu_mode = True
                         break
                     # リトライ（2 / テンキー2 / Enter / R）
@@ -817,144 +1798,15 @@ while True:
 
     # 描画
     screen.fill(BLACK)
-    # 爆発表示
-    if explosion_timer < EXPLOSION_DURATION and explosion_pos:
-        pygame.draw.circle(screen, RED, explosion_pos, 30)
-    # 分割演出は廃止（形態なし）
-    # プレイヤー（無敵時は半透明）
-    if not player_invincible or (player_invincible_timer//10)%2 == 0:
-        pygame.draw.rect(screen, WHITE, player)
-    if leaf_orb_positions:
-        for (ox, oy, rad) in leaf_orb_positions:
-            center = (int(ox), int(oy))
-            pygame.draw.circle(screen, (80, 255, 120), center, rad)
-            pygame.draw.circle(screen, (20, 120, 60), center, rad, 2)
-    # 2P描画なし（単体モード）
-    for bullet in bullets:
-        if bullet["type"] == "boss_beam":
-            continue
-        btype = bullet.get("type")
-        if bullet.get("reflect"):
-            color = BULLET_COLOR_REFLECT
-        elif btype == "normal":
-            color = BULLET_COLOR_NORMAL
-        elif btype == "homing":
-            color = BULLET_COLOR_HOMING
-        elif btype == "enemy":
-            color = BULLET_COLOR_ENEMY
-        elif btype == "spread":
-            color = BULLET_COLOR_SPREAD
-        else:
-            color = WHITE
-        # 三日月形ボス専用: 星形弾描画
-        if bullet.get('shape') == 'star':
-            star_color = bullet.get('color', color)
-            cx, cy = bullet["rect"].center
-            radius = max(bullet["rect"].width, bullet["rect"].height) // 2
-            draw_star(screen, (cx, cy), radius, star_color)
-        else:
-            pygame.draw.rect(screen, color, bullet["rect"])
+    if boss_info and boss_info.get('name') == '赤バツボス' and boss_alive:
+        cross_mode = boss_info.get('cross_phase_mode', 'phase1')
+        if cross_mode != 'phase1':
+            initial_hp = boss_info.get('initial_hp') or boss_info.setdefault('initial_hp', boss_hp)
+            threshold = 0.25 * initial_hp if initial_hp else 0
+            if threshold and boss_hp <= threshold:
+                update_star_rain_phase(boss_info, player, bullets)
 
-    # ステージ開始直後だけ自機の周囲に矢印ヒントを表示（L5: 三日月形ボス限定）
-    if (boss_alive and boss_info and boss_info.get("name") == "三日月形ボス") and controls_hint_timer > 0:
-        controls_hint_timer -= 1
-        # フェード用アルファ（イージングで少し滑らかに）
-        t = controls_hint_timer / float(CONTROLS_HINT_FRAMES)
-        alpha = max(0, min(220, int(220 * t)))
-        # 自機中心基準の小さな矢印（上下左右）
-        surf_w = player.width + 80
-        surf_h = player.height + 80
-        asurf = pygame.Surface((surf_w, surf_h), pygame.SRCALPHA)
-        cx, cy = surf_w // 2, surf_h // 2
-        base_gap = max(player.width, player.height) // 2 + 22
-        pulse = 3 * math.sin(pygame.time.get_ticks() * 0.02)
-        gap = base_gap + pulse
-        size = 10  # 三角矢印のサイズ
-        col = (255, 255, 255, alpha)
-        invert = (controls_hint_mode == 'invert')
-        # 逆矢印: 向きを反転
-        if not invert:
-            up = [(cx, cy - gap - size), (cx - size, cy - gap + size), (cx + size, cy - gap + size)]
-            dn = [(cx, cy + gap + size), (cx - size, cy + gap - size), (cx + size, cy + gap - size)]
-            lf = [(cx - gap - size, cy), (cx - gap + size, cy - size), (cx - gap + size, cy + size)]
-            rt = [(cx + gap + size, cy), (cx + gap - size, cy - size), (cx + gap - size, cy + size)]
-        else:
-            # 上下左右の向きを逆に
-            up = [(cx, cy + gap + size), (cx - size, cy + gap - size), (cx + size, cy + gap - size)]
-            dn = [(cx, cy - gap - size), (cx - size, cy - gap + size), (cx + size, cy - gap + size)]
-            lf = [(cx + gap + size, cy), (cx + gap - size, cy - size), (cx + gap - size, cy + size)]
-            rt = [(cx - gap - size, cy), (cx - gap + size, cy - size), (cx - gap + size, cy + size)]
-        for tri in (up, dn, lf, rt):
-            pygame.draw.polygon(asurf, col, tri)
-        screen.blit(asurf, (player.centerx - cx, player.centery - cy))
-
-    # 第三形態: WASD用ヒント（2Pの周囲にW/A/S/Dを対応方向に表示）
-    if (boss_alive and boss_info and boss_info.get('name') == '三日月形ボス' and boss_info.get('phase',1) == 3) and wasd_hint_timer > 0 and player2:
-        wasd_hint_timer -= 1
-        t2 = wasd_hint_timer / float(CONTROLS_HINT_FRAMES)
-        alpha2 = max(0, min(220, int(220 * t2)))
-        surf_w2 = player2.width + 100
-        surf_h2 = player2.height + 100
-        wsurf = pygame.Surface((surf_w2, surf_h2), pygame.SRCALPHA)
-        cx2, cy2 = surf_w2 // 2, surf_h2 // 2
-        base_gap2 = max(player2.width, player2.height) // 2 + 28
-        pulse2 = 3 * math.sin(pygame.time.get_ticks() * 0.02)
-        gap2 = base_gap2 + pulse2
-        col2 = (255, 255, 255, alpha2)
-        font2 = jp_font(16)
-        # 上W
-        w = font2.render('W', True, (255,255,255))
-        wsurf.blit(w, w.get_rect(center=(cx2, cy2 - gap2)))
-        # 下S
-        s = font2.render('S', True, (255,255,255))
-        wsurf.blit(s, s.get_rect(center=(cx2, cy2 + gap2)))
-        # 左A
-        a = font2.render('A', True, (255,255,255))
-        wsurf.blit(a, a.get_rect(center=(cx2 - gap2, cy2)))
-        # 右D
-        d = font2.render('D', True, (255,255,255))
-        wsurf.blit(d, d.get_rect(center=(cx2 + gap2, cy2)))
-        screen.blit(wsurf, (player2.centerx - cx2, player2.centery - cy2))
-
-    # 操作反転中はボス横に ⇔ を表示
-    if boss_alive and boss_info and boss_info.get('name') == '三日月形ボス' and controls_inverted:
-        sym_font = jp_font(28)
-        sym = sym_font.render("⇔", True, (200, 160, 255))
-        srect = sym.get_rect(midleft=(boss_x + boss_radius + 10, boss_y))
-        screen.blit(sym, srect)
-
-    # 三日月形ボスの星座線分（予告→有効）の描画
-    if boss_alive and boss_info and boss_info.get('name') == '三日月形ボス':
-        segs = boss_info.get('const_segments', [])
-        if segs:
-            # TTL を減衰しつつ描画
-            new_segs = []
-            for s in segs:
-                # 状態: tele(予告) -> active(有効)
-                state = s.get('state', 'active')
-                if state == 'tele':
-                    s['tele_ttl'] = s.get('tele_ttl', 30) - 1
-                    # 点滅（2フレームおき）で予告
-                    if (pygame.time.get_ticks() // 100) % 2 == 0:
-                        pygame.draw.line(screen, (220,200,255), s['a'], s['b'], s.get('thick', 6))
-                    # 端点の丸
-                    pygame.draw.circle(screen, (220,200,255), (int(s['a'][0]), int(s['a'][1])), max(2, s.get('thick',6)//2))
-                    pygame.draw.circle(screen, (220,200,255), (int(s['b'][0]), int(s['b'][1])), max(2, s.get('thick',6)//2))
-                    if s['tele_ttl'] <= 0:
-                        s['state'] = 'active'
-                        s['ttl'] = s.get('active_ttl', 180)
-                else:
-                    s['ttl'] = s.get('ttl', 180) - 1
-                    if s['ttl'] <= 0:
-                        continue
-                    a = s['a']; b = s['b']
-                    thick = max(2, int(s.get('thick', 6)))
-                    col = (180, 160, 255)
-                    pygame.draw.line(screen, col, a, b, thick)
-                    pygame.draw.circle(screen, col, (int(a[0]), int(a[1])), max(2, thick//2))
-                    pygame.draw.circle(screen, col, (int(b[0]), int(b[1])), max(2, thick//2))
-                new_segs.append(s)
-            boss_info['const_segments'] = new_segs
+    # 星座線分・ヒント演出撤去
 
     # 楕円ボス 新ビーム描画
     if boss_alive and boss_info and boss_info["name"] == "楕円ボス":
@@ -1054,6 +1906,241 @@ while True:
                 pygame.draw.ellipse(screen, boss_color, rect)
             else:
                 pygame.draw.circle(screen, boss_color, (int(boss_x), int(boss_y)), boss_radius)
+        elif boss_info and boss_info["name"] == "赤バツボス":
+            cross_mode = boss_info.get('cross_phase_mode', 'phase1')
+            star_state = boss_info.get('cross_star_state', 'cross')
+            progress = boss_info.get('cross_star_progress', 0.0)
+            eased = progress ** 0.6 if progress > 0 else 0.0
+            if star_state == 'star' or cross_mode in ('transition_explosion', 'transition_blackout', 'phase2_intro', 'phase2'):
+                eased = 1.0
+            cross_alpha = 255 if star_state == 'cross' and cross_mode == 'phase1' else int(max(0, min(255, 255 * (1.0 - eased))))
+            if cross_mode != 'phase1':
+                cross_alpha = 0
+            star_alpha = 0
+            if star_state == 'circle':
+                charge_ratio = max(0.0, min(1.0, boss_info.get('cross_phase2_charge_ratio', 1.0)))
+                star_alpha = int(max(120, min(255, 255 * charge_ratio)))
+            elif star_state == 'trapezoid':
+                charge_ratio = max(0.0, min(1.0, boss_info.get('cross_phase2_charge_ratio', 1.0)))
+                star_alpha = int(max(150, min(255, 235 * (0.6 + charge_ratio * 0.6))))
+            elif star_state in ('transition', 'star') or cross_mode != 'phase1':
+                star_alpha = 255 if cross_mode != 'phase1' else int(max(0, min(255, 255 * eased)))
+
+            size = boss_radius * 2 + 40
+            surf = pygame.Surface((size, size), pygame.SRCALPHA)
+            center = size // 2
+            arm = boss_radius + 10
+            thickness = max(12, boss_radius // 3)
+            color = boss_color
+            pygame.draw.line(surf, color, (center - arm, center - arm), (center + arm, center + arm), thickness)
+            pygame.draw.line(surf, color, (center - arm, center + arm), (center + arm, center - arm), thickness)
+            pygame.draw.circle(surf, (255, 180, 180, 180), (center, center), thickness//2)
+            angle_deg = math.degrees(boss_info.get('cross_angle', 0.0)) % 360
+            if cross_alpha > 0:
+                rotated_cross = pygame.transform.rotate(surf, angle_deg)
+                cross_rect = rotated_cross.get_rect(center=(int(boss_x), int(boss_y)))
+                if cross_alpha < 255:
+                    rotated_cross.set_alpha(cross_alpha)
+                screen.blit(rotated_cross, cross_rect)
+
+            squish_rendered = False
+            squish = boss_info.get('cross_phase2_bounce_squish')
+            if squish and boss_info.get('cross_phase2_state') == 'bounce' and star_state == 'circle' and star_alpha > 0:
+                timer = squish.get('timer', 0)
+                duration = max(1, squish.get('duration', 16))
+                axis = squish.get('axis', 'both')
+                ratio = max(0.0, min(1.0, 1.0 - (timer / float(duration))))
+                base_radius = boss_info.get('cross_phase2_disc_radius') or (boss_radius + 24)
+                disc_surface = boss_info.get('cross_phase2_disc_surface')
+                if disc_surface is None or disc_surface.get_width() <= 0 or disc_surface.get_height() <= 0:
+                    disc_surface = build_rainbow_disc_surface(base_radius)
+                    boss_info['cross_phase2_disc_surface'] = disc_surface
+                    boss_info['cross_phase2_disc_radius'] = base_radius
+                if disc_surface:
+                    width, height = disc_surface.get_size()
+                    if axis == 'x':
+                        stretch_x = 1.0 + (1.0 - ratio) * 0.45
+                        stretch_y = 0.55 + 0.45 * ratio
+                    elif axis == 'y':
+                        stretch_x = 0.55 + 0.45 * ratio
+                        stretch_y = 1.0 + (1.0 - ratio) * 0.45
+                    else:
+                        stretch_x = 0.85 + 0.15 * ratio
+                        stretch_y = 0.85 + 0.15 * ratio
+                    scaled_w = max(8, int(width * stretch_x))
+                    scaled_h = max(8, int(height * stretch_y))
+                    scaled_surface = pygame.transform.smoothscale(disc_surface, (scaled_w, scaled_h))
+                    spin = boss_info.get('cross_phase2_disc_spin', 0.0)
+                    rotated = pygame.transform.rotate(scaled_surface, spin)
+                    if star_alpha < 255:
+                        rotated.set_alpha(star_alpha)
+                    rect = rotated.get_rect(center=(int(boss_x), int(boss_y)))
+                    screen.blit(rotated, rect)
+                    squish_rendered = True
+
+            if star_alpha > 0 and not squish_rendered:
+                render_surface = None
+                if star_state in ('circle', 'ellipse'):
+                    base_radius = boss_info.get('cross_phase2_disc_radius') or (boss_radius + 24)
+                    disc_surface = boss_info.get('cross_phase2_disc_surface')
+                    if disc_surface is None or disc_surface.get_width() <= 0 or disc_surface.get_height() <= 0:
+                        disc_surface = build_rainbow_disc_surface(base_radius)
+                        boss_info['cross_phase2_disc_surface'] = disc_surface
+                        boss_info['cross_phase2_disc_radius'] = base_radius
+                    if disc_surface:
+                        if star_state == 'ellipse':
+                            scale = boss_info.get('cross_phase2_ellipse_scale')
+                            if not scale or scale[0] >= scale[1]:
+                                scale = (0.75, 1.3)
+                                boss_info['cross_phase2_ellipse_scale'] = scale
+                            width = max(4, int(disc_surface.get_width() * scale[0]))
+                            height = max(4, int(disc_surface.get_height() * scale[1]))
+                            render_surface = pygame.transform.smoothscale(disc_surface, (width, height))
+                        else:
+                            render_surface = disc_surface
+                elif star_state == 'trapezoid':
+                    dims = boss_info.get('cross_phase2_trapezoid_dims')
+                    if not dims:
+                        dims = (boss_radius * 2 + 60, boss_radius + 80)
+                        boss_info['cross_phase2_trapezoid_dims'] = dims
+                    trap_surface = boss_info.get('cross_phase2_trapezoid_surface')
+                    if trap_surface is None or trap_surface.get_width() <= 0 or trap_surface.get_height() <= 0:
+                        trap_surface = build_rainbow_trapezoid_surface(*dims)
+                        boss_info['cross_phase2_trapezoid_surface'] = trap_surface
+                    render_surface = trap_surface
+                else:
+                    base_radius = boss_info.get('cross_phase2_star_radius_cached') or (boss_radius + 40)
+                    star_surface = boss_info.get('cross_phase2_star_surface')
+                    cached_radius = boss_info.get('cross_phase2_star_radius_cached')
+                    if star_surface is None or cached_radius != base_radius or star_surface.get_width() <= 0 or star_surface.get_height() <= 0:
+                        star_surface = build_rainbow_star_surface(base_radius)
+                        boss_info['cross_phase2_star_surface'] = star_surface
+                        boss_info['cross_phase2_star_radius_cached'] = base_radius
+                    render_surface = star_surface
+
+                if render_surface:
+                    if star_state in ('star', 'transition'):
+                        rotation = boss_info.get('cross_star_rotation', 0.0)
+                        render_surface = pygame.transform.rotate(render_surface, rotation)
+                    if star_alpha < 255:
+                        temp_surface = render_surface.copy()
+                        temp_surface.set_alpha(star_alpha)
+                        render_surface = temp_surface
+                    rect = render_surface.get_rect(center=(int(boss_x), int(boss_y)))
+                    screen.blit(render_surface, rect)
+
+            moon_beams = boss_info.get('cross_phase2_moon_beams', [])
+            if moon_beams:
+                for beam in moon_beams:
+                    origin = beam.get('origin')
+                    target = beam.get('target')
+                    if not origin or not target:
+                        continue
+                    ox, oy = origin
+                    tx, ty = target
+                    state = beam.get('state')
+                    width = beam.get('width', 10)
+                    if state == 'warning':
+                        color = (255, 160, 120)
+                        line_w = max(2, width // 4)
+                    elif state == 'telegraph':
+                        color = (255, 230, 150)
+                        line_w = max(2, width // 3)
+                    else:
+                        color = (170, 230, 255)
+                        line_w = max(4, width)
+                    pygame.draw.line(screen, color, (int(ox), int(oy)), (int(tx), int(ty)), line_w)
+                    if state == 'warning':
+                        pulse = 0.5 + 0.5 * math.sin(pygame.time.get_ticks() / 70.0)
+                        warn_tip = pygame.Surface((line_w * 4, line_w * 4), pygame.SRCALPHA)
+                        pygame.draw.circle(warn_tip, (255, 200, 160, int(140 * pulse)), (line_w * 2, line_w * 2), max(2, line_w))
+                        warn_tip_rect = warn_tip.get_rect(center=(int(tx), int(ty)))
+                        screen.blit(warn_tip, warn_tip_rect)
+                    elif state == 'firing':
+                        tip = (int(tx), int(ty))
+                        pygame.draw.circle(screen, (255, 255, 255), tip, max(3, line_w // 2))
+            moons = boss_info.get('cross_phase2_moons', [])
+            if moons:
+                base_surface = None
+                cached_radius = boss_info.get('cross_phase2_moon_surface_radius')
+                if cached_radius != moons[0].get('radius', 18) or boss_info.get('cross_phase2_moon_surface') is None:
+                    base_surface = build_orbit_moon_surface(moons[0].get('radius', 18))
+                    boss_info['cross_phase2_moon_surface'] = base_surface
+                    boss_info['cross_phase2_moon_surface_radius'] = moons[0].get('radius', 18)
+                else:
+                    base_surface = boss_info.get('cross_phase2_moon_surface')
+                for moon in moons:
+                    mx = moon.get('x', boss_x)
+                    my = moon.get('y', boss_y)
+                    radius = moon.get('radius', 18)
+                    if base_surface and radius != boss_info.get('cross_phase2_moon_surface_radius'):
+                        base_surface = build_orbit_moon_surface(radius)
+                        boss_info['cross_phase2_moon_surface'] = base_surface
+                        boss_info['cross_phase2_moon_surface_radius'] = radius
+                    surface = boss_info.get('cross_phase2_moon_surface')
+                    if not surface:
+                        continue
+                    angle = math.degrees(math.atan2(my - boss_y, mx - boss_x)) - 90
+                    rotated = pygame.transform.rotate(surface, angle)
+                    rect = rotated.get_rect(center=(int(mx), int(my)))
+                    screen.blit(rotated, rect)
+
+            if cross_mode in ('phase1', 'phase2'):
+                for fall in boss_info.get('cross_falls', []):
+                    fall_rect = fall.get('rect')
+                    fall_surface = fall.get('surface')
+                    if fall_surface is not None and fall_rect is not None:
+                        screen.blit(fall_surface, fall_rect)
+                wall_attack = boss_info.get('cross_wall_attack')
+                if wall_attack:
+                    state = wall_attack.get('state')
+                    tele_surface = None
+                    if state == 'telegraph':
+                        tele_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+                        lane_sample = {}
+                        for spear in wall_attack.get('spears', []):
+                            lane = spear.get('lane')
+                            if lane not in lane_sample:
+                                lane_sample[lane] = spear
+                        for spear in lane_sample.values():
+                            base_color = (255, 110, 110, 120)
+                            surface_ref = spear.get('surface')
+                            surf_height = surface_ref.get_height() if surface_ref else (spear.get('rect').height if spear.get('rect') else 0)
+                            if surf_height <= 0:
+                                continue
+                            top = int(spear['y'] - surf_height / 2)
+                            left_rect = pygame.Rect(0, top, 70, surf_height)
+                            right_rect = pygame.Rect(WIDTH - 70, top, 70, surf_height)
+                            tele_surface.fill(base_color, left_rect)
+                            tele_surface.fill(base_color, right_rect)
+                    if state in ('advance', 'hold', 'retract'):
+                        for spear in wall_attack.get('spears', []):
+                            rect_spear = spear.get('rect')
+                            surf_spear = spear.get('surface')
+                            if rect_spear and surf_spear:
+                                screen.blit(surf_spear, rect_spear)
+                    else:
+                        for spear in wall_attack.get('spears', []):
+                            rect_spear = spear.get('rect')
+                            surf_spear = spear.get('surface')
+                            if rect_spear and surf_spear:
+                                screen.blit(surf_spear, rect_spear)
+                    if tele_surface is not None:
+                        screen.blit(tele_surface, (0, 0))
+
+            for fx in boss_info.get('cross_transition_effects', []):
+                ttl = fx.get('ttl', 0)
+                max_ttl = max(1, fx.get('max_ttl', ttl if ttl > 0 else 1))
+                ratio = max(0.0, min(1.0, ttl / max_ttl))
+                alpha = int(255 * ratio)
+                radius = int(max(6, fx.get('radius', 14)))
+                if alpha <= 0 or radius <= 0:
+                    continue
+                effect_surface = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
+                pygame.draw.circle(effect_surface, (255, 210, 120, alpha), (radius, radius), radius)
+                pygame.draw.circle(effect_surface, (255, 255, 255, min(255, alpha + 40)), (radius, radius), max(2, radius // 3), 2)
+                effect_rect = effect_surface.get_rect(center=(int(fx.get('x', boss_x)), int(fx.get('y', boss_y))))
+                screen.blit(effect_surface, effect_rect)
         elif boss_info and boss_info["name"] == "三日月形ボス":
             # 単体三日月描画
             outer_r = boss_radius
@@ -1069,6 +2156,7 @@ while True:
         # 小爆発は一瞬だけ表示
         if boss_explosion_pos:
             boss_explosion_pos = []
+    # ブラックアウト演出撤去
     # デバッグヒント表示
     # デバッグヒント(削除済み)
     # ボス撃破後の派手な爆発
@@ -1080,6 +2168,23 @@ while True:
             pygame.draw.circle(screen, (255, 100, 0), (x, y), 40)
         pygame.draw.circle(screen, (255,255,0), (boss_x, boss_y), 60)
     # クリア表示の重複ルートは削除（上のエンドメニューで統一）
+
+    # 弾描画
+    for bullet in bullets:
+        draw_bullet(screen, bullet)
+
+    # プレイヤー・シールド描画（無敵時は点滅）
+    dash_inv_timer = dash_state.get('invincible_timer', 0) if 'dash_state' in globals() else 0
+    should_draw_primary = True
+    if player_invincible and dash_inv_timer <= 0:
+        should_draw_primary = (player_invincible_timer // 6) % 2 == 0
+    if should_draw_primary:
+        draw_player_ship(screen, player, WHITE, (40, 40, 40))
+    if player2:
+        draw_player_ship(screen, player2, BULLET_COLOR_HOMING, (30, 60, 90))
+    if leaf_orb_positions:
+        for orb in leaf_orb_positions:
+            draw_leaf_orb(screen, (orb['x'], orb['y']), orb['radius'], orb.get('angle', 0.0))
 
     # 残機表示（画面右下）
     font = jp_font(26)
@@ -1154,7 +2259,7 @@ while True:
         if dash_active:
             pygame.draw.circle(screen, (0,255,255), (cx, cy), radius+2, 2)
 
-    pygame.display.flip()
+    present_frame()
     clock.tick(60)
 
     # ウィンドウ ワープ/シェイク更新（ワープ優先）
@@ -1231,7 +2336,7 @@ while True:
         text = font.render("Press SPACE to start!", True, WHITE)
         text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
         screen.blit(text, text_rect)
-        pygame.display.flip()
+        present_frame()
         for event in events:
             if event.type == pygame.QUIT:
                 pygame.quit()
@@ -1419,16 +2524,22 @@ while True:
             ang = leaf_angle + (2*math.pi * i / orb_count)
             ox = player.centerx + shield_radius * math.cos(ang)
             oy = player.centery + shield_radius * math.sin(ang)
-            active_leaf_orbs.append((ox, oy, orb_radius))
+            active_leaf_orbs.append({'x': ox, 'y': oy, 'radius': orb_radius, 'angle': ang})
         # 敵弾をブロック
         filtered_bullets = []
         for b in bullets:
             is_enemy_like = (b.get('type') == 'enemy') or b.get('reflect', False) or b.get('subtype') in ('crescent','mini_hito')
             if is_enemy_like:
-                bx, by = b['rect'].center
+                rect = b.get('rect')
+                if not rect:
+                    filtered_bullets.append(b)
+                    continue
+                bx, by = rect.center
                 blocked = False
-                for (ox, oy, rad) in active_leaf_orbs:
-                    if (bx - ox)**2 + (by - oy)**2 <= (rad + max(b['rect'].width, b['rect'].height)/2)**2:
+                for orb in active_leaf_orbs:
+                    ox, oy, rad = orb['x'], orb['y'], orb['radius']
+                    enclosing = rad + max(rect.width, rect.height) / 2
+                    if (bx - ox)**2 + (by - oy)**2 <= enclosing * enclosing:
                         blocked = True
                         break
                 if blocked:
@@ -1490,6 +2601,7 @@ while True:
                     if (bullet["rect"].centerx - cx)**2 + (bullet["rect"].centery - cy)**2 < OVAL_CORE_RADIUS**2:
                         boss_hp -= bullet.get("power", 1.0)
                         boss_explosion_pos.append((bullet["rect"].centerx, bullet["rect"].centery))
+                        play_enemy_hit()
                         # 第二形態移行判定
                         if boss_info and boss_info.get('name') == '三日月形ボス' and boss_info.get('phase',1) == 1 and boss_hp <= boss_info.get('phase2_hp', 20):
                             boss_info['phase'] = 2
@@ -1565,6 +2677,7 @@ while True:
                         if inside_central(bx, by) or inside_side(bx, by):
                             boss_hp -= bullet.get("power", 1.0)
                             boss_explosion_pos.append((bx, by))
+                            play_enemy_hit()
                             if boss_hp <= 0:
                                 boss_alive = False
                                 boss_explosion_timer = 0
@@ -1580,6 +2693,7 @@ while True:
                                 bullet["type"] = "normal"
                             bullet["vy"] = abs(bullet.get("vy", -7))
                             bullet["vx"] = random.randint(-3, 3)
+                            play_reflect()
                 if not damage:
                     cleaned_bullets.append(bullet)
                 continue
@@ -1589,6 +2703,7 @@ while True:
                 if main_rect.colliderect(bullet["rect"]):
                     boss_hp -= bullet.get("power", 1.0)
                     boss_explosion_pos.append((bullet["rect"].centerx, bullet["rect"].centery))
+                    play_enemy_hit()
                     if boss_hp <= 0:
                         boss_alive = False
                         boss_explosion_timer = 0
@@ -1609,7 +2724,79 @@ while True:
                                 bullet["type"] = "normal"
                             bullet["vy"] = abs(bullet.get("vy", -7))
                             bullet["vx"] = random.randint(-3, 3)
+                            play_reflect()
                             break
+                if not damage:
+                    cleaned_bullets.append(bullet)
+                continue
+            if boss_info["name"] == "赤バツボス":
+                bx = bullet["rect"].centerx
+                by = bullet["rect"].centery
+                dx = bx - boss_x
+                dy = by - boss_y
+                if dx * dx + dy * dy < boss_radius * boss_radius:
+                    cross_mode = boss_info.get('cross_phase_mode', 'phase1')
+                    if cross_mode in ('transition_explosion', 'transition_blackout', 'phase2_intro'):
+                        cleaned_bullets.append(bullet)
+                        continue
+                    if cross_mode == 'phase1':
+                        current_hp = boss_info.get('cross_phase1_hp', boss_info.get('hp', 180))
+                        boss_info['cross_phase1_hp'] = max(0, current_hp - bullet.get("power", 1.0))
+                        boss_hp = boss_info['cross_phase1_hp']
+                        boss_explosion_pos.append((bx, by))
+                        play_enemy_hit()
+                        if boss_hp <= 0:
+                            boss_info['cross_phase_mode'] = 'transition_explosion'
+                            boss_info['cross_transition_timer'] = 0
+                            boss_info['cross_phase2_intro_timer'] = 0
+                            boss_info['cross_blackout_alpha'] = 0
+                            boss_info['cross_phase2_started'] = False
+                            boss_info['cross_phase2_settings_applied'] = False
+                            boss_info['cross_star_state'] = 'transition'
+                            boss_info['cross_star_progress'] = 0.0
+                            boss_info['cross_star_rotation'] = 0.0
+                            boss_info['cross_attack_timer'] = 0
+                            boss_info['cross_wall_attack'] = None
+                            boss_info['cross_falls'] = []
+                            boss_info['cross_last_pattern'] = None
+                            boss_info['cross_active_hp_max'] = boss_info.get('cross_phase2_hp', current_hp)
+                            boss_info['cross_phase2_hp'] = boss_info.get('cross_phase2_hp', current_hp)
+                            boss_info['hp'] = boss_info['cross_phase2_hp']
+                            boss_hp = boss_info['cross_phase2_hp']
+                    elif cross_mode in ('phase2', 'phase2_intro', 'fullscreen_starstorm'):
+                        if boss_info.get('cross_phase2_reflect', False):
+                            bullet['reflect'] = True
+                            if bullet.get('type') == 'homing':
+                                bullet['type'] = 'normal'
+                            speed_now = math.hypot(bullet.get('vx', 0.0), bullet.get('vy', -6.0))
+                            speed_now = max(3.2, speed_now)
+                            aim_ang = math.atan2(player.centery - boss_y, player.centerx - boss_x)
+                            aim_ang += math.radians(random.uniform(-14, 14))
+                            bullet['vx'] = speed_now * math.cos(aim_ang)
+                            bullet['vy'] = speed_now * math.sin(aim_ang)
+                            if bullet['vy'] <= 0:
+                                bullet['vy'] = abs(bullet['vy']) + 0.6
+                            play_reflect()
+                            cleaned_bullets.append(bullet)
+                            continue
+                        phase2_hp = boss_info.get('cross_phase2_hp', boss_info.get('hp', 240))
+                        phase2_hp = max(0, phase2_hp - bullet.get("power", 1.0))
+                        boss_info['cross_phase2_hp'] = phase2_hp
+                        boss_hp = phase2_hp
+                        boss_info['hp'] = phase2_hp
+                        if not boss_info.get('cross_phase2_fullscreen_done', False) and boss_info.get('cross_phase_mode') == 'phase2':
+                            active_max = boss_info.get('cross_active_hp_max') or 0
+                            if active_max and phase2_hp > 0 and phase2_hp <= active_max * 0.25:
+                                if not is_fullscreen:
+                                    set_display_mode(True)
+                                boss_info['cross_phase2_fullscreen_done'] = True
+                        boss_explosion_pos.append((bx, by))
+                        play_enemy_hit()
+                        if boss_hp <= 0:
+                            boss_alive = False
+                            boss_explosion_timer = 0
+                            explosion_pos = (boss_x, boss_y)
+                    damage = True
                 if not damage:
                     cleaned_bullets.append(bullet)
                 continue
@@ -1636,6 +2823,7 @@ while True:
                                 # 内円内でもホーミング弾はダメージを与える
                                 p['hp'] = p.get('hp', 5) - bullet.get('power', 1.0)
                                 boss_explosion_pos.append((bx, by))
+                                play_enemy_hit()
                                 any_hit = True
                                 if p['hp'] <= 0:
                                     p['alive'] = False
@@ -1658,6 +2846,7 @@ while True:
                             # 内円内でもホーミング弾はダメージを与える
                             boss_hp -= bullet.get("power", 1.0)
                             boss_explosion_pos.append((bx, by))
+                            play_enemy_hit()
                             # 形態遷移は廃止（ダメージ処理のみ）
                             if boss_hp <= 0:
                                 boss_alive = False
@@ -1671,6 +2860,7 @@ while True:
                     if r2 < boss_radius*boss_radius:
                         boss_hp -= bullet.get("power", 1.0)
                         boss_explosion_pos.append((bx, by))
+                        play_enemy_hit()
                         if boss_hp <= 0:
                             boss_alive = False
                             boss_explosion_timer = 0
@@ -1971,13 +3161,17 @@ while True:
                             for i in range(5):
                                 ang = base + 2*math.pi*i/5
                                 vx = speed*math.cos(ang); vy = speed*math.sin(ang)
-                                bullets.append({'rect': pygame.Rect(int(org['x']-6), int(org['y']-6), 12, 12),
-                                                'type':'enemy','vx':vx,'vy':vy,'power':1.0,'life':360,
-                                                'fx': float(org['x']-6), 'fy': float(org['y']-6),
-                                                'shape':'star','color': (255,230,0), 'trail_ttl': 10})
-                    if t > 28:
-                        bi['patt_state']='idle'; bi['patt_timer']=0; bi['patt_cd']=50; bi['last_patt']=ch
-
+                                bullets.append({
+                                    'rect': pygame.Rect(int(org['x']-6), int(org['y']-6), 12, 12),
+                                    'type': 'enemy',
+                                    'vx': vx,
+                                    'vy': vy,
+                                    'power': 1.0,
+                                    'life': 360,
+                                    'shape': 'star',
+                                    'color': (255, 230, 0),
+                                    'trail_ttl': 12
+                                })
                 # 2) 回転スターフィールド（軌道→解放）
                 elif ch == 'starfield_spin':
                     if t in (1,):
@@ -2489,6 +3683,1432 @@ while True:
                 if boss_info['stomp_timer'] > 30:
                     boss_info['stomp_state'] = 'idle'
             # 弾幕なし
+        if boss_info and boss_info["name"] == "赤バツボス":
+            if boss_alive:
+                boss_info.setdefault('cross_phase_mode', 'phase1')
+                boss_info.setdefault('cross_falls', [])
+                boss_info.setdefault('cross_wall_attack', None)
+                boss_info.setdefault('cross_last_pattern', None)
+                boss_info.setdefault('cross_star_state', 'cross')
+                boss_info.setdefault('cross_star_progress', 0.0)
+                boss_info.setdefault('cross_star_rotation', 0.0)
+                boss_info.setdefault('cross_star_spin_speed', 1.6)
+                boss_info.setdefault('cross_star_transition_speed', 0.02)
+                boss_info.setdefault('cross_star_surface', None)
+                boss_info.setdefault('cross_star_surface_radius', 0)
+                boss_info.setdefault('cross_transition_effects', [])
+                boss_info.setdefault('cross_active_hp_max', boss_info.get('hp', 180))
+                boss_info.setdefault('cross_phase2_moons', [])
+                boss_info.setdefault('cross_phase2_moon_beams', [])
+                boss_info.setdefault('cross_phase2_reflect', False)
+                boss_info.setdefault('cross_phase2_moon_duration', 360)
+                boss_info.setdefault('cross_phase2_moon_orbit_radius', boss_radius + 70)
+                cross_mode = boss_info.get('cross_phase_mode', 'phase1')
+
+                def decay_transition_effects(growth=4.0):
+                    updated = []
+                    for fx in boss_info.get('cross_transition_effects', []):
+                        fx['ttl'] -= 1
+                        fx['radius'] += fx.get('growth', growth)
+                        if fx['ttl'] > 0:
+                            updated.append(fx)
+                    boss_info['cross_transition_effects'] = updated
+
+                if is_fullscreen:
+                    boss_info['cross_wall_attack'] = None
+                    boss_info['cross_falls'] = []
+                    boss_info['cross_phase2_moon_beams'] = []
+                    boss_info['cross_phase2_moons'] = []
+                    boss_info['cross_phase2_state'] = 'fullscreen_starstorm'
+                    boss_info['cross_phase_mode'] = 'fullscreen_starstorm'
+                    boss_info['cross_phase2_bounce_squish'] = None
+                    boss_info['cross_transition_effects'] = []
+                    boss_info['cross_star_state'] = 'star'
+                    boss_info['cross_star_spin_speed'] = max(2.0, boss_info.get('cross_star_spin_speed', 2.0))
+                    boss_info['cross_star_rotation'] = (boss_info.get('cross_star_rotation', 0.0) + boss_info.get('cross_star_spin_speed', 2.0)) % 360
+                    boss_x = WIDTH / 2
+                    boss_y = boss_info.get('cross_base_y', 120)
+                    # フルスクリーン時の星弾幕密度調整
+                    boss_info['star_rain_interval'] = 18
+                    boss_info['star_rain_batch'] = 3
+                    if not boss_info.get('star_rain_active'):
+                        boss_info['star_rain_active'] = True
+                        boss_info['star_rain_timer'] = 0
+                    update_star_rain_phase(boss_info, player, bullets)
+                elif cross_mode in ('phase1', 'phase2'):
+                    decay_transition_effects(3.0)
+                    boss_info.setdefault('cross_star_trigger_ratio', 0.55)
+                    phase_speed = boss_info.get('cross_phase_speed', 0.015)
+                    spin_speed = boss_info.get('cross_spin_speed', 0.05)
+                    boss_info['cross_phase'] = boss_info.get('cross_phase', 0.0) + phase_speed
+                    boss_info['cross_angle'] = boss_info.get('cross_angle', 0.0) + spin_speed
+                    orbit = boss_info.get('cross_orbit', 80)
+                    bob = boss_info.get('cross_bob', 28)
+                    base_y = boss_info.get('cross_base_y', 120)
+                    boss_x = WIDTH / 2 + math.sin(boss_info['cross_phase']) * orbit
+                    boss_y = base_y + math.sin(boss_info['cross_phase'] * 1.8) * bob
+
+                    boss_info['cross_attack_timer'] = boss_info.get('cross_attack_timer', 0) + 1
+
+                    active_hp_max = max(1, boss_info.get('cross_active_hp_max', boss_info.get('hp', 180)))
+                    current_hp = max(0, boss_hp)
+                    hp_ratio = current_hp / active_hp_max
+                    initial_hp = boss_info.get('initial_hp') or boss_info.setdefault('initial_hp', active_hp_max)
+                    if cross_mode == 'phase1':
+                        if boss_info.get('star_rain_active'):
+                            boss_info['star_rain_active'] = False
+                            boss_info['star_rain_timer'] = 0
+                    else:
+                        trigger_ratio = boss_info.get('star_rain_trigger_ratio', boss_info.get('cross_phase3_trigger_ratio', 0.25))
+                        trigger_hp = initial_hp * trigger_ratio if initial_hp else 0
+                        if trigger_hp and current_hp <= trigger_hp:
+                            if not boss_info.get('star_rain_active'):
+                                boss_info['star_rain_active'] = True
+                                boss_info['star_rain_timer'] = 0
+                                boss_info.setdefault('star_rain_interval', 8)
+                                boss_info.setdefault('star_rain_batch', 12)
+                        if boss_info.get('star_rain_active'):
+                            update_star_rain_phase(boss_info, player, bullets)
+                    base_cd = boss_info.get('cross_attack_cooldown', 150)
+                    if cross_mode == 'phase2':
+                        base_cd = max(60, int(base_cd * 0.8))
+                    dynamic_cd = max(50 if cross_mode == 'phase2' else 70,
+                                     int(base_cd * (0.45 + 0.55 * hp_ratio)))
+
+                    star_state = boss_info.get('cross_star_state', 'cross')
+                    if cross_mode == 'phase1':
+                        # 第一形態では常に赤いクロスのまま維持する
+                        boss_info['cross_star_state'] = 'cross'
+                        boss_info['cross_star_progress'] = 0.0
+                        star_state = 'cross'
+                    else:
+                        if boss_info.get('cross_star_state') != 'circle':
+                            boss_info['cross_star_state'] = 'star'
+                        boss_info['cross_star_progress'] = 1.0
+                        star_state = boss_info.get('cross_star_state', 'star')
+                        if not boss_info.get('cross_phase2_settings_applied', False):
+                            boss_info['cross_phase2_settings_applied'] = True
+                            boss_info['cross_phase_speed'] = boss_info.get('cross_phase_speed', 0.015) * 1.3
+                            boss_info['cross_spin_speed'] = boss_info.get('cross_spin_speed', 0.05) * 1.5
+                            boss_info['cross_orbit'] = int(boss_info.get('cross_orbit', 80) * 1.18)
+                            boss_info['cross_bob'] = int(boss_info.get('cross_bob', 28) * 1.25)
+                            boss_info['cross_attack_cooldown'] = max(60, int(boss_info.get('cross_attack_cooldown', 150) * 0.7))
+                            boss_info['cross_star_spin_speed'] = max(2.6, boss_info.get('cross_star_spin_speed', 1.6) * 1.6)
+
+                    if boss_info.get('cross_star_state') in ('transition', 'star', 'circle', 'trapezoid', 'ellipse'):
+                        spin = boss_info.get('cross_star_spin_speed', 1.6)
+                        boss_info['cross_star_rotation'] = (boss_info.get('cross_star_rotation', 0.0) + spin) % 360
+
+                    max_falls = 22 if cross_mode == 'phase1' else 28
+                    wall_attack = boss_info.get('cross_wall_attack')
+
+                    if cross_mode == 'phase2':
+                        boss_info['cross_wall_attack'] = None
+                        state = boss_info.get('cross_phase2_state', 'idle')
+                        valid_states = {
+                            'idle', 'move_center', 'charge_circle', 'bounce',
+                            'rise_top', 'rainbow_charge', 'rainbow_attack',
+                            'fall_barrage', 'ground_barrage', 'return_center', 'reset_star',
+                            'moon_intro', 'moon_attack', 'moon_cleanup'
+                        }
+                        if state not in valid_states:
+                            state = 'idle'
+                            boss_info['cross_phase2_state'] = state
+                        timer = boss_info.get('cross_phase2_timer', 0)
+                        pos = boss_info.get('cross_phase2_pos')
+                        if not pos:
+                            pos = [float(boss_x), float(boss_y)]
+                            boss_info['cross_phase2_pos'] = pos
+                        center_target = boss_info.get('cross_phase2_target_center', (WIDTH / 2.0, base_y))
+                        boss_info['cross_falls'] = []
+
+                        if state == 'idle':
+                            boss_info['cross_phase2_pos'] = [float(boss_x), float(boss_y)]
+                            boss_info['cross_phase2_timer'] = timer + 1
+                            boss_info['cross_attack_timer'] = boss_info.get('cross_attack_timer', 0) + 1
+                            cooldown = boss_info.get('cross_phase2_idle_cooldown', 120)
+                            if boss_info['cross_attack_timer'] >= cooldown:
+                                pattern = boss_info.get('cross_phase2_next_pattern', 'bounce')
+                                boss_info['cross_phase2_active_pattern'] = pattern
+                                boss_info['cross_phase2_timer'] = 0
+                                boss_info['cross_phase2_charge_ratio'] = 0.0
+                                boss_info['cross_phase2_disc_surface'] = None
+                                boss_info['cross_phase2_disc_radius'] = 0
+                                boss_info['cross_phase2_disc_spin'] = 0.0
+                                boss_info['cross_phase2_trapezoid_surface'] = None
+                                boss_info['cross_phase2_trapezoid_width'] = 0
+                                boss_info['cross_phase2_trapezoid_height'] = 0
+                                boss_info['cross_phase2_bounce_vel'] = [0.0, 0.0]
+                                boss_info['cross_attack_timer'] = 0
+                                if pattern == 'bounce':
+                                    boss_info['cross_phase2_state'] = 'move_center'
+                                    boss_info['cross_phase2_pos'] = [float(boss_x), float(boss_y)]
+                                    boss_info['cross_phase2_target_center'] = (WIDTH / 2.0, base_y)
+                                    base_goal = max(4, int(5 + (1.0 - hp_ratio) * 3))
+                                    boss_info['cross_phase2_bounce_hits'] = 0
+                                    boss_info['cross_phase2_bounce_goal'] = base_goal
+                                    base_speed = 7.4 + (1.0 - hp_ratio) * 1.8
+                                    boss_info['cross_phase2_bounce_speed'] = base_speed
+                                    boss_info['cross_phase2_bounce_squish'] = None
+                                    boss_info['cross_phase2_bounce_squish_duration'] = boss_info.get('cross_phase2_bounce_squish_duration', 16)
+                                    boss_info['cross_phase2_bounce_timer'] = 0
+                                    boss_info['cross_phase2_bounce_limit'] = max(300, int(base_goal * 60))
+                                elif pattern == 'rainbow_drop':
+                                    top_y = max(boss_radius + 72, 100)
+                                    bottom_limit = HEIGHT - max(boss_radius + 30, 70)
+                                    if bottom_limit <= top_y + 90:
+                                        bottom_y = min(bottom_limit, top_y + 90)
+                                    else:
+                                        bottom_y = bottom_limit
+                                    boss_info['cross_phase2_state'] = 'rise_top'
+                                    boss_info['cross_phase2_pos'] = [float(boss_x), float(boss_y)]
+                                    boss_info['cross_phase2_target_center'] = (WIDTH / 2.0, base_y)
+                                    boss_info['cross_phase2_target_top'] = (WIDTH / 2.0, top_y)
+                                    boss_info['cross_phase2_target_bottom'] = (WIDTH / 2.0, bottom_y)
+                                    boss_info['cross_phase2_fall_speed'] = 0.0
+                                    boss_info['cross_phase2_rainbow_timer'] = 0
+                                    boss_info['cross_phase2_rainbow_angle'] = random.uniform(0.0, math.tau)
+                                    boss_info['cross_phase2_rainbow_rings'] = 0
+                                    boss_info['cross_phase2_rainbow_burst_step'] = 0
+                                    boss_info['cross_phase2_ground_timer'] = 0
+                                    boss_info['cross_phase2_charge_ratio'] = 0.0
+                                    boss_info['cross_star_state'] = 'trapezoid'
+                                    boss_info['cross_star_spin_speed'] = max(3.0, boss_info.get('cross_star_spin_speed', 2.6))
+                                    boss_info['cross_transition_effects'].append({
+                                        'x': boss_x,
+                                        'y': boss_y,
+                                        'radius': random.uniform(boss_radius * 0.5, boss_radius * 0.9),
+                                        'growth': random.uniform(3.0, 5.0),
+                                        'ttl': 24,
+                                        'max_ttl': 24
+                                    })
+                                else:
+                                    boss_info['cross_phase2_state'] = 'moon_intro'
+                                    boss_info['cross_phase2_pos'] = [float(boss_x), float(boss_y)]
+                                    boss_info['cross_phase2_target_center'] = (WIDTH / 2.0, base_y)
+                                    boss_info['cross_phase2_moons'] = []
+                                    boss_info['cross_phase2_moon_beams'] = []
+                                    boss_info['cross_phase2_moon_timer'] = 0
+                                    boss_info['cross_phase2_moon_duration'] = 360
+                                    boss_info['cross_phase2_moon_orbit_radius'] = boss_info.get('cross_phase2_moon_orbit_radius', boss_radius + 70)
+                                    boss_info['cross_phase2_reflect'] = False
+                                    boss_info['cross_phase2_charge_ratio'] = 0.0
+                                    boss_info['cross_star_state'] = 'ellipse'
+                                    boss_info['cross_phase2_ellipse_scale'] = (0.75, 1.3)
+                                    boss_info['cross_phase2_moon_spin_backup'] = boss_info.get('cross_star_spin_speed', 0.0)
+                                    boss_info['cross_star_spin_speed'] = 0.0
+                                    boss_info['cross_phase2_disc_surface'] = None
+                                    boss_info['cross_phase2_disc_radius'] = 0
+                                    boss_info['cross_phase2_disc_spin'] = 0.0
+                                    boss_info['cross_transition_effects'].append({
+                                        'x': boss_x,
+                                        'y': boss_y,
+                                        'radius': random.uniform(boss_radius * 0.5, boss_radius * 0.9),
+                                        'growth': random.uniform(3.0, 4.5),
+                                        'ttl': 26,
+                                        'max_ttl': 26
+                                    })
+                        elif state == 'move_center':
+                            speed = 6.4
+                            dx = center_target[0] - pos[0]
+                            dy = center_target[1] - pos[1]
+                            dist = math.hypot(dx, dy)
+                            if dist <= speed:
+                                pos[0], pos[1] = center_target
+                                boss_info['cross_phase2_state'] = 'charge_circle'
+                                boss_info['cross_phase2_timer'] = 0
+                                boss_info['cross_phase2_charge_ratio'] = 0.0
+                                boss_info['cross_phase2_disc_surface'] = None
+                                boss_info['cross_phase2_disc_radius'] = 0
+                                boss_info['cross_phase2_disc_spin'] = 0.0
+                            else:
+                                pos[0] += (dx / dist) * speed
+                                pos[1] += (dy / dist) * speed
+                                boss_info['cross_phase2_timer'] = timer + 1
+                            boss_x, boss_y = pos[0], pos[1]
+                            boss_info['cross_phase2_pos'] = pos
+                            boss_info['cross_attack_timer'] = 0
+                        elif state == 'charge_circle':
+                            boss_info['cross_phase2_timer'] = timer + 1
+                            charge_total = 48
+                            boss_info['cross_phase2_charge_ratio'] = min(1.0, boss_info['cross_phase2_timer'] / float(charge_total))
+                            if boss_info['cross_phase2_timer'] >= 14 and boss_info.get('cross_star_state') != 'circle':
+                                boss_info['cross_star_state'] = 'circle'
+                                boss_info['cross_phase2_disc_surface'] = None
+                                boss_info['cross_phase2_disc_radius'] = 0
+                            boss_info['cross_phase2_disc_spin'] = boss_info.get('cross_phase2_disc_spin', 0.0) + 2.2
+                            if boss_info['cross_phase2_timer'] % 6 == 0:
+                                boss_info['cross_transition_effects'].append({
+                                    'x': pos[0] + random.uniform(-12, 12),
+                                    'y': pos[1] + random.uniform(-12, 12),
+                                    'radius': random.uniform(boss_radius * 0.4, boss_radius * 0.8),
+                                    'growth': random.uniform(3.5, 5.5),
+                                    'ttl': 20,
+                                    'max_ttl': 20
+                                })
+                            boss_x, boss_y = pos[0], pos[1]
+                            if boss_info['cross_phase2_timer'] >= charge_total:
+                                boss_info['cross_phase2_state'] = 'bounce'
+                                boss_info['cross_phase2_timer'] = 0
+                                speed = boss_info.get('cross_phase2_bounce_speed', 7.4 + (1.0 - hp_ratio) * 1.8)
+                                boss_info['cross_phase2_bounce_speed'] = speed
+                                angle_choices = [math.radians(a) for a in (35, 55, 125, 145, 215, 235, 305, 325)]
+                                angle = random.choice(angle_choices) + math.radians(random.uniform(-8, 8))
+                                vx = math.cos(angle) * speed
+                                vy = math.sin(angle) * speed
+                                min_vert = speed * 0.28
+                                if abs(vy) < min_vert:
+                                    vy = min_vert if vy >= 0 else -min_vert
+                                    vx = math.copysign(math.sqrt(max(speed * speed - vy * vy, 0.1)), vx)
+                                boss_info['cross_phase2_bounce_vel'] = [vx, vy]
+                                boss_info['cross_phase2_bounce_timer'] = 0
+                                boss_info['cross_phase2_bounce_hits'] = 0
+                                boss_info['cross_phase2_bounce_squish'] = None
+                                boss_info['cross_phase2_charge_ratio'] = 1.0
+                                boss_info['cross_phase2_disc_spin'] = boss_info.get('cross_phase2_disc_spin', 0.0) + 1.5
+                            boss_info['cross_phase2_pos'] = pos
+                            boss_info['cross_attack_timer'] = 0
+                        elif state == 'rise_top':
+                            boss_info['cross_phase2_timer'] = timer + 1
+                            target_top = boss_info.get('cross_phase2_target_top', (WIDTH / 2.0, max(boss_radius + 72, 100)))
+                            speed = 7.4
+                            dx = target_top[0] - pos[0]
+                            dy = target_top[1] - pos[1]
+                            dist = math.hypot(dx, dy)
+                            boss_info['cross_star_state'] = 'trapezoid'
+                            boss_info['cross_phase2_disc_spin'] = boss_info.get('cross_phase2_disc_spin', 0.0) + 2.6
+                            if dist <= speed:
+                                pos[0], pos[1] = target_top
+                                boss_info['cross_phase2_state'] = 'rainbow_charge'
+                                boss_info['cross_phase2_timer'] = 0
+                                boss_info['cross_phase2_charge_ratio'] = 0.0
+                                boss_info['cross_phase2_rainbow_timer'] = 0
+                                boss_info['cross_phase2_rainbow_angle'] = boss_info.get('cross_phase2_rainbow_angle', random.uniform(0.0, math.tau))
+                                boss_info['cross_transition_effects'].append({
+                                    'x': pos[0],
+                                    'y': pos[1],
+                                    'radius': random.uniform(boss_radius * 0.5, boss_radius * 0.9),
+                                    'growth': random.uniform(3.0, 4.6),
+                                    'ttl': 24,
+                                    'max_ttl': 24
+                                })
+                            elif dist > 0:
+                                pos[0] += (dx / dist) * speed
+                                pos[1] += (dy / dist) * speed
+                                if boss_info['cross_phase2_timer'] % 6 == 0:
+                                    boss_info['cross_transition_effects'].append({
+                                        'x': pos[0] + random.uniform(-10, 10),
+                                        'y': pos[1] + random.uniform(-10, 10),
+                                        'radius': random.uniform(boss_radius * 0.35, boss_radius * 0.6),
+                                        'growth': random.uniform(2.6, 4.0),
+                                        'ttl': 18,
+                                        'max_ttl': 18
+                                    })
+                            boss_x, boss_y = pos[0], pos[1]
+                            boss_info['cross_star_rotation'] = (boss_info.get('cross_star_rotation', 0.0) + boss_info.get('cross_star_spin_speed', 3.0)) % 360
+                            boss_info['cross_phase2_pos'] = pos
+                            boss_info['cross_phase2_charge_ratio'] = min(0.6, boss_info.get('cross_phase2_charge_ratio', 0.0) + 0.015)
+                            boss_info['cross_attack_timer'] = 0
+                        elif state == 'rainbow_charge':
+                            boss_info['cross_phase2_timer'] = timer + 1
+                            boss_x, boss_y = pos[0], pos[1]
+                            charge_total = 38
+                            ratio = min(1.0, boss_info['cross_phase2_timer'] / float(charge_total))
+                            boss_info['cross_phase2_charge_ratio'] = ratio
+                            spin_boost = boss_info.get('cross_star_spin_speed', 3.2)
+                            boss_info['cross_star_rotation'] = (boss_info.get('cross_star_rotation', 0.0) + spin_boost + 0.6) % 360
+                            boss_info['cross_star_state'] = 'trapezoid'
+                            boss_info['cross_phase2_disc_spin'] = boss_info.get('cross_phase2_disc_spin', 0.0) + 3.0
+                            if boss_info['cross_phase2_timer'] % 5 == 0:
+                                boss_info['cross_transition_effects'].append({
+                                    'x': boss_x + random.uniform(-12, 12),
+                                    'y': boss_y + random.uniform(-10, 10),
+                                    'radius': random.uniform(boss_radius * 0.5, boss_radius * 0.95),
+                                    'growth': random.uniform(3.0, 4.8),
+                                    'ttl': 20,
+                                    'max_ttl': 20
+                                })
+                            if boss_info['cross_phase2_timer'] >= charge_total:
+                                boss_info['cross_phase2_state'] = 'rainbow_attack'
+                                boss_info['cross_phase2_timer'] = 0
+                                boss_info['cross_phase2_rainbow_timer'] = 0
+                                boss_info['cross_phase2_rainbow_burst_step'] = 0
+                                boss_info['cross_phase2_charge_ratio'] = 1.0
+                                boss_info['cross_transition_effects'].append({
+                                    'x': boss_x,
+                                    'y': boss_y,
+                                    'radius': random.uniform(boss_radius * 0.8, boss_radius * 1.2),
+                                    'growth': random.uniform(4.5, 6.0),
+                                    'ttl': 26,
+                                    'max_ttl': 26
+                                })
+                            boss_info['cross_phase2_pos'] = pos
+                            boss_info['cross_attack_timer'] = 0
+                        elif state == 'rainbow_attack':
+                            boss_info['cross_phase2_timer'] = timer + 1
+                            attack_timer = boss_info.get('cross_phase2_rainbow_timer', 0) + 1
+                            boss_info['cross_phase2_rainbow_timer'] = attack_timer
+                            boss_x, boss_y = pos[0], pos[1]
+                            spin_amount = boss_info.get('cross_star_spin_speed', 3.2) + 1.4
+                            boss_info['cross_star_rotation'] = (boss_info.get('cross_star_rotation', 0.0) + spin_amount) % 360
+                            boss_info['cross_star_state'] = 'trapezoid'
+                            boss_info['cross_phase2_disc_spin'] = boss_info.get('cross_phase2_disc_spin', 0.0) + 3.8
+                            base_angle = boss_info.get('cross_phase2_rainbow_angle', 0.0)
+                            base_angle = (base_angle + math.radians(8.0)) % math.tau
+                            boss_info['cross_phase2_rainbow_angle'] = base_angle
+                            rainbow_colors = [
+                                (255, 60, 60),
+                                (255, 150, 40),
+                                (255, 230, 80),
+                                (60, 255, 120),
+                                (80, 140, 255),
+                                (150, 80, 255),
+                                (255, 90, 190)
+                            ]
+                            if attack_timer % 8 == 0:
+                                ring_count = 10 + (attack_timer // 32) % 3
+                                bullet_speed = 4.8 + (attack_timer % 40) * 0.03
+                                for i in range(ring_count):
+                                    ang = base_angle + math.tau * (i / ring_count)
+                                    color = rainbow_colors[i % len(rainbow_colors)]
+                                    bullets.append({
+                                        'rect': pygame.Rect(int(boss_x - 5), int(boss_y - 5), 10, 10),
+                                        'type': 'enemy',
+                                        'vx': bullet_speed * math.cos(ang),
+                                        'vy': bullet_speed * math.sin(ang),
+                                        'life': 320,
+                                        'power': 1.0,
+                                        'shape': 'star',
+                                        'color': color
+                                    })
+                            if attack_timer % 8 == 0:
+                                boss_info['cross_transition_effects'].append({
+                                    'x': boss_x + random.uniform(-16, 16),
+                                    'y': boss_y + random.uniform(-16, 12),
+                                    'radius': random.uniform(boss_radius * 0.4, boss_radius * 0.95),
+                                    'growth': random.uniform(4.0, 6.2),
+                                    'ttl': 22,
+                                    'max_ttl': 22
+                                })
+                            if attack_timer >= 72:
+                                boss_info['cross_phase2_state'] = 'fall_barrage'
+                                boss_info['cross_phase2_timer'] = 0
+                                boss_info['cross_phase2_rainbow_timer'] = 0
+                                boss_info['cross_phase2_fall_speed'] = 6.2
+                                boss_info['cross_phase2_charge_ratio'] = 1.0
+                                center_target = boss_info.get('cross_phase2_target_center', (WIDTH / 2.0, base_y))
+                                if center_target:
+                                    pos[1] = center_target[1]
+                            boss_info['cross_phase2_pos'] = pos
+                            boss_info['cross_attack_timer'] = 0
+                        elif state == 'fall_barrage':
+                            fall_timer = boss_info.get('cross_phase2_timer', 0) + 1
+                            fall_speed = boss_info.get('cross_phase2_fall_speed', 6.2)
+                            fall_speed = min(fall_speed + 0.32, 18.0)
+                            boss_info['cross_phase2_fall_speed'] = fall_speed
+                            pos[1] += fall_speed
+                            boss_x, boss_y = pos[0], pos[1]
+                            boss_info['cross_phase2_pos'] = pos
+                            if fall_timer % 9 == 0:
+                                drop_columns = 3
+                                base_offset = boss_radius * 0.55
+                                for lane in range(drop_columns):
+                                    offset = (lane - (drop_columns - 1) / 2.0) * base_offset
+                                    spawn_x = boss_x + offset + random.uniform(-6, 6)
+                                    spawn_y = boss_y + boss_radius * 0.15
+                                    vy_drop = 6.6 + random.uniform(-0.35, 0.45)
+                                    vx_drop = random.uniform(-0.6, 0.6)
+                                    bullets.append({
+                                        'rect': pygame.Rect(int(spawn_x - 5), int(spawn_y - 5), 10, 10),
+                                        'type': 'enemy',
+                                        'vx': vx_drop,
+                                        'vy': vy_drop,
+                                        'life': 220,
+                                        'power': 1.0,
+                                        'shape': 'orb',
+                                        'color': (170, 200, 255)
+                                    })
+                            boss_info['cross_phase2_timer'] = fall_timer
+                            boss_info['cross_phase2_charge_ratio'] = max(0.55, boss_info.get('cross_phase2_charge_ratio', 1.0) - 0.008)
+                            boss_info['cross_phase2_disc_spin'] = boss_info.get('cross_phase2_disc_spin', 0.0) + 2.4
+                            boss_info['cross_star_state'] = 'trapezoid'
+                            if boss_info['cross_phase2_timer'] % 8 == 0:
+                                pass
+                            if boss_info['cross_phase2_timer'] % 7 == 0:
+                                boss_info['cross_transition_effects'].append({
+                                    'x': boss_x + random.uniform(-14, 14),
+                                    'y': boss_y + random.uniform(-6, 6),
+                                    'radius': random.uniform(boss_radius * 0.36, boss_radius * 0.74),
+                                    'growth': random.uniform(3.0, 4.8),
+                                    'ttl': 18,
+                                    'max_ttl': 18
+                                })
+                            bottom_target = boss_info.get('cross_phase2_target_bottom', (WIDTH / 2.0, HEIGHT - boss_radius - 6))
+                            if pos[1] >= bottom_target[1]:
+                                pos[1] = bottom_target[1]
+                                boss_info['cross_phase2_state'] = 'ground_barrage'
+                                boss_info['cross_phase2_timer'] = 0
+                                boss_info['cross_phase2_ground_timer'] = 0
+                                boss_info['cross_phase2_fall_speed'] = 0.0
+                                boss_info['cross_phase2_charge_ratio'] = max(0.6, boss_info.get('cross_phase2_charge_ratio', 0.6))
+                                boss_info['cross_transition_effects'].append({
+                                    'x': boss_x,
+                                    'y': pos[1],
+                                    'radius': random.uniform(boss_radius * 0.6, boss_radius * 1.0),
+                                    'growth': random.uniform(3.4, 5.4),
+                                    'ttl': 24,
+                                    'max_ttl': 24
+                                })
+                            boss_info['cross_attack_timer'] = 0
+                        elif state == 'ground_barrage':
+                            boss_info['cross_phase2_timer'] = timer + 1
+                            ground_timer = boss_info.get('cross_phase2_ground_timer', 0) + 1
+                            boss_info['cross_phase2_ground_timer'] = ground_timer
+                            boss_x, boss_y = pos[0], pos[1]
+                            bottom_target = boss_info.get('cross_phase2_target_bottom', (WIDTH / 2.0, HEIGHT - boss_radius - 6))
+                            if pos[1] < bottom_target[1]:
+                                pos[1] = bottom_target[1]
+                                boss_y = pos[1]
+                            boss_info['cross_phase2_pos'] = pos
+                            boss_info['cross_phase2_charge_ratio'] = max(0.35, boss_info.get('cross_phase2_charge_ratio', 0.6) - 0.006)
+                            boss_info['cross_phase2_disc_spin'] = boss_info.get('cross_phase2_disc_spin', 0.0) + 2.0
+                            boss_info['cross_star_state'] = 'trapezoid'
+                            if ground_timer % 24 == 0:
+                                lanes = 2
+                                top_y = boss_y - boss_radius - 10
+                                for lane in range(lanes):
+                                    offset = (lane - (lanes - 1) / 2.0) * (boss_radius * 0.75)
+                                    spawn_x = boss_x + offset
+                                    jitter = math.radians(random.uniform(-6, 6))
+                                    aim_ang = math.atan2(player.centery - top_y, player.centerx - spawn_x) + jitter
+                                    speed = 4.6 + random.uniform(-0.35, 0.35)
+                                    bullets.append({
+                                        'rect': pygame.Rect(int(spawn_x - 6), int(top_y - 6), 12, 12),
+                                        'type': 'enemy',
+                                        'vx': speed * math.cos(aim_ang),
+                                        'vy': speed * math.sin(aim_ang),
+                                        'life': 240,
+                                        'power': 1.2,
+                                        'shape': 'orb',
+                                        'color': (170, 140, 255)
+                                    })
+                            if ground_timer % 15 == 0:
+                                boss_info['cross_transition_effects'].append({
+                                    'x': boss_x + random.uniform(-18, 18),
+                                    'y': boss_y - boss_radius * 0.6,
+                                    'radius': random.uniform(boss_radius * 0.4, boss_radius * 0.9),
+                                    'growth': random.uniform(2.8, 4.8),
+                                    'ttl': 18,
+                                    'max_ttl': 18
+                                })
+                            hold_frames = 72
+                            if ground_timer >= hold_frames:
+                                boss_info['cross_phase2_state'] = 'return_center'
+                                boss_info['cross_phase2_timer'] = 0
+                                boss_info['cross_phase2_charge_ratio'] = max(0.5, boss_info.get('cross_phase2_charge_ratio', 0.5))
+                                boss_info['cross_phase2_fall_speed'] = 0.0
+                            boss_info['cross_attack_timer'] = 0
+                        elif state == 'moon_intro':
+                            boss_info['cross_phase2_timer'] = timer + 1
+                            speed = 6.0
+                            dx = center_target[0] - pos[0]
+                            dy = center_target[1] - pos[1]
+                            dist = math.hypot(dx, dy)
+                            if dist > speed:
+                                pos[0] += (dx / dist) * speed
+                                pos[1] += (dy / dist) * speed
+                            else:
+                                pos[0], pos[1] = center_target
+                            boss_x, boss_y = pos[0], pos[1]
+                            boss_info['cross_phase2_pos'] = pos
+                            boss_info['cross_star_state'] = 'ellipse'
+                            boss_info['cross_phase2_disc_spin'] = 0.0
+                            charge = min(1.0, boss_info.get('cross_phase2_charge_ratio', 0.0) + 0.02)
+                            boss_info['cross_phase2_charge_ratio'] = charge
+                            if dist <= speed and boss_info['cross_phase2_timer'] >= 36 and not boss_info.get('cross_phase2_moons'):
+                                orbit_radius = boss_info.get('cross_phase2_moon_orbit_radius', boss_radius + 70)
+                                moons = []
+                                base_speed = 0.017 + (1.0 - hp_ratio) * 0.004
+                                moon_radius = max(14, int(boss_radius * 0.32))
+                                specs = [
+                                    {'angle': 0.0, 'speed_mult': 0.95, 'fire_offset': random.randint(18, 30), 'interval_range': (40, 54)},
+                                    {'angle': math.pi, 'speed_mult': 1.35, 'fire_offset': random.randint(26, 38), 'interval_range': (46, 62)}
+                                ]
+                                for idx, spec in enumerate(specs):
+                                    interval_low, interval_high = spec['interval_range']
+                                    moons.append({
+                                        'angle': spec['angle'],
+                                        'speed': base_speed * spec['speed_mult'],
+                                        'fire_timer': spec['fire_offset'],
+                                        'fire_interval': random.randint(interval_low, interval_high),
+                                        'x': boss_x,
+                                        'y': boss_y,
+                                        'radius': moon_radius,
+                                        'id': idx
+                                    })
+                                boss_info['cross_phase2_moons'] = moons
+                                boss_info['cross_phase2_moon_beams'] = []
+                                boss_info['cross_phase2_moon_timer'] = 0
+                                boss_info['cross_phase2_reflect'] = True
+                                boss_info['cross_phase2_state'] = 'moon_attack'
+                                boss_info['cross_phase2_timer'] = 0
+                                boss_info['cross_transition_effects'].append({
+                                    'x': boss_x,
+                                    'y': boss_y,
+                                    'radius': random.uniform(boss_radius * 0.5, boss_radius * 0.95),
+                                    'growth': random.uniform(3.0, 4.8),
+                                    'ttl': 28,
+                                    'max_ttl': 28
+                                })
+                        elif state == 'moon_attack':
+                            attack_timer = boss_info.get('cross_phase2_timer', 0) + 1
+                            boss_info['cross_phase2_timer'] = attack_timer
+                            boss_x, boss_y = pos[0], pos[1]
+                            boss_info['cross_phase2_pos'] = pos
+                            boss_info['cross_star_state'] = 'ellipse'
+                            boss_info['cross_phase2_charge_ratio'] = min(1.0, max(0.7, boss_info.get('cross_phase2_charge_ratio', 0.8) + 0.008))
+                            boss_info['cross_phase2_disc_spin'] = 0.0
+                            orbit_radius = boss_info.get('cross_phase2_moon_orbit_radius', boss_radius + 70)
+                            moon_speed_scale = 1.0 + (1.0 - hp_ratio) * 0.18
+                            moons = boss_info.get('cross_phase2_moons', [])
+                            beams = list(boss_info.get('cross_phase2_moon_beams', []))
+                            for idx, moon in enumerate(moons):
+                                spin_speed = moon.get('speed', 0.02) * moon_speed_scale
+                                moon['angle'] = (moon['angle'] + spin_speed) % math.tau
+                                mx = pos[0] + math.cos(moon['angle']) * orbit_radius
+                                my = pos[1] + math.sin(moon['angle']) * orbit_radius
+                                moon['x'] = mx
+                                moon['y'] = my
+                                moon['fire_timer'] = moon.get('fire_timer', 0) - 1
+                                if moon['fire_timer'] <= 0:
+                                    aim = math.atan2(player.centery - my, player.centerx - mx)
+                                    aim += math.radians(random.uniform(-6, 6))
+                                    length = 1400.0
+                                    beam = {
+                                        'moon': idx,
+                                        'state': 'warning',
+                                        'timer': 0,
+                                        'warning': 22,
+                                        'telegraph': 24,
+                                        'firing': 26,
+                                        'width': 8,
+                                        'hit_radius': 10,
+                                        'angle': aim,
+                                        'length': length,
+                                        'origin': (mx, my),
+                                        'target': (mx + math.cos(aim) * length, my + math.sin(aim) * length),
+                                        'locked_target': (mx + math.cos(aim) * length, my + math.sin(aim) * length)
+                                    }
+                                    beams.append(beam)
+                                    interval = moon.get('fire_interval', 32)
+                                    moon['fire_timer'] = max(30, interval + random.randint(6, 14))
+                            boss_info['cross_phase2_moons'] = moons
+                            updated_beams = []
+                            for beam in beams:
+                                moon_idx = beam.get('moon')
+                                if moon_idx is not None and 0 <= moon_idx < len(moons):
+                                    mx = moons[moon_idx].get('x', pos[0])
+                                    my = moons[moon_idx].get('y', pos[1])
+                                    beam['origin'] = (mx, my)
+                                    locked = beam.get('locked_target')
+                                    if locked:
+                                        beam['target'] = locked
+                                        beam['angle'] = math.atan2(locked[1] - my, locked[0] - mx)
+                                        beam['length'] = math.hypot(locked[0] - mx, locked[1] - my)
+                                    else:
+                                        angle = beam.get('angle', 0.0)
+                                        length = beam.get('length', 1200.0)
+                                        target = (mx + math.cos(angle) * length, my + math.sin(angle) * length)
+                                        beam['target'] = target
+                                        beam['locked_target'] = target
+                                beam['timer'] = beam.get('timer', 0) + 1
+                                if beam['state'] == 'warning':
+                                    if beam['timer'] >= beam.get('warning', 14):
+                                        beam['state'] = 'telegraph'
+                                        beam['timer'] = 0
+                                elif beam['state'] == 'telegraph':
+                                    if beam['timer'] >= beam.get('telegraph', 18):
+                                        beam['state'] = 'firing'
+                                        beam['timer'] = 0
+                                elif beam['state'] == 'firing':
+                                    if beam['timer'] >= beam.get('firing', 34):
+                                        continue
+                                updated_beams.append(beam)
+                            boss_info['cross_phase2_moon_beams'] = updated_beams
+                            boss_info['cross_phase2_moon_timer'] = boss_info.get('cross_phase2_moon_timer', 0) + 1
+                            if boss_info['cross_phase2_moon_timer'] % 18 == 0:
+                                boss_info['cross_transition_effects'].append({
+                                    'x': boss_x + random.uniform(-14, 14),
+                                    'y': boss_y + random.uniform(-14, 14),
+                                    'radius': random.uniform(boss_radius * 0.4, boss_radius * 0.8),
+                                    'growth': random.uniform(3.2, 5.0),
+                                    'ttl': 20,
+                                    'max_ttl': 20
+                                })
+                            duration = boss_info.get('cross_phase2_moon_duration', 360)
+                            if boss_info['cross_phase2_moon_timer'] >= duration:
+                                boss_info['cross_phase2_state'] = 'moon_cleanup'
+                                boss_info['cross_phase2_timer'] = 0
+                                boss_info['cross_phase2_reflect'] = False
+                        elif state == 'moon_cleanup':
+                            cleanup_timer = boss_info.get('cross_phase2_timer', 0) + 1
+                            boss_info['cross_phase2_timer'] = cleanup_timer
+                            boss_x, boss_y = pos[0], pos[1]
+                            boss_info['cross_phase2_pos'] = pos
+                            boss_info['cross_star_state'] = 'ellipse'
+                            boss_info['cross_phase2_disc_spin'] = 0.0
+                            base_orbit = boss_info.get('cross_phase2_moon_orbit_radius', boss_radius + 70)
+                            decay = max(0.0, 1.0 - cleanup_timer / 36.0)
+                            orbit_radius = base_orbit * decay
+                            moons = boss_info.get('cross_phase2_moons', [])
+                            for moon in moons:
+                                moon['angle'] = (moon['angle'] + 0.015) % math.tau
+                                mx = pos[0] + math.cos(moon['angle']) * orbit_radius
+                                my = pos[1] + math.sin(moon['angle']) * orbit_radius
+                                moon['x'] = mx
+                                moon['y'] = my
+                            boss_info['cross_phase2_moons'] = moons
+                            updated_beams = []
+                            for beam in boss_info.get('cross_phase2_moon_beams', []):
+                                moon_idx = beam.get('moon')
+                                if moon_idx is not None and 0 <= moon_idx < len(moons):
+                                    mx = moons[moon_idx].get('x', pos[0])
+                                    my = moons[moon_idx].get('y', pos[1])
+                                    beam['origin'] = (mx, my)
+                                    locked = beam.get('locked_target')
+                                    if locked:
+                                        beam['target'] = locked
+                                        beam['angle'] = math.atan2(locked[1] - my, locked[0] - mx)
+                                        beam['length'] = math.hypot(locked[0] - mx, locked[1] - my)
+                                    else:
+                                        angle = beam.get('angle', 0.0)
+                                        length = beam.get('length', 1200.0)
+                                        target = (mx + math.cos(angle) * length, my + math.sin(angle) * length)
+                                        beam['target'] = target
+                                        beam['locked_target'] = target
+                                beam['timer'] = beam.get('timer', 0) + 1
+                                if beam['state'] == 'warning':
+                                    if beam['timer'] >= beam.get('warning', 14):
+                                        beam['state'] = 'telegraph'
+                                        beam['timer'] = 0
+                                elif beam['state'] == 'telegraph':
+                                    if beam['timer'] >= beam.get('telegraph', 18):
+                                        beam['state'] = 'firing'
+                                        beam['timer'] = 0
+                                elif beam['state'] == 'firing':
+                                    if beam['timer'] >= beam.get('firing', 28):
+                                        continue
+                                updated_beams.append(beam)
+                            boss_info['cross_phase2_moon_beams'] = updated_beams
+                            boss_info['cross_phase2_charge_ratio'] = max(0.0, boss_info.get('cross_phase2_charge_ratio', 0.6) - 0.03)
+                            if decay <= 0.05 and not updated_beams:
+                                boss_info['cross_phase2_moons'] = []
+                                boss_info['cross_phase2_moon_beams'] = []
+                                boss_info['cross_phase2_state'] = 'return_center'
+                                boss_info['cross_phase2_timer'] = 0
+                                boss_info['cross_phase2_charge_ratio'] = 0.5
+                                boss_info['cross_transition_effects'].append({
+                                    'x': boss_x,
+                                    'y': boss_y,
+                                    'radius': random.uniform(boss_radius * 0.35, boss_radius * 0.6),
+                                    'growth': random.uniform(2.6, 4.2),
+                                    'ttl': 18,
+                                    'max_ttl': 18
+                                })
+                        elif state == 'bounce':
+                            boss_info['cross_phase2_timer'] = timer + 1
+                            squish = boss_info.get('cross_phase2_bounce_squish')
+                            if squish:
+                                squish['timer'] = squish.get('timer', 0) + 1
+                                if squish['timer'] >= squish.get('duration', 16):
+                                    boss_info['cross_phase2_bounce_squish'] = None
+                                else:
+                                    boss_info['cross_phase2_bounce_squish'] = squish
+                            bounce_timer = boss_info['cross_phase2_timer']
+                            boss_info['cross_phase2_bounce_timer'] = boss_info.get('cross_phase2_bounce_timer', 0) + 1
+                            bounce_lifetime = boss_info['cross_phase2_bounce_timer']
+                            vx, vy = boss_info.get('cross_phase2_bounce_vel', [0.0, 0.0])
+                            speed = boss_info.get('cross_phase2_bounce_speed', 7.4)
+                            min_x = boss_radius + 32
+                            max_x = WIDTH - boss_radius - 32
+                            min_y = max(boss_radius + 48, 80)
+                            max_y = HEIGHT - boss_radius - 72
+                            if max_y <= min_y:
+                                min_y = boss_radius + 40
+                                max_y = HEIGHT - boss_radius - 40
+                            if abs(vx) < 1e-3 and abs(vy) < 1e-3:
+                                start_angle = random.uniform(0, math.tau)
+                                vx = math.cos(start_angle) * speed
+                                vy = math.sin(start_angle) * speed
+                            else:
+                                dir_len = math.hypot(vx, vy)
+                                if dir_len > 1e-4:
+                                    dir_x = vx / dir_len
+                                    dir_y = vy / dir_len
+                                    dist_candidates = []
+                                    if dir_x > 0:
+                                        dist_candidates.append((max_x - pos[0]) / max(abs(dir_x), 1e-4))
+                                    elif dir_x < 0:
+                                        dist_candidates.append((pos[0] - min_x) / max(abs(dir_x), 1e-4))
+                                    if dir_y > 0:
+                                        dist_candidates.append((max_y - pos[1]) / max(abs(dir_y), 1e-4))
+                                    elif dir_y < 0:
+                                        dist_candidates.append((pos[1] - min_y) / max(abs(dir_y), 1e-4))
+                                    if dist_candidates:
+                                        travel_frames = max(0.0, min(dist_candidates))
+                                    else:
+                                        travel_frames = 999.0
+                                    travel_ratio = max(0.0, min(1.0, travel_frames / 160.0))
+                                    base_speed = max(0.1, boss_info.get('cross_phase2_bounce_speed', speed))
+                                    target_speed = base_speed * (0.68 + 0.32 * travel_ratio)
+                                    current_speed = dir_len
+                                    adjusted_speed = current_speed + (target_speed - current_speed) * 0.28
+                                    adjusted_speed = max(0.35 * base_speed, min(adjusted_speed, 1.15 * base_speed))
+                                    vx = dir_x * adjusted_speed
+                                    vy = dir_y * adjusted_speed
+                            pos[0] += vx
+                            pos[1] += vy
+                            bounce_axes = []
+                            bounce_hits = boss_info.get('cross_phase2_bounce_hits', 0)
+                            if pos[0] < min_x:
+                                pos[0] = min_x
+                                vx = abs(vx)
+                                bounce_axes.append('x')
+                            elif pos[0] > max_x:
+                                pos[0] = max_x
+                                vx = -abs(vx)
+                                bounce_axes.append('x')
+                            if pos[1] < min_y:
+                                pos[1] = min_y
+                                vy = abs(vy)
+                                bounce_axes.append('y')
+                            elif pos[1] > max_y:
+                                pos[1] = max_y
+                                vy = -abs(vy)
+                                bounce_axes.append('y')
+                            bounced = bool(bounce_axes)
+                            if bounced:
+                                current_speed = math.hypot(vx, vy)
+                                if current_speed <= 0.1:
+                                    current_speed = speed
+                                jitter = math.radians(random.uniform(-16, 16))
+                                ang = math.atan2(vy, vx) + jitter
+                                vx = math.cos(ang) * current_speed
+                                vy = math.sin(ang) * current_speed
+                                min_vert = current_speed * 0.25
+                                if abs(vy) < min_vert:
+                                    vy = min_vert if vy >= 0 else -min_vert
+                                    vx = math.copysign(math.sqrt(max(current_speed * current_speed - vy * vy, 0.1)), vx)
+                                bounce_hits += 1
+                                ring_count = 6 + int((1.0 - hp_ratio) * 3)
+                                ring_speed = 3.6 + (1.0 - hp_ratio) * 1.0
+                                for i in range(ring_count):
+                                    ang_ring = math.tau * (i / ring_count)
+                                    bullets.append({
+                                        'rect': pygame.Rect(int(pos[0] - 6), int(pos[1] - 6), 12, 12),
+                                        'type': 'enemy',
+                                        'vx': ring_speed * math.cos(ang_ring),
+                                        'vy': ring_speed * math.sin(ang_ring),
+                                        'life': 240,
+                                        'power': 1.0,
+                                        'shape': 'star',
+                                        'color': (255, 215, 130)
+                                    })
+                                boss_info['cross_transition_effects'].append({
+                                    'x': pos[0],
+                                    'y': pos[1],
+                                    'radius': random.uniform(boss_radius * 0.38, boss_radius * 0.82),
+                                    'growth': random.uniform(3.6, 5.8),
+                                    'ttl': 18,
+                                    'max_ttl': 18
+                                })
+                                axis_tag = 'both'
+                                if bounce_axes:
+                                    unique_axes = set(bounce_axes)
+                                    if len(unique_axes) == 1:
+                                        axis_tag = next(iter(unique_axes))
+                                boss_info['cross_phase2_bounce_squish'] = {
+                                    'timer': 0,
+                                    'duration': boss_info.get('cross_phase2_bounce_squish_duration', 16),
+                                    'axis': axis_tag
+                                }
+                            boss_x, boss_y = pos[0], pos[1]
+                            boss_info['cross_phase2_pos'] = pos
+                            boss_info['cross_phase2_bounce_vel'] = [vx, vy]
+                            boss_info['cross_phase2_bounce_hits'] = bounce_hits
+                            boss_info['cross_phase2_charge_ratio'] = max(0.85, boss_info.get('cross_phase2_charge_ratio', 1.0))
+                            if bounce_timer % 8 == 0:
+                                base_ang = math.atan2(vy, vx)
+                                for spread in (-0.35, 0.35):
+                                    scatter_ang = base_ang + spread + math.radians(random.uniform(-8, 8))
+                                    scatter_speed = 3.6 + random.uniform(-0.4, 0.5)
+                                    bullets.append({
+                                        'rect': pygame.Rect(int(boss_x - 5), int(boss_y - 5), 10, 10),
+                                        'type': 'enemy',
+                                        'vx': scatter_speed * math.cos(scatter_ang),
+                                        'vy': scatter_speed * math.sin(scatter_ang),
+                                        'life': 260,
+                                        'power': 1.0,
+                                        'shape': 'star',
+                                        'color': (255, 170, 255)
+                                    })
+                            if bounce_timer % 14 == 0:
+                                trail_ang = math.atan2(vy, vx) + math.pi + math.radians(random.uniform(-24, 24))
+                                trail_speed = 2.6 + random.uniform(-0.4, 0.4)
+                                bullets.append({
+                                    'rect': pygame.Rect(int(boss_x - 4), int(boss_y - 4), 8, 8),
+                                    'type': 'enemy',
+                                    'vx': trail_speed * math.cos(trail_ang),
+                                    'vy': trail_speed * math.sin(trail_ang),
+                                    'life': 200,
+                                    'power': 0.8,
+                                    'shape': 'star',
+                                    'color': (120, 220, 255)
+                                })
+                            if bounce_timer % 9 == 0:
+                                boss_info['cross_transition_effects'].append({
+                                    'x': boss_x + random.uniform(-12, 12),
+                                    'y': boss_y + random.uniform(-12, 12),
+                                    'radius': random.uniform(boss_radius * 0.32, boss_radius * 0.7),
+                                    'growth': random.uniform(3.0, 4.8),
+                                    'ttl': 16,
+                                    'max_ttl': 16
+                                })
+                            goal = boss_info.get('cross_phase2_bounce_goal', 6)
+                            limit = boss_info.get('cross_phase2_bounce_limit', 360)
+                            if bounce_hits >= goal or bounce_lifetime >= limit:
+                                boss_info['cross_phase2_state'] = 'return_center'
+                                boss_info['cross_phase2_timer'] = 0
+                                boss_info['cross_phase2_charge_ratio'] = 1.0
+                                boss_info['cross_phase2_bounce_timer'] = 0
+                            boss_info['cross_attack_timer'] = 0
+                        elif state == 'return_center':
+                            speed = 7.2
+                            dx = center_target[0] - pos[0]
+                            dy = center_target[1] - pos[1]
+                            dist = math.hypot(dx, dy)
+                            if dist <= speed:
+                                pos[0], pos[1] = center_target
+                                boss_info['cross_phase2_state'] = 'reset_star'
+                                boss_info['cross_phase2_timer'] = 0
+                                boss_info['cross_phase2_bounce_vel'] = [0.0, 0.0]
+                                boss_info['cross_phase2_bounce_timer'] = 0
+                                boss_info['cross_phase2_fall_speed'] = 0.0
+                                boss_info['cross_phase2_ground_timer'] = 0
+                                boss_info['cross_phase2_moons'] = []
+                                boss_info['cross_phase2_moon_beams'] = []
+                                boss_info['cross_phase2_reflect'] = False
+                                spin_restore = boss_info.pop('cross_phase2_moon_spin_backup', None)
+                                if spin_restore is not None:
+                                    boss_info['cross_star_spin_speed'] = max(3.2, spin_restore or 3.2)
+                            else:
+                                pos[0] += (dx / dist) * speed
+                                pos[1] += (dy / dist) * speed
+                                boss_info['cross_phase2_timer'] = timer + 1
+                                boss_info['cross_phase2_bounce_vel'] = [0.0, 0.0]
+                                boss_info['cross_phase2_bounce_timer'] = 0
+                                boss_info['cross_phase2_fall_speed'] = 0.0
+                                if boss_info.get('cross_phase2_moons'):
+                                    boss_info['cross_phase2_moons'] = []
+                                if boss_info.get('cross_phase2_moon_beams'):
+                                    boss_info['cross_phase2_moon_beams'] = []
+                                boss_info['cross_phase2_reflect'] = False
+                            boss_x, boss_y = pos[0], pos[1]
+                            boss_info['cross_phase2_pos'] = pos
+                            boss_info['cross_phase2_disc_spin'] = boss_info.get('cross_phase2_disc_spin', 0.0) + 3.0
+                            boss_info['cross_attack_timer'] = 0
+                        elif state == 'reset_star':
+                            boss_info['cross_phase2_timer'] = timer + 1
+                            fade_frames = 26
+                            ratio = max(0.0, 1.0 - boss_info['cross_phase2_timer'] / float(fade_frames))
+                            boss_info['cross_phase2_charge_ratio'] = ratio
+                            boss_info['cross_phase2_disc_spin'] = boss_info.get('cross_phase2_disc_spin', 0.0) + 1.8
+                            boss_x, boss_y = pos[0], pos[1]
+                            if boss_info['cross_phase2_timer'] >= fade_frames:
+                                boss_info['cross_star_state'] = 'star'
+                                boss_info['cross_phase2_state'] = 'idle'
+                                boss_info['cross_phase2_timer'] = 0
+                                boss_info['cross_phase2_disc_surface'] = None
+                                boss_info['cross_phase2_disc_radius'] = 0
+                                boss_info['cross_phase2_disc_spin'] = 0.0
+                                boss_info['cross_phase2_bounce_vel'] = [0.0, 0.0]
+                                boss_info['cross_phase2_bounce_hits'] = 0
+                                boss_info['cross_phase2_bounce_timer'] = 0
+                                boss_info['cross_phase2_fall_speed'] = 0.0
+                                boss_info['cross_phase2_ground_timer'] = 0
+                                boss_info['cross_phase2_rainbow_timer'] = 0
+                                boss_info['cross_phase2_rainbow_burst_step'] = 0
+                                boss_info['cross_phase2_trapezoid_surface'] = None
+                                boss_info['cross_phase2_trapezoid_width'] = 0
+                                boss_info['cross_phase2_trapezoid_height'] = 0
+                                boss_info['cross_phase2_moons'] = []
+                                boss_info['cross_phase2_moon_beams'] = []
+                                boss_info['cross_phase2_reflect'] = False
+                                spin_restore = boss_info.pop('cross_phase2_moon_spin_backup', None)
+                                if spin_restore is not None:
+                                    boss_info['cross_star_spin_speed'] = max(3.2, spin_restore or 3.2)
+                                prev_pattern = boss_info.get('cross_phase2_active_pattern', 'bounce')
+                                pattern_cycle = ['bounce', 'rainbow_drop', 'moon_orbit']
+                                if prev_pattern not in pattern_cycle:
+                                    prev_pattern = 'bounce'
+                                idx = pattern_cycle.index(prev_pattern)
+                                next_pattern = pattern_cycle[(idx + 1) % len(pattern_cycle)]
+                                boss_info['cross_phase2_next_pattern'] = next_pattern
+                                if next_pattern == 'bounce':
+                                    next_cd = max(90, int(125 - hp_ratio * 38))
+                                elif next_pattern == 'rainbow_drop':
+                                    next_cd = max(120, int(150 - hp_ratio * 45))
+                                else:
+                                    next_cd = max(140, int(170 - hp_ratio * 52))
+                                boss_info['cross_phase2_active_pattern'] = None
+                                boss_info['cross_phase2_idle_cooldown'] = next_cd
+                                boss_info['cross_attack_timer'] = 0
+                        else:
+                            boss_info['cross_phase2_state'] = 'idle'
+                            boss_info['cross_phase2_timer'] = 0
+                            boss_info['cross_attack_timer'] = 0
+
+                        boss_info['cross_phase2_pos'] = [float(boss_x), float(boss_y)]
+                    else:
+                        if wall_attack:
+                            state = wall_attack.get('state', 'telegraph')
+                            wall_attack['timer'] = wall_attack.get('timer', 0) + 1
+                            extend_speed = wall_attack.get('extend_speed', 14)
+                            retract_speed = wall_attack.get('retract_speed', extend_speed)
+                            telegraph_frames = wall_attack.get('telegraph_duration', 30)
+                            hold_frames = wall_attack.get('hold_duration', 54)
+                            spears = wall_attack.get('spears', [])
+                            if state == 'telegraph':
+                                for spear in spears:
+                                    surf = spear.get('surface')
+                                    if not surf:
+                                        continue
+                                    if spear['side'] == 'left':
+                                        rect = surf.get_rect(midright=(int(spear['tip_x']), int(spear['y'])))
+                                    else:
+                                        rect = surf.get_rect(midleft=(int(spear['tip_x']), int(spear['y'])))
+                                    spear['rect'] = rect
+                                if wall_attack['timer'] >= telegraph_frames:
+                                    wall_attack['state'] = 'advance'
+                                    wall_attack['timer'] = 0
+                            elif state == 'advance':
+                                all_reached = True
+                                for spear in spears:
+                                    if spear['side'] == 'left':
+                                        spear['tip_x'] = min(spear['tip_x'] + extend_speed, spear['tip_target'])
+                                        if spear['tip_x'] < spear['tip_target'] - 0.5:
+                                            all_reached = False
+                                    else:
+                                        spear['tip_x'] = max(spear['tip_x'] - extend_speed, spear['tip_target'])
+                                        if spear['tip_x'] > spear['tip_target'] + 0.5:
+                                            all_reached = False
+                                    surf = spear.get('surface')
+                                    if spear['side'] == 'left':
+                                        rect = surf.get_rect(midright=(int(spear['tip_x']), int(spear['y'])))
+                                    else:
+                                        rect = surf.get_rect(midleft=(int(spear['tip_x']), int(spear['y'])))
+                                    spear['rect'] = rect
+                                if all_reached:
+                                    wall_attack['state'] = 'hold'
+                                    wall_attack['timer'] = 0
+                            elif state == 'hold':
+                                for spear in spears:
+                                    surf = spear.get('surface')
+                                    if spear['side'] == 'left':
+                                        rect = surf.get_rect(midright=(int(spear['tip_x']), int(spear['y'])))
+                                    else:
+                                        rect = surf.get_rect(midleft=(int(spear['tip_x']), int(spear['y'])))
+                                    spear['rect'] = rect
+                                if wall_attack['timer'] >= hold_frames:
+                                    wall_attack['state'] = 'retract'
+                                    wall_attack['timer'] = 0
+                            elif state == 'retract':
+                                done = True
+                                for spear in spears:
+                                    if spear['side'] == 'left':
+                                        spear['tip_x'] = max(spear['tip_x'] - retract_speed, spear['tip_start'])
+                                        if spear['tip_x'] > spear['tip_start'] + 0.5:
+                                            done = False
+                                    else:
+                                        spear['tip_x'] = min(spear['tip_x'] + retract_speed, spear['tip_start'])
+                                        if spear['tip_x'] < spear['tip_start'] - 0.5:
+                                            done = False
+                                    surf = spear.get('surface')
+                                    if spear['side'] == 'left':
+                                        rect = surf.get_rect(midright=(int(spear['tip_x']), int(spear['y'])))
+                                    else:
+                                        rect = surf.get_rect(midleft=(int(spear['tip_x']), int(spear['y'])))
+                                    spear['rect'] = rect
+                                if done:
+                                    boss_info['cross_wall_attack'] = None
+                                    boss_info['cross_attack_timer'] = 0
+                                    boss_info['cross_last_pattern'] = 'wall'
+
+                        if not boss_info.get('cross_wall_attack') and boss_info['cross_attack_timer'] >= dynamic_cd:
+                            patterns = []
+                            if len(boss_info['cross_falls']) < max_falls:
+                                patterns.append('falls')
+                            patterns.append('wall')
+                            last_pattern = boss_info.get('cross_last_pattern')
+                            if len(patterns) > 1 and last_pattern in patterns:
+                                alt_patterns = [p for p in patterns if p != last_pattern]
+                                if alt_patterns:
+                                    patterns = alt_patterns
+                            choice = random.choice(patterns) if patterns else 'falls'
+                            if choice == 'falls':
+                                boss_info['cross_attack_timer'] = 0
+                                wave_count = 5 if hp_ratio > 0.6 else 6
+                                if hp_ratio < 0.45:
+                                    wave_count += 1
+                                if hp_ratio < 0.25:
+                                    wave_count += 1
+
+                                spear_length = max(130, int(boss_radius * 2.0))
+                                spear_width = max(10, int(boss_radius * 0.22))
+                                tip_length = max(28, int(spear_length * 0.28))
+                                shaft_length = spear_length - tip_length
+                                canvas_height = spear_width * 2
+                                center_y = canvas_height / 2
+                                half_shaft = spear_width / 2
+                                half_canvas = canvas_height / 2.0
+
+                                base_rect = pygame.Surface((spear_length, canvas_height), pygame.SRCALPHA)
+                                spear_points = [
+                                    (0, center_y - half_shaft),
+                                    (shaft_length, center_y - half_shaft),
+                                    (shaft_length + tip_length * 0.35, center_y - half_shaft * 0.6),
+                                    (spear_length, center_y),
+                                    (shaft_length + tip_length * 0.35, center_y + half_shaft * 0.6),
+                                    (shaft_length, center_y + half_shaft),
+                                    (0, center_y + half_shaft),
+                                ]
+                                spear_points_int = [(int(x), int(y)) for (x, y) in spear_points]
+                                pygame.draw.polygon(base_rect, (255, 70, 70), spear_points_int)
+                                pygame.draw.polygon(base_rect, (255, 170, 170), spear_points_int, width=2)
+                                highlight_start = (int(shaft_length * 0.15), int(center_y))
+                                highlight_end = (int(shaft_length + tip_length * 0.6), int(center_y))
+                                pygame.draw.line(base_rect, (255, 200, 200, 180), highlight_start, highlight_end, max(1, spear_width // 3))
+                                vertical_surface = pygame.transform.rotate(base_rect, -90)
+
+                                player_bias = (player.centerx - boss_x) * 0.25
+                                for i in range(wave_count):
+                                    offset = (i - (wave_count - 1) / 2.0) * (spear_length * 0.38)
+                                    spawn_x = boss_x + offset + random.uniform(-25, 25) + player_bias * 0.08
+                                    spawn_x = max(30, min(WIDTH - 30, spawn_x))
+                                    spawn_y = boss_y - boss_radius - 80 - random.uniform(0, 60)
+                                    init_vx = 0.0
+                                    init_vy = random.uniform(2.8, 4.4)
+                                    gravity = random.uniform(0.26, 0.38)
+                                    spin_speed = 0.0
+                                    segment = {
+                                        'x': spawn_x,
+                                        'y': spawn_y,
+                                        'vx': init_vx,
+                                        'vy': init_vy,
+                                        'gravity': gravity,
+                                        'spin_speed': spin_speed,
+                                        'spin_angle': 270,
+                                        'base_surface': base_rect,
+                                        'vertical_surface': vertical_surface,
+                                        'surface': vertical_surface,
+                                        'rect': vertical_surface.get_rect(center=(int(spawn_x), int(spawn_y))),
+                                        'state': 'fall',
+                                        'pause_done': False
+                                    }
+                                    boss_info['cross_falls'].append(segment)
+                                boss_info['cross_last_pattern'] = 'falls'
+                            else:
+                                boss_info['cross_attack_timer'] = 0
+                                lane_count = 6 if hp_ratio > 0.6 else 7
+                                if hp_ratio < 0.5:
+                                    lane_count += 1
+                                if hp_ratio < 0.3:
+                                    lane_count += 1
+                                if hp_ratio < 0.15:
+                                    lane_count += 1
+                                lane_count = min(8, lane_count)
+
+                                safe_half = 62 if hp_ratio > 0.7 else 56
+                                if hp_ratio < 0.5:
+                                    safe_half = 48
+                                if hp_ratio < 0.35:
+                                    safe_half = 42
+                                if hp_ratio < 0.2:
+                                    safe_half = 36
+                                safe_half = max(34, safe_half)
+                                safe_half = min(WIDTH / 2 - 55, safe_half)
+                                safe_lane_half_gap = 48 if hp_ratio > 0.6 else 42
+                                if hp_ratio < 0.45:
+                                    safe_lane_half_gap = 38
+                                if hp_ratio < 0.3:
+                                    safe_lane_half_gap = 32
+                                if hp_ratio < 0.18:
+                                    safe_lane_half_gap = 28
+                                safe_lane_half_gap = max(26, min(WIDTH / 2 - 60, safe_lane_half_gap))
+
+                                spear_length = max(int(WIDTH * 0.36), 240)
+                                spear_width = max(18, int(boss_radius * 0.3))
+                                tip_length = max(32, int(spear_length * 0.23))
+                                shaft_length = spear_length - tip_length
+                                canvas_height = spear_width * 2
+                                center_y = canvas_height / 2
+                                half_shaft = spear_width / 2
+                                half_canvas = canvas_height / 2.0
+
+                                base_surface = pygame.Surface((spear_length, canvas_height), pygame.SRCALPHA)
+                                spear_points = [
+                                    (0, center_y - half_shaft),
+                                    (shaft_length, center_y - half_shaft),
+                                    (shaft_length, center_y - half_shaft * 0.55),
+                                    (spear_length, center_y),
+                                    (shaft_length, center_y + half_shaft * 0.55),
+                                    (shaft_length, center_y + half_shaft),
+                                    (0, center_y + half_shaft),
+                                ]
+                                spear_points_int = [(int(x), int(y)) for (x, y) in spear_points]
+                                pygame.draw.polygon(base_surface, (255, 70, 70), spear_points_int)
+                                pygame.draw.polygon(base_surface, (255, 170, 170), spear_points_int, width=2)
+                                highlight_start = (int(shaft_length * 0.1), int(center_y))
+                                highlight_end = (int(spear_length - tip_length * 0.25), int(center_y))
+                                pygame.draw.line(base_surface, (255, 200, 200, 160), highlight_start, highlight_end, max(1, spear_width // 3))
+                                surface_left = base_surface
+                                surface_right = pygame.transform.flip(base_surface, True, False)
+
+                                usable_top = max(half_canvas + 55, 80)
+                                usable_bottom = HEIGHT - (half_canvas + 6)
+                                if usable_bottom <= usable_top:
+                                    usable_bottom = usable_top + half_canvas * 0.6
+                                lane_positions = []
+                                if lane_count <= 1 or usable_bottom <= usable_top:
+                                    lane_positions = [HEIGHT / 2.0 for _ in range(max(1, lane_count))]
+                                else:
+                                    span = usable_bottom - usable_top
+                                    compressed_span = span * 0.95
+                                    step = compressed_span / max(1, lane_count - 1)
+                                    start = (usable_top + usable_bottom) / 2.0 - compressed_span / 2.0
+                                    for i in range(lane_count):
+                                        lane_positions.append(start + step * i)
+
+                                gap_index = random.randrange(max(1, lane_count))
+                                gap_drop = spear_width * 0.75
+                                adjusted_positions = []
+                                for idx, base_lane_y in enumerate(lane_positions):
+                                    lane_y = base_lane_y
+                                    if idx == gap_index:
+                                        lane_y += gap_drop
+                                    lane_y = max(usable_top, min(HEIGHT - half_canvas - 4, lane_y))
+                                    adjusted_positions.append(lane_y)
+
+                                normal_left_tip = WIDTH / 2.0 - safe_half
+                                normal_right_tip = WIDTH / 2.0 + safe_half
+                                offscreen_buffer = spear_length * 0.7
+                                spear_entries = []
+                                for idx, lane_y in enumerate(adjusted_positions):
+                                    left_target = max(50, normal_left_tip)
+                                    right_target = min(WIDTH - 50, normal_right_tip)
+                                    if idx == gap_index:
+                                        center = WIDTH / 2.0
+                                        left_target = max(40, center - safe_lane_half_gap)
+                                        right_target = min(WIDTH - 40, center + safe_lane_half_gap)
+                                    left_start_tip = -offscreen_buffer
+                                    right_start_tip = WIDTH + offscreen_buffer
+                                    left_rect = surface_left.get_rect(midright=(int(left_start_tip), int(lane_y)))
+                                    right_rect = surface_right.get_rect(midleft=(int(right_start_tip), int(lane_y)))
+                                    spear_entries.append({
+                                        'side': 'left',
+                                        'lane': idx,
+                                        'y': lane_y,
+                                        'tip_x': left_start_tip,
+                                        'tip_start': left_start_tip,
+                                        'tip_target': left_target,
+                                        'surface': surface_left,
+                                        'rect': left_rect
+                                    })
+                                    spear_entries.append({
+                                        'side': 'right',
+                                        'lane': idx,
+                                        'y': lane_y,
+                                        'tip_x': right_start_tip,
+                                        'tip_start': right_start_tip,
+                                        'tip_target': right_target,
+                                        'surface': surface_right,
+                                        'rect': right_rect
+                                    })
+
+                                extend_speed = 12 + int((1.0 - hp_ratio) * 6)
+                                retract_speed = 14 + int((1.0 - hp_ratio) * 6)
+
+                                boss_info['cross_wall_attack'] = {
+                                    'state': 'telegraph',
+                                    'timer': 0,
+                                    'spears': spear_entries,
+                                    'telegraph_duration': 32 if hp_ratio > 0.45 else 26,
+                                    'hold_duration': 60 if hp_ratio > 0.35 else 44,
+                                    'extend_speed': extend_speed,
+                                    'retract_speed': retract_speed,
+                                    'gap_index': gap_index,
+                                    'lane_positions': adjusted_positions,
+                                    'gap_drop': gap_drop
+                                }
+                                boss_info['cross_attack_timer'] = 0
+
+                        updated_falls = []
+                        for fall in boss_info['cross_falls']:
+                            state = fall.get('state', 'fall')
+                            if state != 'pause':
+                                fall['vy'] += fall['gravity']
+                                fall['y'] += fall['vy']
+                                fall['x'] += fall['vx']
+                            else:
+                                fall['pause_timer'] = fall.get('pause_timer', 0) - 1
+                                if fall['pause_timer'] <= 0:
+                                    fall['state'] = 'fall'
+                                    resumed_vy = fall.get('post_pause_vy', max(2.8, fall['gravity'] * 6))
+                                    fall['vy'] = resumed_vy
+                            if abs(fall.get('spin_speed', 0.0)) > 1e-3:
+                                fall['spin_angle'] = (fall.get('spin_angle', 0.0) + fall['spin_speed']) % 360
+                                rotated = pygame.transform.rotate(fall['base_surface'], fall['spin_angle'])
+                            else:
+                                rotated = fall.get('vertical_surface') or pygame.transform.rotate(fall['base_surface'], -90)
+                            fall['surface'] = rotated
+                            fall_rect = rotated.get_rect(center=(int(fall['x']), int(fall['y'])))
+                            fall['rect'] = fall_rect
+                            if fall.get('state', 'fall') != 'pause' and not fall.get('pause_done', False):
+                                if fall_rect.top >= -fall_rect.height * 0.5:
+                                    fall['pause_done'] = True
+                                    fall['state'] = 'pause'
+                                    fall['pause_timer'] = random.randint(12, 22)
+                                    fall['post_pause_vy'] = max(fall['vy'], 3.6)
+                                    fall['vy'] = 0.0
+                            if fall.get('state') == 'pause':
+                                fall['x'] += fall.get('pause_drift', 0.0)
+                            if fall_rect.bottom < -120 or fall_rect.top > HEIGHT + 160:
+                                continue
+                            if fall_rect.right < -120 or fall_rect.left > WIDTH + 120:
+                                continue
+                            updated_falls.append(fall)
+                        boss_info['cross_falls'] = updated_falls
+                elif cross_mode == 'transition_explosion':
+                    decay_transition_effects()
+                    timer = boss_info.get('cross_transition_timer', 0) + 1
+                    boss_info['cross_transition_timer'] = timer
+                    prog = min(1.0, boss_info.get('cross_star_progress', 0.0) + 0.05)
+                    boss_info['cross_star_progress'] = prog
+                    if prog >= 0.999:
+                        boss_info['cross_star_state'] = 'star'
+                    spin = max(2.2, boss_info.get('cross_star_spin_speed', 1.6))
+                    boss_info['cross_star_rotation'] = (boss_info.get('cross_star_rotation', 0.0) + spin) % 360
+                    if timer % 3 == 0:
+                        boss_info['cross_transition_effects'].append({
+                            'x': boss_x + random.uniform(-boss_radius * 0.9, boss_radius * 0.9),
+                            'y': boss_y + random.uniform(-boss_radius * 0.9, boss_radius * 0.9),
+                            'radius': random.uniform(boss_radius * 0.6, boss_radius * 1.2),
+                            'growth': random.uniform(4.5, 7.0),
+                            'ttl': 28,
+                            'max_ttl': 28
+                        })
+                    boss_info['cross_blackout_alpha'] = min(120, boss_info.get('cross_blackout_alpha', 0) + 3)
+                    boss_info['cross_falls'] = []
+                    boss_info['cross_wall_attack'] = None
+                    if timer >= 60:
+                        boss_info['cross_phase_mode'] = 'transition_blackout'
+                        boss_info['cross_transition_timer'] = 0
+                elif cross_mode == 'transition_blackout':
+                    decay_transition_effects(2.5)
+                    timer = boss_info.get('cross_transition_timer', 0) + 1
+                    boss_info['cross_transition_timer'] = timer
+                    boss_info['cross_blackout_alpha'] = min(255, boss_info.get('cross_blackout_alpha', 120) + 8)
+                    if timer % 7 == 0:
+                        boss_info['cross_transition_effects'].append({
+                            'x': boss_x + random.uniform(-boss_radius * 0.4, boss_radius * 0.4),
+                            'y': boss_y + random.uniform(-boss_radius * 0.4, boss_radius * 0.4),
+                            'radius': random.uniform(boss_radius * 0.4, boss_radius * 0.9),
+                            'growth': random.uniform(2.5, 4.5),
+                            'ttl': 24,
+                            'max_ttl': 24
+                        })
+                    boss_info['cross_falls'] = []
+                    boss_info['cross_wall_attack'] = None
+                    if boss_info['cross_blackout_alpha'] >= 255 and timer >= 40:
+                        boss_info['cross_phase_mode'] = 'phase2_intro'
+                        boss_info['cross_phase2_intro_timer'] = 0
+                        boss_info['cross_phase2_started'] = False
+                        boss_info['cross_transition_timer'] = 0
+                        boss_info['cross_star_state'] = 'star'
+                        boss_info['cross_star_progress'] = 1.0
+                        boss_info['cross_star_spin_speed'] = max(2.6, boss_info.get('cross_star_spin_speed', 1.6) * 1.4)
+                elif cross_mode == 'phase2_intro':
+                    decay_transition_effects(2.0)
+                    intro = boss_info.get('cross_phase2_intro_timer', 0) + 1
+                    boss_info['cross_phase2_intro_timer'] = intro
+                    boss_info['cross_star_state'] = 'star'
+                    boss_info['cross_star_progress'] = 1.0
+                    boss_info['cross_star_rotation'] = (boss_info.get('cross_star_rotation', 0.0) + boss_info.get('cross_star_spin_speed', 2.6)) % 360
+                    if intro == 1:
+                        boss_info['cross_transition_effects'].append({
+                            'x': boss_x,
+                            'y': boss_y,
+                            'radius': boss_radius * 0.8,
+                            'growth': 5.0,
+                            'ttl': 36,
+                            'max_ttl': 36
+                        })
+                        boss_color = (255, 255, 255)
+                        boss_info['color'] = boss_color
+                    hold_frames = 24
+                    fade_frames = 60
+                    if intro <= hold_frames:
+                        boss_info['cross_blackout_alpha'] = 255
+                    else:
+                        fade = intro - hold_frames
+                        alpha = max(0, 255 - int(255 * (fade / fade_frames)))
+                        boss_info['cross_blackout_alpha'] = alpha
+                    boss_info['cross_falls'] = []
+                    boss_info['cross_wall_attack'] = None
+                    if intro >= hold_frames + fade_frames:
+                        boss_info['cross_phase_mode'] = 'phase2'
+                        boss_info['cross_phase2_started'] = True
+                        boss_info['cross_blackout_alpha'] = 0
+                        boss_info['cross_transition_effects'] = []
+                        boss_info['cross_phase2_settings_applied'] = False
+                        boss_info['cross_active_hp_max'] = max(1, boss_info.get('cross_phase2_hp', boss_info.get('hp', 240)))
+                        boss_hp = boss_info.get('cross_phase2_hp', boss_hp)
+                        boss_info['cross_attack_timer'] = 0
+                        boss_info['cross_phase2_state'] = 'idle'
+                        boss_info['cross_phase2_timer'] = 0
+                        boss_info['cross_phase2_pos'] = [float(boss_x), float(boss_y)]
+                        boss_info['cross_phase2_disc_surface'] = None
+                        boss_info['cross_phase2_disc_radius'] = 0
+                        boss_info['cross_phase2_disc_spin'] = 0.0
+                        boss_info['cross_phase2_charge_ratio'] = 0.0
+                        boss_info['cross_phase2_idle_cooldown'] = 120
+                        boss_info['cross_phase2_target_center'] = (WIDTH / 2.0, boss_y)
+                        boss_info['cross_phase2_bounce_vel'] = [0.0, 0.0]
+                        boss_info['cross_phase2_bounce_hits'] = 0
+                        boss_info['cross_phase2_bounce_goal'] = 5
+                        boss_info['cross_phase2_bounce_speed'] = 7.4
+                        boss_info['cross_phase2_bounce_timer'] = 0
+                        boss_info['cross_phase2_bounce_limit'] = 360
+                        boss_info['cross_phase2_active_pattern'] = None
+                        boss_info['cross_phase2_next_pattern'] = 'bounce'
+                        boss_info['cross_phase2_target_top'] = (WIDTH / 2.0, max(boss_radius + 70, 90))
+                        boss_info['cross_phase2_target_bottom'] = (WIDTH / 2.0, HEIGHT - max(boss_radius + 52, 120))
+                        boss_info['cross_phase2_fall_speed'] = 0.0
+                        boss_info['cross_phase2_rainbow_timer'] = 0
+                        boss_info['cross_phase2_rainbow_angle'] = 0.0
+                        boss_info['cross_phase2_rainbow_burst_step'] = 0
+                        boss_info['cross_phase2_ground_timer'] = 0
+                        boss_info['cross_phase2_trapezoid_surface'] = None
+                        boss_info['cross_phase2_trapezoid_width'] = 0
+                        boss_info['cross_phase2_trapezoid_height'] = 0
+                else:
+                    decay_transition_effects(2.0)
+                    boss_info['cross_falls'] = []
+                    boss_info['cross_wall_attack'] = None
+            else:
+                boss_info['cross_falls'] = []
+                boss_info['cross_transition_effects'] = []
+                boss_info['star_rain_active'] = False
         # Boss2 蛇: Boss1 と似た踏み潰し＋X追従（回転体節を保持）
         if boss_info and boss_info["name"] == "蛇":
             # 初期セットアップ（不足分補填）
@@ -2654,16 +5274,39 @@ while True:
         for bullet in bullets:
             if bullet.get("reflect", False) or bullet.get("type") == "enemy":
                 if player.colliderect(bullet["rect"]):
-                    player_lives -= 1
+                    if not debug_infinite_hp:
+                        player_lives -= 1
                     player_invincible = True
                     player_invincible_timer = 0
                     explosion_timer = 0
                     explosion_pos = (player.centerx, player.centery)
-                    # プレイヤーを初期位置に戻す
-                    player.x = WIDTH//2 - 15
-                    player.y = HEIGHT - 40
+                    reset_boss_hazards_after_player_hit(boss_info)
                     bullets.remove(bullet)
                     break
+        if boss_info and boss_info.get('name') == '赤バツボス':
+            moon_beams = boss_info.get('cross_phase2_moon_beams', [])
+            if moon_beams:
+                px, py = player.center
+                cushion = max(player.width, player.height) * 0.25
+                for beam in moon_beams:
+                    if beam.get('state') != 'firing':
+                        continue
+                    origin = beam.get('origin')
+                    target = beam.get('target')
+                    if not origin or not target:
+                        continue
+                    dist, _, _ = distance_point_to_segment(px, py, origin[0], origin[1], target[0], target[1])
+                    if dist <= beam.get('hit_radius', 16) + cushion:
+                        if not debug_infinite_hp:
+                            player_lives -= 1
+                        player_invincible = True
+                        player_invincible_timer = 0
+                        explosion_timer = 0
+                        explosion_pos = (player.centerx, player.centery)
+                        reset_boss_hazards_after_player_hit(boss_info)
+                        break
+                if player_invincible:
+                    continue
         # 通常のボス接触判定
         if boss_info and boss_info.get("name") == "三日月形ボス":
             def hit_crescent_point(px, py, cx, cy, r, face, pad=0):
@@ -2680,13 +5323,13 @@ while True:
                     if not p.get('alive', True):
                         continue
                     if hit_crescent_point(player.centerx, player.centery, p['x'], p['y'], p.get('r', int(boss_radius*0.8)), p.get('face','right'), max(player.width, player.height)//2):
-                        player_lives -= 1
+                        if not debug_infinite_hp:
+                            player_lives -= 1
                         player_invincible = True
                         player_invincible_timer = 0
                         explosion_timer = 0
                         explosion_pos = (player.centerx, player.centery)
-                        player.x = WIDTH//2 - 15
-                        player.y = HEIGHT - 40
+                        reset_boss_hazards_after_player_hit(boss_info)
                         break
                 # P2 も接触判定
                 if player2:
@@ -2694,46 +5337,48 @@ while True:
                         if not p.get('alive', True):
                             continue
                         if hit_crescent_point(player2.centerx, player2.centery, p['x'], p['y'], p.get('r', int(boss_radius*0.8)), p.get('face','right' if p['x'] < WIDTH//2 else 'left'), max(player2.width, player2.height)//2):
-                            player_lives -= 1
+                            if not debug_infinite_hp:
+                                player_lives -= 1
                             player_invincible = True
                             player_invincible_timer = 0
                             explosion_timer = 0
                             explosion_pos = (player2.centerx, player2.centery)
                             player2.x = WIDTH//2 + 40
                             player2.y = HEIGHT - 40
+                            reset_boss_hazards_after_player_hit(boss_info)
                             break
             else:
                 bx = player.centerx; by = player.centery
                 if hit_crescent_point(bx, by, boss_x, boss_y, boss_radius, 'right', max(player.width, player.height)//2):
-                    player_lives -= 1
+                    if not debug_infinite_hp:
+                        player_lives -= 1
                     player_invincible = True
                     player_invincible_timer = 0
                     explosion_timer = 0
                     explosion_pos = (player.centerx, player.centery)
-                    player.x = WIDTH//2 - 15
-                    player.y = HEIGHT - 40
+                    reset_boss_hazards_after_player_hit(boss_info)
             # 追加: 斬撃当たり判定
             for sl in boss_info.get('active_slashes', []):
                 if sl['rect'].colliderect(player):
-                    player_lives -= 1
+                    if not debug_infinite_hp:
+                        player_lives -= 1
                     player_invincible = True
                     player_invincible_timer = 0
                     explosion_timer = 0
                     explosion_pos = (player.centerx, player.centery)
-                    player.x = WIDTH//2 - 15
-                    player.y = HEIGHT - 40
+                    reset_boss_hazards_after_player_hit(boss_info)
         else:
             # 三日月形ボスでない通常ボス接触判定
             dx = player.centerx - boss_x
             dy = player.centery - boss_y
             if dx*dx + dy*dy < (boss_radius + max(player.width, player.height)//2)**2:
-                player_lives -= 1
+                if not debug_infinite_hp:
+                    player_lives -= 1
                 player_invincible = True
                 player_invincible_timer = 0
                 explosion_timer = 0
                 explosion_pos = (player.centerx, player.centery)
-                player.x = WIDTH//2 - 15
-                player.y = HEIGHT - 40
+                reset_boss_hazards_after_player_hit(boss_info)
 
     # 無敵時間管理
     if player_invincible:
