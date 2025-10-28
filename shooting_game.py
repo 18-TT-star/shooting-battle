@@ -27,13 +27,14 @@ from constants import (
 )
 from fonts import jp_font, text_surface
 from gameplay import spawn_player_bullets, move_player_bullets, update_dash_timers, attempt_dash
-from music import init_audio, play_enemy_hit, play_reflect
+from music import init_audio, play_enemy_hit, play_reflect, play_boss_clear_music, stop_music, play_shape_transform, play_bgm, fade_out_bgm, play_menu_beep
 
 pygame.init()
 if not pygame.font.get_init():
     pygame.font.init()
 
 init_audio()
+play_bgm()  # BGMをループ再生開始
 
 DISPLAY_FLAGS = pygame.RESIZABLE | pygame.DOUBLEBUF
 display_surface = pygame.display.set_mode((WIDTH, HEIGHT), DISPLAY_FLAGS)
@@ -143,6 +144,14 @@ _window_warp_index = 0
 _window_warp_interval = 150
 _window_warp_vertices = []
 
+# 三日月形ボス用 星座トレイル演出の調整値
+BOSS5_TRAIL_INTERVAL_FRAMES = 28
+BOSS5_TRAIL_TTL_RANGE = (70, 120)
+BOSS5_TRAIL_MAX_PATTERNS = 20
+BOSS5_TRAIL_RADIUS_RANGE = (24, 58)
+BOSS5_TRAIL_EXTRA_LINK_CHANCE = 0.45
+BOSS5_TRAIL_SPAWN_LIMIT = 1
+
 # dash_state が存在しない環境でも NameError を避ける初期値
 if 'dash_state' not in globals():
     dash_state = {'invincible_timer': 0, 'active': False}
@@ -173,6 +182,19 @@ def reset_boss_hazards_after_player_hit(boss_state):
         boss_state['cross_phase3_overlay_alpha'] = 0
         boss_state['cross_phase3_wave_clock'] = 0
         boss_state['star_rain_active'] = False
+    if boss_state.get('name') == '三日月形ボス':
+        trails = boss_state.get('trail_constellations')
+        if trails:
+            trails.clear()
+        boss_state['trail_spawn_timer'] = 0
+        lasers = boss_state.get('side_lasers')
+        if lasers:
+            lasers.clear()
+        boss_state['patt_state'] = 'idle'
+        boss_state['patt_timer'] = 0
+        boss_state['patt_cd'] = 0
+        boss_state.pop('patt_choice', None)
+    boss_state['idle_guard'] = 0
 selected_level = 1  # 1..MAX_LEVEL を使用
 menu_mode = True
 level_cleared = [False]*7  # 0..6
@@ -550,6 +572,167 @@ def draw_leaf_orb(surface, center, radius, angle_rad, base_color=(80, 255, 120))
     rotation = -45.0
     rotated = pygame.transform.rotate(scaled, rotation)
     surface.blit(rotated, rotated.get_rect(center=(int(cx), int(cy))))
+
+
+def _build_boss5_constellation_pattern(center):
+    cx, cy = center
+    node_count = random.randint(3, 4)
+    points = []
+    min_radius, max_radius = BOSS5_TRAIL_RADIUS_RANGE
+    for _ in range(node_count):
+        ang = random.random() * 2 * math.pi
+        dist = random.uniform(min_radius * 0.4, max_radius)
+        px = cx + math.cos(ang) * dist
+        py = cy + math.sin(ang) * dist
+        px = max(6, min(WIDTH - 6, px))
+        py = max(6, min(HEIGHT - 6, py))
+        points.append({'pos': (px, py), 'size': random.randint(2, 4)})
+    if not points:
+        return None
+    order = list(range(len(points)))
+    random.shuffle(order)
+    segments = []
+    for idx in range(len(order) - 1):
+        a = points[order[idx]]['pos']
+        b = points[order[idx + 1]]['pos']
+        segments.append({'a': a, 'b': b, 'width': random.randint(1, 2)})
+    if len(points) >= 4 and random.random() < BOSS5_TRAIL_EXTRA_LINK_CHANCE:
+        pa, pb = random.sample(points, 2)
+        segments.append({'a': pa['pos'], 'b': pb['pos'], 'width': 1})
+    ttl = random.randint(*BOSS5_TRAIL_TTL_RANGE)
+    return {'points': points, 'segments': segments, 'ttl': ttl, 'max_ttl': ttl}
+
+
+def update_boss5_path_constellations(boss_info, anchors, spawn_enabled):
+    if not boss_info:
+        return
+    trails = boss_info.setdefault('trail_constellations', [])
+    timer = boss_info.get('trail_spawn_timer', 0)
+    if spawn_enabled and anchors:
+        timer += 1
+        interval = max(4, int(boss_info.get('trail_interval', BOSS5_TRAIL_INTERVAL_FRAMES)))
+        if timer >= interval:
+            timer = 0
+            shuffled = list(anchors)
+            random.shuffle(shuffled)
+            limit = max(1, int(boss_info.get('trail_spawn_limit', BOSS5_TRAIL_SPAWN_LIMIT)))
+            for center in shuffled[:limit]:
+                pattern = _build_boss5_constellation_pattern(center)
+                if pattern:
+                    trails.append(pattern)
+    else:
+        timer = 0 if not spawn_enabled else timer
+    max_patterns = max(1, int(boss_info.get('trail_max_patterns', BOSS5_TRAIL_MAX_PATTERNS)))
+    new_trails = []
+    for pattern in trails[-max_patterns:]:
+        pattern['ttl'] -= 1
+        if pattern['ttl'] > 0:
+            new_trails.append(pattern)
+    boss_info['trail_constellations'] = new_trails
+    boss_info['trail_spawn_timer'] = timer
+
+
+def draw_boss5_path_constellations(surface, boss_info):
+    trails = boss_info.get('trail_constellations') if boss_info else None
+    if not trails:
+        return
+    for pattern in trails:
+        ttl = pattern.get('ttl', 0)
+        max_ttl = max(1, pattern.get('max_ttl', 1))
+        ratio = max(0.0, min(1.0, ttl / float(max_ttl)))
+        line_strength = int(120 + 100 * ratio)
+        line_color = (line_strength, line_strength, 255)
+        for seg in pattern.get('segments', []):
+            ax, ay = seg.get('a', (0, 0))
+            bx, by = seg.get('b', (0, 0))
+            width = max(1, int(seg.get('width', 1)))
+            pygame.draw.line(surface, line_color, (int(ax), int(ay)), (int(bx), int(by)), width)
+        outer_color = (255, 245, 210)
+        inner_color = (255, 255, 255)
+        for node in pattern.get('points', []):
+            px, py = node.get('pos', (0, 0))
+            radius = max(1, int(node.get('size', 3)))
+            pygame.draw.circle(surface, outer_color, (int(px), int(py)), radius)
+            inner_radius = max(1, radius - 1)
+            pygame.draw.circle(surface, inner_color, (int(px), int(py)), inner_radius)
+
+
+def update_boss5_side_lasers(boss_info, boss_position, parts=None):
+    if not boss_info:
+        return
+    lasers = boss_info.setdefault('side_lasers', [])
+    parts = parts or []
+    position = boss_position or (0, 0)
+    new_lasers = []
+    for laser in lasers:
+        state = laser.get('state', 'charge')
+        timer = laser.get('timer', 0) + 1
+        laser['timer'] = timer
+        charge_time = laser.get('charge_time', 36)
+        fire_time = laser.get('fire_time', 70)
+        fade_time = laser.get('fade_time', 24)
+        part_ref = laser.get('part_ref')
+        alive_part = None
+        if part_ref and part_ref in parts and part_ref.get('alive', True):
+            alive_part = part_ref
+        origin = laser.get('origin_static')
+        if alive_part:
+            origin = (alive_part.get('x', position[0]), alive_part.get('y', position[1]))
+        elif origin is None:
+            origin = position
+        laser['origin'] = origin
+        direction = laser.get('direction', 'left')
+        if direction == 'left':
+            target = (WIDTH * 0.12, HEIGHT + 60)
+        else:
+            target = (WIDTH * 0.88, HEIGHT + 60)
+        laser['target'] = target
+        base_width = laser.get('width', 32)
+        if state == 'charge':
+            if timer >= charge_time:
+                laser['state'] = 'fire'
+                laser['timer'] = 0
+                timer = 0
+            pulse = 0.4 + 0.4 * math.sin(pygame.time.get_ticks() / 140.0)
+            current_width = max(4, int(base_width * pulse * 0.5))
+        elif state == 'fire':
+            if timer >= fire_time:
+                laser['state'] = 'fade'
+                laser['timer'] = 0
+                timer = 0
+            current_width = base_width
+        else:  # fade
+            if timer >= fade_time:
+                continue
+            remaining = max(0.0, 1.0 - (timer / float(max(1, fade_time))))
+            current_width = max(4, int(base_width * remaining))
+        laser['render_width'] = current_width
+        new_lasers.append(laser)
+    boss_info['side_lasers'] = new_lasers
+
+
+def draw_boss5_side_lasers(surface, boss_info):
+    lasers = boss_info.get('side_lasers') if boss_info else None
+    if not lasers:
+        return
+    for laser in lasers:
+        origin = laser.get('origin')
+        target = laser.get('target')
+        state = laser.get('state')
+        width = max(2, int(laser.get('render_width', laser.get('width', 30))))
+        if not origin or not target:
+            continue
+        beam_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        if state == 'charge':
+            color = (255, 220, 160, 90)
+        elif state == 'fire':
+            color = (255, 240, 200, 190)
+        else:
+            fade_ratio = max(0.1, width / float(laser.get('width', width) or 1))
+            alpha = int(160 * fade_ratio)
+            color = (255, 200, 150, alpha)
+        pygame.draw.line(beam_surface, color, (int(origin[0]), int(origin[1])), (int(target[0]), int(target[1])), width)
+        surface.blit(beam_surface, (0, 0))
 
 # 新・星降り弾幕フェーズ
 def update_star_rain_phase(boss_state, player_rect, bullets):
@@ -933,9 +1116,12 @@ leaf_orb_positions = []
 frame_count = 0  # フレームカウンタ（ダッシュ二度押し判定などに使用）
 fire_cooldown = 0  # 連射クールダウン（フレーム）
 debug_infinite_hp = False
+boss_music_played = False
 while True:
     events = pygame.event.get()
     if menu_mode:
+        # BGMは継続再生（stop_music()を削除）
+        boss_music_played = False
         draw_menu(screen, selected_level, level_cleared)
         present_frame()
         for event in events:
@@ -946,10 +1132,12 @@ while True:
                     selected_level += 1
                     if selected_level > 6:
                         selected_level = 1
+                    play_menu_beep()  # メニュー移動音
                 if event.key == pygame.K_DOWN:
                     selected_level -= 1
                     if selected_level < 1:
                         selected_level = 6
+                    play_menu_beep()  # メニュー移動音
                 if event.key == pygame.K_i:
                     unlocked_homing = True
                     unlocked_leaf_shield = True
@@ -983,8 +1171,12 @@ while True:
                         if boss_info and boss_info.get("name") == "三日月形ボス":
                             boss_info['color_phase1'] = boss_color
                             boss_info['const_segments'] = []  # 星座線分（TTLつき）
+                            boss_info['trail_constellations'] = []
+                            boss_info['trail_spawn_timer'] = 0
+                            boss_info['side_lasers'] = []
                         retry = False
                         waiting_for_space = False
+                        boss_music_played = False
                         has_homing = unlocked_homing
                         has_leaf_shield = unlocked_leaf_shield
                         has_spread = unlocked_spread
@@ -1138,6 +1330,9 @@ while True:
                             # 第三形態 分裂ボスの初期化（未分裂状態）
                             boss_info['phase3_split'] = False
                             boss_info['parts'] = []
+                            boss_info['trail_constellations'] = []
+                            boss_info['trail_spawn_timer'] = 0
+                            boss_info['side_lasers'] = []
                         # 残機は報酬アンロックで5に増加（デフォルト3）
                         player_lives = 5 if unlocked_hp_boost else 3
                         player_invincible = False
@@ -1167,6 +1362,7 @@ while True:
     if retry:
         if is_fullscreen:
             set_display_mode(False)
+        # BGMは継続再生（stop_music()を削除）
         # プレイヤー/一般状態
         # 残機は報酬アンロックで5に増加（デフォルト3）
         player_lives = 5 if unlocked_hp_boost else 3
@@ -1179,6 +1375,7 @@ while True:
         frame_count = 0
         leaf_angle = 0.0
         bullet_type = "normal"
+        boss_music_played = False
         # 画面状態
         waiting_for_space = False
         menu_mode = False
@@ -1247,6 +1444,9 @@ while True:
             boss_info['phase3_split'] = False
             boss_info['parts'] = []
             boss_info['const_segments'] = []
+            boss_info['trail_constellations'] = []
+            boss_info['trail_spawn_timer'] = 0
+            boss_info['side_lasers'] = []
         if boss_info and boss_info.get("name") == "赤バツボス":
             boss_y = 140
             boss_origin_y = boss_y
@@ -1643,8 +1843,11 @@ while True:
                 explosion_pos = (player.centerx, player.centery)
                 reset_boss_hazards_after_player_hit(boss_info)
 
+        if boss_info and boss_info.get('name') == '三日月形ボス':
+            update_boss5_side_lasers(boss_info, (boss_x, boss_y), boss_info.get('parts') if boss_info.get('phase3_split') else None)
+
         # 星座線分への接触（太線近傍）
-    if not player_invincible and boss_info and boss_info.get('name') == '三日月形ボス':
+        if not player_invincible and boss_info and boss_info.get('name') == '三日月形ボス':
             segs = boss_info.get('const_segments', [])
             if segs:
                 px, py = player.centerx, player.centery
@@ -1668,6 +1871,70 @@ while True:
                         explosion_pos = (player.centerx, player.centery)
                         reset_boss_hazards_after_player_hit(boss_info)
                         break
+
+        # 側面レーザーとの接触判定
+        lasers = boss_info.get('side_lasers', []) if boss_info and boss_info.get('name') == '三日月形ボス' else []
+        if lasers and not player_invincible:
+            px, py = player.centerx, player.centery
+            for laser in lasers:
+                state = laser.get('state')
+                if state != 'fire':
+                    continue
+                origin = laser.get('origin')
+                target = laser.get('target')
+                if not origin or not target:
+                    continue
+                width = max(6, int(laser.get('render_width', laser.get('width', 30))))
+                ax, ay = origin
+                bx, by = target
+                vx, vy = bx - ax, by - ay
+                denom = vx * vx + vy * vy
+                if denom <= 0:
+                    continue
+                t = max(0.0, min(1.0, ((px - ax) * vx + (py - ay) * vy) / denom))
+                cx = ax + vx * t
+                cy = ay + vy * t
+                if (px - cx)**2 + (py - cy)**2 <= (width / 2 + 8)**2:
+                    if not debug_infinite_hp:
+                        player_lives -= 1
+                    player_invincible = True
+                    player_invincible_timer = 0
+                    explosion_timer = 0
+                    explosion_pos = (player.centerx, player.centery)
+                    reset_boss_hazards_after_player_hit(boss_info)
+                    break
+
+        if lasers and not player_invincible and boss_info and boss_info.get('phase', 1) == 3 and boss_info.get('phase3_split') and player2:
+            px2, py2 = player2.centerx, player2.centery
+            for laser in lasers:
+                state = laser.get('state')
+                if state != 'fire':
+                    continue
+                origin = laser.get('origin')
+                target = laser.get('target')
+                if not origin or not target:
+                    continue
+                width = max(6, int(laser.get('render_width', laser.get('width', 30))))
+                ax, ay = origin
+                bx, by = target
+                vx, vy = bx - ax, by - ay
+                denom = vx * vx + vy * vy
+                if denom <= 0:
+                    continue
+                t = max(0.0, min(1.0, ((px2 - ax) * vx + (py2 - ay) * vy) / denom))
+                cx = ax + vx * t
+                cy = ay + vy * t
+                if (px2 - cx)**2 + (py2 - cy)**2 <= (width / 2 + 8)**2:
+                    if not debug_infinite_hp:
+                        player_lives -= 1
+                    player_invincible = True
+                    player_invincible_timer = 0
+                    explosion_timer = 0
+                    explosion_pos = (player2.centerx, player2.centery)
+                    player2.x = WIDTH//2 - 80
+                    player2.y = HEIGHT - 40
+                    reset_boss_hazards_after_player_hit(boss_info)
+                    break
 
     # 無敵時間管理
     if player_invincible:
@@ -1718,7 +1985,24 @@ while True:
         for i in range(EXPLOSION_DURATION):
             screen.fill(BLACK)
             if explosion_pos:
-                pygame.draw.circle(screen, RED, explosion_pos, 30)
+                # プレイヤー被弾爆発エフェクト（ゲームオーバー画面でも同様）
+                progress = i / EXPLOSION_DURATION  # 0.0 ~ 1.0
+                for wave_i in range(3):
+                    wave_progress = max(0.0, min(1.0, progress - wave_i * 0.15))
+                    if wave_progress > 0:
+                        radius = int(15 + wave_progress * 35)
+                        alpha = int(255 * (1.0 - wave_progress))
+                        red_val = max(100, 255 - int(wave_progress * 155))
+                        color = (red_val, 0, 0)
+                        
+                        circle_surf = pygame.Surface((radius * 2 + 10, radius * 2 + 10), pygame.SRCALPHA)
+                        pygame.draw.circle(circle_surf, (*color, alpha), 
+                                         (radius + 5, radius + 5), radius, max(2, int(6 - wave_progress * 4)))
+                        inner_alpha = int(alpha * 0.3)
+                        pygame.draw.circle(circle_surf, (*color, inner_alpha), 
+                                         (radius + 5, radius + 5), max(1, radius - 3))
+                        screen.blit(circle_surf, 
+                                  (explosion_pos[0] - radius - 5, explosion_pos[1] - radius - 5))
             if result == "win":
                 font = jp_font(50)
                 text = font.render("GAME CLEAR!", True, (0,255,0))
@@ -1798,6 +2082,19 @@ while True:
 
     # 描画
     screen.fill(BLACK)
+    if boss_info and boss_info.get('name') == '三日月形ボス':
+        spawn_allowed = boss_alive and not waiting_for_space
+        anchors = []
+        if spawn_allowed:
+            if boss_info.get('phase', 1) == 3 and boss_info.get('phase3_split') and boss_info.get('parts'):
+                anchors = [(p.get('x', boss_x), p.get('y', boss_y)) for p in boss_info['parts'] if p.get('alive', True)]
+                if not anchors:
+                    anchors = [(boss_x, boss_y)]
+            else:
+                anchors = [(boss_x, boss_y)]
+        update_boss5_path_constellations(boss_info, anchors, spawn_allowed)
+        draw_boss5_path_constellations(screen, boss_info)
+        draw_boss5_side_lasers(screen, boss_info)
     if boss_info and boss_info.get('name') == '赤バツボス' and boss_alive:
         cross_mode = boss_info.get('cross_phase_mode', 'phase1')
         if cross_mode != 'phase1':
@@ -2185,6 +2482,36 @@ while True:
     if leaf_orb_positions:
         for orb in leaf_orb_positions:
             draw_leaf_orb(screen, (orb['x'], orb['y']), orb['radius'], orb.get('angle', 0.0))
+    
+    # プレイヤー被弾時の爆発エフェクト（赤い円が拡大しながらフェードアウト）
+    if explosion_timer < EXPLOSION_DURATION and explosion_pos:
+        progress = explosion_timer / EXPLOSION_DURATION  # 0.0 ~ 1.0
+        # 複数の円を描画して波紋効果
+        for i in range(3):
+            # 各円のタイミングをずらす
+            wave_progress = max(0.0, min(1.0, progress - i * 0.15))
+            if wave_progress > 0:
+                # 半径は時間経過で拡大（15 → 50ピクセル）
+                radius = int(15 + wave_progress * 35)
+                # 透明度は時間経過で減少（255 → 0）
+                alpha = int(255 * (1.0 - wave_progress))
+                # 赤色の濃淡も変化させる
+                red_val = max(100, 255 - int(wave_progress * 155))
+                color = (red_val, 0, 0)
+                
+                # 半透明円を描画するためのサーフェス作成
+                circle_surf = pygame.Surface((radius * 2 + 10, radius * 2 + 10), pygame.SRCALPHA)
+                # 外側の円（太い輪郭）
+                pygame.draw.circle(circle_surf, (*color, alpha), 
+                                 (radius + 5, radius + 5), radius, max(2, int(6 - wave_progress * 4)))
+                # 内側の薄い塗りつぶし
+                inner_alpha = int(alpha * 0.3)
+                pygame.draw.circle(circle_surf, (*color, inner_alpha), 
+                                 (radius + 5, radius + 5), max(1, radius - 3))
+                
+                # 画面に描画
+                screen.blit(circle_surf, 
+                          (explosion_pos[0] - radius - 5, explosion_pos[1] - radius - 5))
 
     # 残機表示（画面右下）
     font = jp_font(26)
@@ -2469,6 +2796,27 @@ while True:
                 b['fx'], b['fy'] = fx, fy
                 b['rect'].x = int(fx)
                 b['rect'].y = int(fy)
+            elif move_mode == 'spiral':
+                center = b.get('center')
+                if not center:
+                    cx, cy = b['rect'].center
+                    center = [float(cx), float(cy)]
+                angle = b.get('angle', 0.0) + b.get('spin_speed', 0.14)
+                radius = b.get('radius', 14.0) + b.get('radius_speed', 0.32)
+                forward = b.get('forward_speed', 2.4)
+                drift_x = b.get('drift_x', 0.0)
+                center[0] += drift_x
+                center[1] += forward
+                max_radius = b.get('max_radius', 120.0)
+                if radius > max_radius:
+                    radius = max_radius
+                x = center[0] + math.cos(angle) * radius
+                y = center[1] + math.sin(angle) * radius
+                b['center'] = center
+                b['angle'] = angle
+                b['radius'] = radius
+                b['rect'].center = (int(x), int(y))
+                b['fx'], b['fy'] = x - b['rect'].width / 2.0, y - b['rect'].height / 2.0
             elif move_mode == 'orbit':
                 # 原点 around に沿って角度 ang で半径 r を増やしつつ回転、一定以上で解放
                 ang = b.get('ang', 0.0) + b.get('ang_vel', 0.08)
@@ -2486,6 +2834,28 @@ while True:
                     b['move'] = None
                     b['vx'] = speed * math.cos(ang)
                     b['vy'] = speed * math.sin(ang)
+            elif move_mode == 'spiral':
+                center = b.get('center')
+                if center is None:
+                    center = [float(b['rect'].centerx), float(b['rect'].centery)]
+                else:
+                    center = [float(center[0]), float(center[1])]
+                spin_speed = b.get('spin_speed', 0.18)
+                radius_speed = b.get('radius_speed', 0.35)
+                forward_speed = b.get('forward_speed', 2.5)
+                angle = b.get('angle', 0.0) + spin_speed
+                radius = max(4.0, b.get('radius', 12.0) + radius_speed)
+                center[1] += forward_speed
+                x = center[0] + radius * math.cos(angle)
+                y = center[1] + radius * math.sin(angle)
+                b['center'] = center
+                b['angle'] = angle
+                b['radius'] = radius
+                rect = b.get('rect')
+                if rect:
+                    rect.center = (int(x), int(y))
+                b['fx'] = x - rect.width / 2 if rect else x
+                b['fy'] = y - rect.height / 2 if rect else y
             else:
                 b['rect'].x += int(b.get('vx', 0))
                 b['rect'].y += int(b.get('vy', 0))
@@ -2889,6 +3259,9 @@ while True:
             if not damage:
                 cleaned_bullets.append(bullet)
         bullets = cleaned_bullets
+    if not boss_alive and boss_info and not boss_music_played:
+        play_boss_clear_music()
+        boss_music_played = True
     # ボス撃破後の爆発演出
     if not boss_alive and boss_explosion_timer < BOSS_EXPLOSION_DURATION:
         boss_explosion_timer += 1
@@ -3132,7 +3505,7 @@ while True:
                 # クールダウン終了 or 長時間アイドル時は強制的にパターン開始
                 if bi['patt_cd'] <= 0 or bi['idle_guard'] > 240:
                     # 新しい星パターン（直前と重複しにくく）
-                    pats = ['star_spread5', 'starfield_spin', 'star_burst', 'constellation', 'star_curtain']
+                    pats = ['star_spread5', 'starfield_spin', 'star_burst', 'constellation', 'star_curtain', 'spiral_swarm', 'side_beam']
                     if bi.get('last_patt') in pats and len(pats) > 1:
                         pats.remove(bi['last_patt'])
                     choice = random.choice(pats) if pats else 'star_spread5'
@@ -3143,6 +3516,7 @@ while True:
             elif bi['patt_state'] == 'run':
                 t = bi['patt_timer']
                 ch = bi.get('patt_choice')
+                handled = False
                 # 発射起点（分裂モード時は各パート、通常は本体）
                 origins = []
                 if bi.get('phase',1) == 3 and bi.get('phase3_split') and bi.get('parts'):
@@ -3172,6 +3546,12 @@ while True:
                                     'color': (255, 230, 0),
                                     'trail_ttl': 12
                                 })
+                    if t > 60:
+                        bi['patt_state'] = 'idle'
+                        bi['patt_timer'] = 0
+                        bi['patt_cd'] = 55
+                        bi['last_patt'] = ch
+                    handled = True
                 # 2) 回転スターフィールド（軌道→解放）
                 elif ch == 'starfield_spin':
                     if t in (1,):
@@ -3186,6 +3566,7 @@ while True:
                                                 'power':1.0,'life':480,'shape':'star','color': (255,230,0), 'trail_ttl': 16})
                     if t > 90:
                         bi['patt_state']='idle'; bi['patt_timer']=0; bi['patt_cd']=65; bi['last_patt']=ch
+                    handled = True
 
                 # 3) （削除済み）
 
@@ -3201,6 +3582,7 @@ while True:
                                             'burst_base_angle': base})
                     if t > 70:
                         bi['patt_state']='idle'; bi['patt_timer']=0; bi['patt_cd']=60; bi['last_patt']=ch
+                    handled = True
 
                 # 5) 星座攻撃（コンステレーション）
                 elif ch == 'constellation':
@@ -3226,6 +3608,61 @@ while True:
                                     bi['const_segments'].append({'a': a, 'b': b, 'state': 'tele', 'tele_ttl': 30, 'active_ttl': 180, 'thick': 6})
                     if t > 60:
                         bi['patt_state']='idle'; bi['patt_timer']=0; bi['patt_cd']=75; bi['last_patt']=ch
+                    handled = True
+
+                elif ch == 'spiral_swarm':
+                    if t in (1, 36, 72):
+                        for org in origins:
+                            count = 6
+                            base_radius = 8.0
+                            for i in range(count):
+                                ang = (2*math.pi*i/count) + (t * 0.07)
+                                rect = pygame.Rect(int(org['x']-6), int(org['y']-6), 12, 12)
+                                bullets.append({
+                                    'rect': rect,
+                                    'type': 'enemy',
+                                    'move': 'spiral',
+                                    'center': [float(org['x']), float(org['y'])],
+                                    'angle': ang,
+                                    'radius': base_radius + i * 2.5,
+                                    'radius_speed': 0.38 + 0.02 * i,
+                                    'spin_speed': 0.16 + 0.015 * i,
+                                    'forward_speed': 2.2 + 0.12 * i,
+                                    'life': 360,
+                                    'power': 1.0,
+                                    'shape': 'star',
+                                    'color': (255, 230, 140),
+                                    'trail_ttl': 14
+                                })
+                    if t > 140:
+                        bi['patt_state']='idle'; bi['patt_timer']=0; bi['patt_cd']=85; bi['last_patt']=ch
+                    handled = True
+
+                elif ch == 'side_beam':
+                    lasers = bi.setdefault('side_lasers', [])
+                    if t in (1, 90):
+                        choices = ['left', 'right']
+                        random.shuffle(choices)
+                        for org in origins[:2]:
+                            if not choices:
+                                direction = random.choice(['left', 'right'])
+                            else:
+                                direction = choices.pop(0)
+                            part_ref = org if org in bi.get('parts', []) else None
+                            lasers.append({
+                                'state': 'charge',
+                                'timer': 0,
+                                'direction': direction,
+                                'charge_time': 42,
+                                'fire_time': 75,
+                                'fade_time': 22,
+                                'width': 34,
+                                'origin_static': (org['x'], org['y']),
+                                'part_ref': part_ref
+                            })
+                    if t > 170:
+                        bi['patt_state']='idle'; bi['patt_timer']=0; bi['patt_cd']=95; bi['last_patt']=ch
+                    handled = True
 
                 # 6) スターカーテン（斜めに流れる星弾）
                 elif ch == 'star_curtain':
@@ -3245,6 +3682,15 @@ while True:
                                         'shape':'star','color': (255,230,0), 'trail_ttl': 14})
                     if t > 110:
                         bi['patt_state']='idle'; bi['patt_timer']=0; bi['patt_cd']=70; bi['last_patt']=ch
+                    handled = True
+
+                if not handled:
+                    # 未知パターンや異常時はフェイルセーフでアイドルに戻す
+                    if t > 200 or ch is None:
+                        bi['patt_state'] = 'idle'
+                        bi['patt_timer'] = 0
+                        bi['patt_cd'] = 60
+                        bi['last_patt'] = ch
             # 第二形態: 横レーザー 状態遷移（独立進行）※ 第三形態では無効
             if bi.get('phase', 1) == 2:
                 st = bi.get('hline_state', 'idle')
@@ -3874,6 +4320,10 @@ while True:
                                     boss_info['cross_phase2_charge_ratio'] = 0.0
                                     boss_info['cross_star_state'] = 'trapezoid'
                                     boss_info['cross_star_spin_speed'] = max(3.0, boss_info.get('cross_star_spin_speed', 2.6))
+                                    # 台形に変形時の効果音（一度だけ）
+                                    if boss_info.get('cross_last_transform_shape') != 'trapezoid':
+                                        play_shape_transform()
+                                        boss_info['cross_last_transform_shape'] = 'trapezoid'
                                     boss_info['cross_transition_effects'].append({
                                         'x': boss_x,
                                         'y': boss_y,
@@ -3895,6 +4345,10 @@ while True:
                                     boss_info['cross_phase2_charge_ratio'] = 0.0
                                     boss_info['cross_star_state'] = 'ellipse'
                                     boss_info['cross_phase2_ellipse_scale'] = (0.75, 1.3)
+                                    # 楕円に変形時の効果音（一度だけ）
+                                    if boss_info.get('cross_last_transform_shape') != 'ellipse':
+                                        play_shape_transform()
+                                        boss_info['cross_last_transform_shape'] = 'ellipse'
                                     boss_info['cross_phase2_moon_spin_backup'] = boss_info.get('cross_star_spin_speed', 0.0)
                                     boss_info['cross_star_spin_speed'] = 0.0
                                     boss_info['cross_phase2_disc_surface'] = None
@@ -3933,6 +4387,10 @@ while True:
                             charge_total = 48
                             boss_info['cross_phase2_charge_ratio'] = min(1.0, boss_info['cross_phase2_timer'] / float(charge_total))
                             if boss_info['cross_phase2_timer'] >= 14 and boss_info.get('cross_star_state') != 'circle':
+                                # 丸に変形時の効果音（一度だけ）
+                                if boss_info.get('cross_last_transform_shape') != 'circle':
+                                    play_shape_transform()
+                                    boss_info['cross_last_transform_shape'] = 'circle'
                                 boss_info['cross_star_state'] = 'circle'
                                 boss_info['cross_phase2_disc_surface'] = None
                                 boss_info['cross_phase2_disc_radius'] = 0
@@ -3975,7 +4433,12 @@ while True:
                             dx = target_top[0] - pos[0]
                             dy = target_top[1] - pos[1]
                             dist = math.hypot(dx, dy)
-                            boss_info['cross_star_state'] = 'trapezoid'
+                            if boss_info.get('cross_star_state') != 'trapezoid':
+                                # 台形に変形時の効果音（一度だけ）
+                                if boss_info.get('cross_last_transform_shape') != 'trapezoid':
+                                    play_shape_transform()
+                                    boss_info['cross_last_transform_shape'] = 'trapezoid'
+                                boss_info['cross_star_state'] = 'trapezoid'
                             boss_info['cross_phase2_disc_spin'] = boss_info.get('cross_phase2_disc_spin', 0.0) + 2.6
                             if dist <= speed:
                                 pos[0], pos[1] = target_top
@@ -4017,7 +4480,12 @@ while True:
                             boss_info['cross_phase2_charge_ratio'] = ratio
                             spin_boost = boss_info.get('cross_star_spin_speed', 3.2)
                             boss_info['cross_star_rotation'] = (boss_info.get('cross_star_rotation', 0.0) + spin_boost + 0.6) % 360
-                            boss_info['cross_star_state'] = 'trapezoid'
+                            if boss_info.get('cross_star_state') != 'trapezoid':
+                                # 台形に変形時の効果音（一度だけ）
+                                if boss_info.get('cross_last_transform_shape') != 'trapezoid':
+                                    play_shape_transform()
+                                    boss_info['cross_last_transform_shape'] = 'trapezoid'
+                                boss_info['cross_star_state'] = 'trapezoid'
                             boss_info['cross_phase2_disc_spin'] = boss_info.get('cross_phase2_disc_spin', 0.0) + 3.0
                             if boss_info['cross_phase2_timer'] % 5 == 0:
                                 boss_info['cross_transition_effects'].append({
@@ -4051,7 +4519,12 @@ while True:
                             boss_x, boss_y = pos[0], pos[1]
                             spin_amount = boss_info.get('cross_star_spin_speed', 3.2) + 1.4
                             boss_info['cross_star_rotation'] = (boss_info.get('cross_star_rotation', 0.0) + spin_amount) % 360
-                            boss_info['cross_star_state'] = 'trapezoid'
+                            if boss_info.get('cross_star_state') != 'trapezoid':
+                                # 台形に変形時の効果音（一度だけ）
+                                if boss_info.get('cross_last_transform_shape') != 'trapezoid':
+                                    play_shape_transform()
+                                    boss_info['cross_last_transform_shape'] = 'trapezoid'
+                                boss_info['cross_star_state'] = 'trapezoid'
                             boss_info['cross_phase2_disc_spin'] = boss_info.get('cross_phase2_disc_spin', 0.0) + 3.8
                             base_angle = boss_info.get('cross_phase2_rainbow_angle', 0.0)
                             base_angle = (base_angle + math.radians(8.0)) % math.tau
@@ -4131,7 +4604,12 @@ while True:
                             boss_info['cross_phase2_timer'] = fall_timer
                             boss_info['cross_phase2_charge_ratio'] = max(0.55, boss_info.get('cross_phase2_charge_ratio', 1.0) - 0.008)
                             boss_info['cross_phase2_disc_spin'] = boss_info.get('cross_phase2_disc_spin', 0.0) + 2.4
-                            boss_info['cross_star_state'] = 'trapezoid'
+                            if boss_info.get('cross_star_state') != 'trapezoid':
+                                # 台形に変形時の効果音（一度だけ）
+                                if boss_info.get('cross_last_transform_shape') != 'trapezoid':
+                                    play_shape_transform()
+                                    boss_info['cross_last_transform_shape'] = 'trapezoid'
+                                boss_info['cross_star_state'] = 'trapezoid'
                             if boss_info['cross_phase2_timer'] % 8 == 0:
                                 pass
                             if boss_info['cross_phase2_timer'] % 7 == 0:
@@ -4172,7 +4650,12 @@ while True:
                             boss_info['cross_phase2_pos'] = pos
                             boss_info['cross_phase2_charge_ratio'] = max(0.35, boss_info.get('cross_phase2_charge_ratio', 0.6) - 0.006)
                             boss_info['cross_phase2_disc_spin'] = boss_info.get('cross_phase2_disc_spin', 0.0) + 2.0
-                            boss_info['cross_star_state'] = 'trapezoid'
+                            if boss_info.get('cross_star_state') != 'trapezoid':
+                                # 台形に変形時の効果音（一度だけ）
+                                if boss_info.get('cross_last_transform_shape') != 'trapezoid':
+                                    play_shape_transform()
+                                    boss_info['cross_last_transform_shape'] = 'trapezoid'
+                                boss_info['cross_star_state'] = 'trapezoid'
                             if ground_timer % 24 == 0:
                                 lanes = 2
                                 top_y = boss_y - boss_radius - 10
@@ -4221,7 +4704,12 @@ while True:
                                 pos[0], pos[1] = center_target
                             boss_x, boss_y = pos[0], pos[1]
                             boss_info['cross_phase2_pos'] = pos
-                            boss_info['cross_star_state'] = 'ellipse'
+                            if boss_info.get('cross_star_state') != 'ellipse':
+                                # 楕円に変形時の効果音（一度だけ）
+                                if boss_info.get('cross_last_transform_shape') != 'ellipse':
+                                    play_shape_transform()
+                                    boss_info['cross_last_transform_shape'] = 'ellipse'
+                                boss_info['cross_star_state'] = 'ellipse'
                             boss_info['cross_phase2_disc_spin'] = 0.0
                             charge = min(1.0, boss_info.get('cross_phase2_charge_ratio', 0.0) + 0.02)
                             boss_info['cross_phase2_charge_ratio'] = charge
@@ -4265,7 +4753,12 @@ while True:
                             boss_info['cross_phase2_timer'] = attack_timer
                             boss_x, boss_y = pos[0], pos[1]
                             boss_info['cross_phase2_pos'] = pos
-                            boss_info['cross_star_state'] = 'ellipse'
+                            if boss_info.get('cross_star_state') != 'ellipse':
+                                # 楕円に変形時の効果音（一度だけ）
+                                if boss_info.get('cross_last_transform_shape') != 'ellipse':
+                                    play_shape_transform()
+                                    boss_info['cross_last_transform_shape'] = 'ellipse'
+                                boss_info['cross_star_state'] = 'ellipse'
                             boss_info['cross_phase2_charge_ratio'] = min(1.0, max(0.7, boss_info.get('cross_phase2_charge_ratio', 0.8) + 0.008))
                             boss_info['cross_phase2_disc_spin'] = 0.0
                             orbit_radius = boss_info.get('cross_phase2_moon_orbit_radius', boss_radius + 70)
@@ -4355,7 +4848,12 @@ while True:
                             boss_info['cross_phase2_timer'] = cleanup_timer
                             boss_x, boss_y = pos[0], pos[1]
                             boss_info['cross_phase2_pos'] = pos
-                            boss_info['cross_star_state'] = 'ellipse'
+                            if boss_info.get('cross_star_state') != 'ellipse':
+                                # 楕円に変形時の効果音（一度だけ）
+                                if boss_info.get('cross_last_transform_shape') != 'ellipse':
+                                    play_shape_transform()
+                                    boss_info['cross_last_transform_shape'] = 'ellipse'
+                                boss_info['cross_star_state'] = 'ellipse'
                             boss_info['cross_phase2_disc_spin'] = 0.0
                             base_orbit = boss_info.get('cross_phase2_moon_orbit_radius', boss_radius + 70)
                             decay = max(0.0, 1.0 - cleanup_timer / 36.0)
@@ -5013,6 +5511,8 @@ while True:
                     if timer >= 60:
                         boss_info['cross_phase_mode'] = 'transition_blackout'
                         boss_info['cross_transition_timer'] = 0
+                        # BGMをフェードアウト開始（2秒かけて）
+                        fade_out_bgm(2000)
                 elif cross_mode == 'transition_blackout':
                     decay_transition_effects(2.5)
                     timer = boss_info.get('cross_transition_timer', 0) + 1
@@ -5055,6 +5555,10 @@ while True:
                         })
                         boss_color = (255, 255, 255)
                         boss_info['color'] = boss_color
+                    # フェードイン開始タイミング（暗転解除が始まる直前）
+                    if intro == 25:  # hold_frames + 1
+                        # arabiantechnoをフェードインで再生開始（1.5秒かけて）
+                        play_bgm("arabiantechno", volume=0.45, fade_in_ms=1500)
                     hold_frames = 24
                     fade_frames = 60
                     if intro <= hold_frames:
