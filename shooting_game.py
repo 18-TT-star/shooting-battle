@@ -36,17 +36,21 @@ if not pygame.font.get_init():
 init_audio()
 play_bgm()  # BGMをループ再生開始
 
-DISPLAY_FLAGS = pygame.RESIZABLE | pygame.DOUBLEBUF
+DISPLAY_FLAGS = pygame.DOUBLEBUF  # RESIZABLEを削除してウィンドウサイズ固定
 display_surface = pygame.display.set_mode((WIDTH, HEIGHT), DISPLAY_FLAGS)
 screen = pygame.Surface((WIDTH, HEIGHT)).convert()
 pygame.display.set_caption("Bob's Big Adventure")
 is_fullscreen = False
+fullscreen_unlocked = False  # フルスクリーン機能のアンロック状態
 _border_starfield_cache = {}
 
 
 def set_display_mode(fullscreen: bool):
     """Toggle between fullscreen and windowed modes while preserving surfaces."""
-    global display_surface, is_fullscreen
+    global display_surface, is_fullscreen, fullscreen_unlocked
+    # フルスクリーンがアンロックされていない場合は何もしない
+    if fullscreen and not fullscreen_unlocked:
+        return
     if fullscreen and not is_fullscreen:
         try:
             pygame.display.quit()
@@ -196,10 +200,11 @@ def reset_boss_hazards_after_player_hit(boss_state):
         boss_state.pop('patt_choice', None)
     boss_state['idle_guard'] = 0
 selected_level = 1  # 1..MAX_LEVEL を使用
-menu_mode = True
+title_mode = True  # タイトル画面モード
+menu_mode = False  # レベル選択モード（タイトル後に移行）
 level_cleared = [False]*7  # 0..6
 
-from ui import draw_menu, draw_end_menu
+from ui import draw_menu, draw_end_menu, draw_title_screen
 
 # （この下にゲームループ）
 
@@ -1119,6 +1124,22 @@ debug_infinite_hp = False
 boss_music_played = False
 while True:
     events = pygame.event.get()
+    
+    # タイトル画面モード
+    if title_mode:
+        draw_title_screen(screen, frame_count)
+        present_frame()
+        for event in events:
+            if event.type == pygame.QUIT:
+                pygame.quit(); sys.exit()
+            if event.type == pygame.KEYDOWN:
+                # いずれかのキーでメニューへ
+                title_mode = False
+                menu_mode = True
+                play_menu_beep()
+        frame_count += 1
+        continue
+    
     if menu_mode:
         # BGMは継続再生（stop_music()を削除）
         boss_music_played = False
@@ -2056,12 +2077,12 @@ while True:
                     sys.exit()
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_t:
-                        if boss_alive:
-                            # 即時爆発デバッグ: HP を 0 にし爆発シーケンスへ
-                            boss_hp = 0
-                            boss_alive = False
-                            boss_explosion_timer = 0
-                            explosion_pos = (boss_x, boss_y)
+                        # タイトルへ戻る
+                        if is_fullscreen:
+                            set_display_mode(False)
+                        title_mode = True
+                        menu_mode = False
+                        break
                     # メニューへ戻る（1 / テンキー1）
                     if event.key in (pygame.K_1, pygame.K_KP_1):
                         if is_fullscreen:
@@ -3157,6 +3178,8 @@ while True:
                         if not boss_info.get('cross_phase2_fullscreen_done', False) and boss_info.get('cross_phase_mode') == 'phase2':
                             active_max = boss_info.get('cross_active_hp_max') or 0
                             if active_max and phase2_hp > 0 and phase2_hp <= active_max * 0.25:
+                                # フルスクリーン機能をアンロック
+                                fullscreen_unlocked = True
                                 if not is_fullscreen:
                                     set_display_mode(True)
                                 boss_info['cross_phase2_fullscreen_done'] = True

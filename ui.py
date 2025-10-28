@@ -4,6 +4,55 @@ import pygame
 from fonts import jp_font, text_surface
 from constants import WIDTH, HEIGHT, WHITE, RED
 
+def draw_title_screen(screen, frame_count):
+    """タイトル画面を描画"""
+    screen.fill((5, 5, 20))  # 暗い青背景
+    
+    # タイトルを特殊フォント（大きく）で表示
+    title_size = 52  # さらに小さくしてウィンドウに収める
+    title_font = jp_font(title_size)
+    
+    # ゲームタイトル
+    title_text = "Bob's Big Adventure"
+    title_surf = title_font.render(title_text, True, (255, 215, 0))  # ゴールド色
+    
+    # タイトルの影を追加（立体感）
+    shadow_surf = title_font.render(title_text, True, (100, 80, 0))
+    shadow_x = WIDTH // 2 - shadow_surf.get_width() // 2 + 2
+    shadow_y = HEIGHT // 3 - shadow_surf.get_height() // 2 + 2
+    screen.blit(shadow_surf, (shadow_x, shadow_y))
+    
+    # タイトル本体
+    title_x = WIDTH // 2 - title_surf.get_width() // 2
+    title_y = HEIGHT // 3 - title_surf.get_height() // 2
+    screen.blit(title_surf, (title_x, title_y))
+    
+    # サブタイトル
+    subtitle_font = jp_font(32)
+    subtitle = subtitle_font.render("シューティングバトル", True, (200, 200, 255))
+    subtitle_x = WIDTH // 2 - subtitle.get_width() // 2
+    subtitle_y = title_y + title_surf.get_height() + 20
+    screen.blit(subtitle, (subtitle_x, subtitle_y))
+    
+    # 点滅する「Press Any Key」メッセージ
+    if (frame_count // 30) % 2 == 0:  # 30フレームごとに点滅
+        press_font = jp_font(28)
+        press_text = press_font.render("Press Any Key", True, WHITE)
+        press_x = WIDTH // 2 - press_text.get_width() // 2
+        press_y = HEIGHT * 2 // 3 + 40
+        screen.blit(press_text, (press_x, press_y))
+    
+    # 装飾：星のエフェクト
+    for i in range(8):
+        star_angle = (frame_count + i * 45) % 360
+        star_radius = 150 + 20 * (i % 3)
+        star_x = WIDTH // 2 + int(star_radius * pygame.math.Vector2(1, 0).rotate(star_angle).x)
+        star_y = HEIGHT // 3 + int(star_radius * pygame.math.Vector2(1, 0).rotate(star_angle).y)
+        star_alpha = int(128 + 127 * abs((frame_count % 120 - 60) / 60))
+        star_color = (star_alpha, star_alpha, 255)
+        pygame.draw.circle(screen, star_color, (star_x, star_y), 3)
+
+
 def draw_menu(screen, selected_level, level_cleared):
     screen.fill((0, 0, 0))
     title_font = jp_font(50)
@@ -67,6 +116,6 @@ def draw_end_menu(screen, result, reward_text=None):
             rect = surf.get_rect(center=(WIDTH//2, start_y + i*line_h))
             screen.blit(surf, rect)
     font2 = jp_font(30)
-    menu_text = text_surface("1: メニューへ   2: リトライ   3: 終了", 30, WHITE)
+    menu_text = text_surface("1: メニューへ   2: リトライ   T: タイトルへ   3: 終了", 28, WHITE)
     menu_rect = menu_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 30))
     screen.blit(menu_text, menu_rect)
