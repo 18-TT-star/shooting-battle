@@ -193,6 +193,11 @@ def fade_out_bgm(fade_time_ms: int = 1000) -> None:
     _CURRENT_BGM = None
 
 
+def get_current_bgm() -> Optional[str]:
+    """現在再生中のBGM名を返す"""
+    return _CURRENT_BGM
+
+
 def shutdown_audio() -> None:
     """Stop all sounds and free mixer resources when quitting the game."""
     global _AUDIO_READY, _CURRENT_TRACK, _BGM_PLAYING, _CURRENT_BGM

@@ -27,7 +27,7 @@ from constants import (
 )
 from fonts import jp_font, text_surface
 from gameplay import spawn_player_bullets, move_player_bullets, update_dash_timers, attempt_dash
-from music import init_audio, play_enemy_hit, play_reflect, play_boss_clear_music, stop_music, play_shape_transform, play_bgm, fade_out_bgm, play_menu_beep
+from music import init_audio, play_enemy_hit, play_reflect, play_boss_clear_music, stop_music, play_shape_transform, play_bgm, fade_out_bgm, play_menu_beep, get_current_bgm
 
 pygame.init()
 if not pygame.font.get_init():
@@ -203,6 +203,7 @@ selected_level = 1  # 1..MAX_LEVEL を使用
 title_mode = True  # タイトル画面モード
 menu_mode = False  # レベル選択モード（タイトル後に移行）
 level_cleared = [False]*7  # 0..6
+boss6_phase2_checkpoint = False  # ボス6のphase2チェックポイント（リトライ用）
 
 from ui import draw_menu, draw_end_menu, draw_title_screen
 
@@ -1127,6 +1128,11 @@ while True:
     
     # タイトル画面モード
     if title_mode:
+        # BGMをデフォルトに戻す
+        if get_current_bgm() != "picopiconostalgie":
+            play_bgm("picopiconostalgie", volume=0.4)
+        # phase2チェックポイントをリセット
+        boss6_phase2_checkpoint = False
         draw_title_screen(screen, frame_count)
         present_frame()
         for event in events:
@@ -1141,6 +1147,11 @@ while True:
         continue
     
     if menu_mode:
+        # BGMをデフォルトに戻す
+        if get_current_bgm() != "picopiconostalgie":
+            play_bgm("picopiconostalgie", volume=0.4)
+        # phase2チェックポイントをリセット
+        boss6_phase2_checkpoint = False
         # BGMは継続再生（stop_music()を削除）
         boss_music_played = False
         draw_menu(screen, selected_level, level_cleared)
@@ -1484,10 +1495,19 @@ while True:
             boss_info['cross_wall_attack'] = None
             boss_info['cross_last_pattern'] = None
             boss_info['cross_transition_effects'] = []
-            boss_info['cross_phase_mode'] = 'phase1'
+            # チェックポイントがあればphase2から開始
+            if boss6_phase2_checkpoint:
+                boss_info['cross_phase_mode'] = 'phase2'
+                boss_info['cross_phase2_started'] = True
+            else:
+                boss_info['cross_phase_mode'] = 'phase1'
             base_hp = boss_info.get('hp', 180)
             boss_info['cross_phase1_hp'] = base_hp
             boss_info['cross_phase2_hp'] = max(base_hp + 60, int(base_hp * 1.2))
+            if boss6_phase2_checkpoint:
+                # phase2から開始する場合、HPをphase2の値に設定
+                boss_hp = boss_info['cross_phase2_hp']
+                boss_info['hp'] = boss_hp
             boss_info['cross_active_hp_max'] = base_hp
             boss_info['cross_transition_timer'] = 0
             boss_info['cross_phase2_intro_timer'] = 0
@@ -2097,7 +2117,7 @@ while True:
                     if event.key in (pygame.K_3, pygame.K_KP_3, pygame.K_ESCAPE):
                         pygame.quit()
                         sys.exit()
-            if menu_mode or retry:
+            if menu_mode or retry or title_mode:
                 break
         continue
 
@@ -3269,10 +3289,12 @@ while True:
                         if new_stage != boss_info.get('shrink_stage', 0):
                             boss_info['shrink_stage'] = new_stage
                             # 半径縮小 (割合減少)
-                            boss_radius = int(boss_info['base_radius'] * (1 - BOUNCE_BOSS_SHRINK_STEP * new_stage))
+                            base_r = boss_info.get('base_radius') or boss_info.setdefault('base_radius', boss_radius)
+                            boss_radius = int(base_r * (1 - BOUNCE_BOSS_SHRINK_STEP * new_stage))
                             boss_radius = max(25, boss_radius)
                             # 速度再計算（方向保持）
-                            speed_now = boss_info['base_speed'] * (1 + BOUNCE_BOSS_SPEED_STEP * new_stage)
+                            base_spd = boss_info.get('base_speed') or boss_info.setdefault('base_speed', BOUNCE_BOSS_SPEED)
+                            speed_now = base_spd * (1 + BOUNCE_BOSS_SPEED_STEP * new_stage)
                             vx = boss_info.get('bounce_vx',0)
                             vy = boss_info.get('bounce_vy',0)
                             cur_speed = math.hypot(vx, vy) or 1
@@ -5605,6 +5627,8 @@ while True:
                         boss_info['cross_phase2_timer'] = 0
                         boss_info['cross_phase2_pos'] = [float(boss_x), float(boss_y)]
                         boss_info['cross_phase2_disc_surface'] = None
+                        # phase2チェックポイント設定
+                        boss6_phase2_checkpoint = True
                         boss_info['cross_phase2_disc_radius'] = 0
                         boss_info['cross_phase2_disc_spin'] = 0.0
                         boss_info['cross_phase2_charge_ratio'] = 0.0

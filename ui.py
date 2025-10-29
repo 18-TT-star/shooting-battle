@@ -116,6 +116,6 @@ def draw_end_menu(screen, result, reward_text=None):
             rect = surf.get_rect(center=(WIDTH//2, start_y + i*line_h))
             screen.blit(surf, rect)
     font2 = jp_font(30)
-    menu_text = text_surface("1: メニューへ   2: リトライ   T: タイトルへ   3: 終了", 28, WHITE)
+    menu_text = text_surface("1: メニュー   2: リトライ   T: タイトル   3: 終了", 24, WHITE)
     menu_rect = menu_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 30))
     screen.blit(menu_text, menu_rect)
