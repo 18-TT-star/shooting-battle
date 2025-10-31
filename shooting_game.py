@@ -29,6 +29,9 @@ from fonts import jp_font, text_surface
 from gameplay import spawn_player_bullets, move_player_bullets, update_dash_timers, attempt_dash
 from music import init_audio, play_enemy_hit, play_reflect, play_boss_clear_music, stop_music, play_shape_transform, play_bgm, fade_out_bgm, play_menu_beep, get_current_bgm
 
+# デバッグモード（Trueでデバッグ出力を表示）
+DEBUG_MODE = True     
+
 pygame.init()
 if not pygame.font.get_init():
     pygame.font.init()
@@ -202,10 +205,15 @@ def reset_boss_hazards_after_player_hit(boss_state):
 selected_level = 1  # 1..MAX_LEVEL を使用
 title_mode = True  # タイトル画面モード
 menu_mode = False  # レベル選択モード（タイトル後に移行）
+save_load_mode = False  # セーブ・ロード画面モード
+save_load_action = 'load'  # 'load' or 'save'
+save_load_selected_slot = 1  # 選択中のセーブスロット
+save_confirm_mode = False  # 上書き確認モード
 level_cleared = [False]*7  # 0..6
 boss6_phase2_checkpoint = False  # ボス6のphase2チェックポイント（リトライ用）
 
-from ui import draw_menu, draw_end_menu, draw_title_screen
+from ui import draw_menu, draw_end_menu, draw_title_screen, draw_save_load_menu, draw_save_confirm_dialog
+from save_system import save_game, load_game, delete_save, get_save_info, create_save_data
 
 # （この下にゲームループ）
 
@@ -473,6 +481,15 @@ def draw_star(surface, center, outer_radius, color, inner_radius=None, rotation_
         y = cy + r * math.sin(ang)
         pts.append((x, y))
     pygame.draw.polygon(surface, color, pts)
+
+
+def draw_warp_warning_star(surface, center, outer_radius, alpha):
+    """ワープ予告用の薄い黄色の大きい星を描画"""
+    star_surface = pygame.Surface((outer_radius * 2 + 20, outer_radius * 2 + 20), pygame.SRCALPHA)
+    star_center = (outer_radius + 10, outer_radius + 10)
+    color_with_alpha = (255, 255, 150, alpha)  # 薄い黄色
+    draw_star(star_surface, star_center, outer_radius, color_with_alpha)
+    surface.blit(star_surface, (center[0] - outer_radius - 10, center[1] - outer_radius - 10))
 
 
 def draw_player_ship(surface, rect, fill_color, outline_color):
@@ -746,12 +763,13 @@ def update_star_rain_phase(boss_state, player_rect, bullets):
     if not boss_state:
         return False
     timer = boss_state.setdefault('star_rain_timer', 0)
-    phase_duration = 600
+    # フルスクリーンモードでは短縮
+    fullscreen_mode = boss_state.get('cross_phase_mode') == 'fullscreen_starstorm'
+    phase_duration = 180 if fullscreen_mode else 600  # フルスクリーンでは3秒に短縮
     interval = max(1, boss_state.get('star_rain_interval', 8))
     batch = max(1, boss_state.get('star_rain_batch', 12))
     # 画面上部から斜めに星を降らせる
     if timer % interval == 0:
-        fullscreen_mode = boss_state.get('cross_phase_mode') == 'fullscreen_starstorm'
         for _ in range(batch):
             x = random.randint(0, WIDTH)
             if fullscreen_mode:
@@ -779,6 +797,81 @@ def update_star_rain_phase(boss_state, player_rect, bullets):
         boss_state['star_rain_timer'] = 0
         return True
     return False
+
+
+def update_warp_ring_attack(boss_state, bullets):
+    """ワープ→リング弾幕攻撃パターン"""
+    if not boss_state:
+        return False
+    
+    timer = boss_state.setdefault('warp_attack_timer', 0)
+    state = boss_state.setdefault('warp_attack_state', 'warning')  # warning, teleport, shoot
+    
+    if state == 'warning':
+        # 警告フェーズ：ワープ先を予告
+        if timer == 0:
+            # ランダムな位置を決定
+            margin = 100
+            target_x = random.randint(margin, WIDTH - margin)
+            target_y = random.randint(margin, HEIGHT - margin)
+            boss_state['warp_target_x'] = target_x
+            boss_state['warp_target_y'] = target_y
+            boss_state['warp_warning_alpha'] = 0
+        
+        # 警告の星を点滅させる（速度を上げる）
+        boss_state['warp_warning_alpha'] = int(128 + 127 * math.sin(timer * 0.5))
+        
+        if timer >= 30:  # 0.5秒間警告（短縮）
+            boss_state['warp_attack_state'] = 'teleport'
+            boss_state['warp_attack_timer'] = 0
+            return False
+    
+    elif state == 'teleport':
+        # ワープ実行
+        if timer == 0:
+            boss_state['x'] = boss_state['warp_target_x']
+            boss_state['y'] = boss_state['warp_target_y']
+        
+        if timer >= 5:  # 短い間を置く
+            boss_state['warp_attack_state'] = 'shoot'
+            boss_state['warp_attack_timer'] = 0
+            return False
+    
+    elif state == 'shoot':
+        # リング弾幕を放つ
+        if timer == 5:
+            boss_x = boss_state['x']
+            boss_y = boss_state['y']
+            num_bullets = 20
+            speed = 4.5
+            
+            for i in range(num_bullets):
+                angle = (2 * math.pi * i / num_bullets)
+                vx = speed * math.cos(angle)
+                vy = speed * math.sin(angle)
+                bullets.append({
+                    'rect': pygame.Rect(int(boss_x), int(boss_y), 8, 8),
+                    'type': 'enemy',
+                    'vx': vx,
+                    'vy': vy,
+                    'power': 1.0,
+                    'shape': 'circle',
+                    'color': (255, 200, 50),
+                    'life': 300,
+                })
+        
+        if timer >= 40:  # 攻撃が通る時間を延長（20→40フレーム）
+            # 攻撃終了、次のワープ準備のためリセット
+            boss_state['warp_attack_state'] = 'warning'
+            boss_state['warp_attack_timer'] = 0
+            # 予測地点をクリア
+            boss_state['warp_target_x'] = None
+            boss_state['warp_target_y'] = None
+            boss_state['warp_warning_alpha'] = 0
+            return True  # 1回のワープ攻撃完了を通知
+    
+    boss_state['warp_attack_timer'] = timer + 1
+    return False  # まだ攻撃中
 
 
 def distance_point_to_segment(px, py, ax, ay, bx, by):
@@ -1139,11 +1232,116 @@ while True:
             if event.type == pygame.QUIT:
                 pygame.quit(); sys.exit()
             if event.type == pygame.KEYDOWN:
-                # いずれかのキーでメニューへ
-                title_mode = False
-                menu_mode = True
-                play_menu_beep()
+                # Lキーでロード画面へ
+                if event.key == pygame.K_l:
+                    title_mode = False
+                    save_load_mode = True
+                    save_load_action = 'load'
+                    save_load_selected_slot = 1
+                    play_menu_beep()
+                # いずれかのキー（L以外）でメニューへ
+                else:
+                    title_mode = False
+                    menu_mode = True
+                    play_menu_beep()
         frame_count += 1
+        continue
+    
+    # セーブ・ロード画面モード
+    if save_load_mode:
+        save_info_1 = get_save_info(1)
+        save_info_2 = get_save_info(2)
+        draw_save_load_menu(screen, save_load_selected_slot, save_info_1, save_info_2, save_load_action)
+        
+        # 上書き確認ダイアログ表示
+        if save_confirm_mode:
+            draw_save_confirm_dialog(screen, save_load_selected_slot)
+        
+        present_frame()
+        for event in events:
+            if event.type == pygame.QUIT:
+                pygame.quit(); sys.exit()
+            if event.type == pygame.KEYDOWN:
+                # 確認モード中の処理
+                if save_confirm_mode:
+                    if event.key == pygame.K_RETURN:
+                        # セーブ実行
+                        save_data = create_save_data(
+                            level_cleared, unlocked_homing, unlocked_leaf_shield,
+                            unlocked_spread, unlocked_dash, unlocked_hp_boost
+                        )
+                        if save_game(save_load_selected_slot, save_data):
+                            print(f"セーブ完了: スロット {save_load_selected_slot}")
+                        save_confirm_mode = False
+                        save_load_mode = False
+                        play_menu_beep()
+                    elif event.key == pygame.K_ESCAPE:
+                        # キャンセル
+                        save_confirm_mode = False
+                        play_menu_beep()
+                    continue
+                
+                # ESCで戻る
+                if event.key == pygame.K_ESCAPE:
+                    save_load_mode = False
+                    play_menu_beep()
+                # スロット選択
+                if event.key == pygame.K_UP:
+                    save_load_selected_slot = 1
+                    play_menu_beep()
+                if event.key == pygame.K_DOWN:
+                    save_load_selected_slot = 2
+                    play_menu_beep()
+                # Enterでセーブ/ロード実行
+                if event.key == pygame.K_RETURN:
+                    if save_load_action == 'save':
+                        # 既存セーブがあるか確認
+                        existing_save = get_save_info(save_load_selected_slot)
+                        if existing_save:
+                            # 上書き確認モードへ
+                            save_confirm_mode = True
+                            play_menu_beep()
+                        else:
+                            # 新規セーブ（確認不要）
+                            save_data = create_save_data(
+                                level_cleared, unlocked_homing, unlocked_leaf_shield,
+                                unlocked_spread, unlocked_dash, unlocked_hp_boost
+                            )
+                            if save_game(save_load_selected_slot, save_data):
+                                print(f"セーブ完了: スロット {save_load_selected_slot}")
+                            save_load_mode = False
+                            play_menu_beep()
+                    else:  # load
+                        # ロード実行
+                        loaded_data = load_game(save_load_selected_slot)
+                        if loaded_data:
+                            level_cleared = loaded_data.get('level_cleared', [False]*7)
+                            unlocked_homing = loaded_data.get('unlocked_homing', False)
+                            unlocked_leaf_shield = loaded_data.get('unlocked_leaf_shield', False)
+                            unlocked_spread = loaded_data.get('unlocked_spread', False)
+                            unlocked_dash = loaded_data.get('unlocked_dash', False)
+                            unlocked_hp_boost = loaded_data.get('unlocked_hp_boost', False)
+                            
+                            # アンロックされたものを有効化
+                            has_homing = unlocked_homing
+                            has_leaf_shield = unlocked_leaf_shield
+                            has_spread = unlocked_spread
+                            has_dash = unlocked_dash
+                            if unlocked_hp_boost:
+                                player_lives = max(player_lives, 5)
+                            
+                            print(f"ロード完了: スロット {save_load_selected_slot}")
+                            save_load_mode = False
+                            title_mode = False
+                            menu_mode = True
+                            play_menu_beep()
+                        else:
+                            print(f"ロード失敗: スロット {save_load_selected_slot} が空です")
+                # Dキーで削除（ロードモード時のみ）
+                if event.key == pygame.K_d and save_load_action == 'load':
+                    if delete_save(save_load_selected_slot):
+                        print(f"削除完了: スロット {save_load_selected_slot}")
+                    play_menu_beep()
         continue
     
     if menu_mode:
@@ -1160,6 +1358,20 @@ while True:
             if event.type == pygame.QUIT:
                 pygame.quit(); sys.exit()
             if event.type == pygame.KEYDOWN:
+                # Sキーでセーブ画面へ
+                if event.key == pygame.K_s:
+                    save_load_mode = True
+                    save_load_action = 'save'
+                    save_load_selected_slot = 1
+                    play_menu_beep()
+                    continue
+                # Lキーでロード画面へ
+                if event.key == pygame.K_l:
+                    save_load_mode = True
+                    save_load_action = 'load'
+                    save_load_selected_slot = 1
+                    play_menu_beep()
+                    continue
                 if event.key == pygame.K_UP:
                     selected_level += 1
                     if selected_level > 6:
@@ -1700,6 +1912,23 @@ while True:
                         boss_info['cross_active_hp_max'] = max(1, phase2_hp)
                         boss_info['hp'] = phase2_hp
                         boss_hp = phase2_hp
+                    elif cross_mode == 'phase2':
+                        # 虹星形態中: 体力を1/10に削ってフルスクリーンモードへ
+                        active_max = boss_info.get('cross_active_hp_max', boss_hp)
+                        target_hp = max(1, active_max * 0.1)
+                        boss_info['cross_phase2_hp'] = target_hp
+                        boss_info['hp'] = target_hp
+                        boss_hp = target_hp
+                        # フルスクリーンをアンロック＆有効化
+                        fullscreen_unlocked = True
+                        if not is_fullscreen:
+                            set_display_mode(True)
+                        boss_info['cross_phase2_fullscreen_done'] = True
+                        # フルスクリーン攻撃パターンの初期化
+                        boss_info['fullscreen_pattern'] = 'warp_attack'
+                        boss_info['warp_attack_count'] = 0
+                        boss_info['warp_attack_state'] = 'warning'
+                        boss_info['warp_attack_timer'] = 0
                     else:
                         boss_info['cross_phase2_hp'] = 0
                         boss_info['hp'] = 0
@@ -2479,6 +2708,14 @@ while True:
                 pygame.draw.circle(effect_surface, (255, 255, 255, min(255, alpha + 40)), (radius, radius), max(2, radius // 3), 2)
                 effect_rect = effect_surface.get_rect(center=(int(fx.get('x', boss_x)), int(fx.get('y', boss_y))))
                 screen.blit(effect_surface, effect_rect)
+            
+            # ワープ攻撃の警告星を描画
+            if boss_info.get('warp_attack_state') == 'warning':
+                target_x = boss_info.get('warp_target_x')
+                target_y = boss_info.get('warp_target_y')
+                warning_alpha = boss_info.get('warp_warning_alpha', 128)
+                if target_x is not None and target_y is not None:
+                    draw_warp_warning_star(screen, (target_x, target_y), 80, warning_alpha)  # サイズを50→80に拡大
         elif boss_info and boss_info["name"] == "三日月形ボス":
             # 単体三日月描画
             outer_r = boss_radius
@@ -3175,6 +3412,26 @@ while True:
                             boss_info['hp'] = boss_info['cross_phase2_hp']
                             boss_hp = boss_info['cross_phase2_hp']
                     elif cross_mode in ('phase2', 'phase2_intro', 'fullscreen_starstorm'):
+                        # フルスクリーンモードでワープ攻撃中以外は無敵
+                        if cross_mode == 'fullscreen_starstorm':
+                            warp_state = boss_info.get('warp_attack_state', 'warning')
+                            if warp_state != 'shoot':
+                                # ワープ攻撃の射撃フェーズ以外は無敵（弾を反射）
+                                bullet['reflect'] = True
+                                if bullet.get('type') == 'homing':
+                                    bullet['type'] = 'normal'
+                                speed_now = math.hypot(bullet.get('vx', 0.0), bullet.get('vy', -6.0))
+                                speed_now = max(3.2, speed_now)
+                                aim_ang = math.atan2(player.centery - boss_y, player.centerx - boss_x)
+                                aim_ang += math.radians(random.uniform(-14, 14))
+                                bullet['vx'] = speed_now * math.cos(aim_ang)
+                                bullet['vy'] = speed_now * math.sin(aim_ang)
+                                if bullet['vy'] <= 0:
+                                    bullet['vy'] = abs(bullet['vy']) + 0.6
+                                play_reflect()
+                                cleaned_bullets.append(bullet)
+                                continue
+                        
                         if boss_info.get('cross_phase2_reflect', False):
                             bullet['reflect'] = True
                             if bullet.get('type') == 'homing':
@@ -4205,7 +4462,13 @@ while True:
                             updated.append(fx)
                     boss_info['cross_transition_effects'] = updated
 
-                if is_fullscreen:
+                # フルスクリーン移行後はフルスクリーンモードを維持
+                if boss_info.get('cross_phase2_fullscreen_done', False):
+                    boss_info['cross_phase_mode'] = 'fullscreen_starstorm'
+                    cross_mode = 'fullscreen_starstorm'
+
+                if is_fullscreen or cross_mode == 'fullscreen_starstorm':
+                    # フルスクリーンモードまたはフルスクリーン攻撃モード
                     boss_info['cross_wall_attack'] = None
                     boss_info['cross_falls'] = []
                     boss_info['cross_phase2_moon_beams'] = []
@@ -4217,16 +4480,66 @@ while True:
                     boss_info['cross_star_state'] = 'star'
                     boss_info['cross_star_spin_speed'] = max(2.0, boss_info.get('cross_star_spin_speed', 2.0))
                     boss_info['cross_star_rotation'] = (boss_info.get('cross_star_rotation', 0.0) + boss_info.get('cross_star_spin_speed', 2.0)) % 360
-                    boss_x = WIDTH / 2
-                    boss_y = boss_info.get('cross_base_y', 120)
-                    # フルスクリーン時の星弾幕密度調整
-                    boss_info['star_rain_interval'] = 18
-                    boss_info['star_rain_batch'] = 3
-                    if not boss_info.get('star_rain_active'):
-                        boss_info['star_rain_active'] = True
-                        boss_info['star_rain_timer'] = 0
-                    update_star_rain_phase(boss_info, player, bullets)
-                elif cross_mode in ('phase1', 'phase2'):
+                    
+                    # フルスクリーン移行直後の待機時間
+                    if not boss_info.get('fullscreen_initialized', False):
+                        boss_info['fullscreen_initialized'] = True
+                        boss_info['fullscreen_wait_timer'] = 0
+                    
+                    wait_timer = boss_info.get('fullscreen_wait_timer', 0)
+                    if wait_timer < 300:  # 5秒待機（60fps * 5 = 300フレーム）
+                        boss_info['fullscreen_wait_timer'] = wait_timer + 1
+                        boss_x = WIDTH / 2
+                        boss_y = boss_info.get('cross_base_y', 120)
+                    else:
+                        # フルスクリーンでの攻撃パターン切り替え（星の雨とワープ攻撃）
+                        current_pattern = boss_info.setdefault('fullscreen_pattern', 'star_rain')
+                        
+                        if current_pattern == 'star_rain':
+                            boss_x = WIDTH / 2
+                            boss_y = boss_info.get('cross_base_y', 120)
+                            boss_info['star_rain_interval'] = 18
+                            boss_info['star_rain_batch'] = 3
+                            # 星の雨の開始時に1回だけ初期化（Noneまたは明示的にFalseの場合）
+                            if boss_info.get('star_rain_active') is not True:
+                                boss_info['star_rain_active'] = True
+                                boss_info['star_rain_timer'] = 0
+                                if DEBUG_MODE:
+                                    print(f"[DEBUG] 星の雨開始")
+                            
+                            if update_star_rain_phase(boss_info, player, bullets):
+                                # 星の雨が終了したらワープ攻撃に切り替え
+                                if DEBUG_MODE:
+                                    print(f"[DEBUG] 星の雨終了 -> ワープ攻撃へ切り替え")
+                                boss_info['fullscreen_pattern'] = 'warp_attack'
+                                boss_info['warp_attack_count'] = 0
+                                boss_info['warp_attack_state'] = 'warning'
+                                boss_info['warp_attack_timer'] = 0
+                                # 次回の星の雨のためにフラグをリセット
+                                boss_info['star_rain_active'] = False
+                        
+                        elif current_pattern == 'warp_attack':
+                            # ワープ攻撃を実行
+                            attack_completed = update_warp_ring_attack(boss_info, bullets)
+                            if attack_completed:
+                                # 1回のワープ攻撃完了
+                                boss_info['warp_attack_count'] = boss_info.get('warp_attack_count', 0) + 1
+                                if DEBUG_MODE:
+                                    print(f"[DEBUG] ワープ攻撃完了 ({boss_info['warp_attack_count']}/5)")
+                                if boss_info['warp_attack_count'] >= 5:  # 5回ワープしたら星の雨に戻る
+                                    if DEBUG_MODE:
+                                        print(f"[DEBUG] ワープ攻撃5回完了 -> 星の雨へ切り替え")
+                                    boss_info['fullscreen_pattern'] = 'star_rain'
+                                    boss_info['warp_attack_count'] = 0
+                                    # 星の雨の状態をリセット
+                                    boss_info['star_rain_active'] = False
+                                    boss_info['star_rain_timer'] = 0
+                                # それ以外は自動的にwarningステートに戻るので次のワープ攻撃が開始される
+                            
+                            # ワープ攻撃中のボス位置は攻撃関数内で管理
+                            boss_x = boss_info.get('x', WIDTH / 2)
+                            boss_y = boss_info.get('y', 120)
+                elif cross_mode in ('phase1', 'phase2') and cross_mode != 'fullscreen_starstorm':
                     decay_transition_effects(3.0)
                     boss_info.setdefault('cross_star_trigger_ratio', 0.55)
                     phase_speed = boss_info.get('cross_phase_speed', 0.015)
