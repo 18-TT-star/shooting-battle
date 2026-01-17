@@ -1,0 +1,16 @@
+{
+  "level_cleared": [
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    true
+  ],
+  "unlocked_homing": true,
+  "unlocked_leaf_shield": true,
+  "unlocked_spread": true,
+  "unlocked_dash": true,
+  "unlocked_hp_boost": true
+}

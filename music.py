@@ -4,8 +4,20 @@ from __future__ import annotations
 import os
 from pathlib import Path
 from typing import Dict, Optional
+import threading
+import queue
 
 import pygame
+
+try:
+    import pyttsx3
+    _TTS_ENGINE = None
+    _TTS_AVAILABLE = True
+    _TTS_LOCK = threading.Lock()
+except ImportError:
+    _TTS_AVAILABLE = False
+    _TTS_ENGINE = None
+    _TTS_LOCK = None
 
 _AUDIO_CACHE: Dict[str, pygame.mixer.Sound] = {}
 _AUDIO_DISABLED = False
@@ -45,6 +57,9 @@ def _load_default_sounds() -> None:
     _load_sound("bgm_main", "transform.wav", volume=0.5)
     # メニュー移動音（ピッ）
     _load_sound("menu_beep", "menu_beep.wav", volume=0.5)
+    # カウントダウン音（ピッとSTART音）
+    _load_sound("countdown_beep", "menu_beep.wav", volume=0.6)
+    _load_sound("countdown_start", "transform.wav", volume=0.65)
 
 
 def _load_sound(key: str, filename: str, *, volume: float = 1.0) -> None:
@@ -181,6 +196,61 @@ def play_menu_beep() -> None:
     sound = _AUDIO_CACHE.get("menu_beep")
     if sound:
         sound.play()
+
+
+def play_countdown_beep() -> None:
+    """カウントダウン数字音（3,2,1）を再生する"""
+    if _AUDIO_DISABLED:
+        return
+    if not _AUDIO_READY:
+        init_audio()
+    sound = _AUDIO_CACHE.get("countdown_beep")
+    if sound:
+        sound.play()
+
+
+def play_countdown_start() -> None:
+    """START!音を再生する"""
+    if _AUDIO_DISABLED:
+        return
+    if not _AUDIO_READY:
+        init_audio()
+    sound = _AUDIO_CACHE.get("countdown_start")
+    if sound:
+        sound.play()
+
+
+def speak_countdown(text: str) -> None:
+    """カウントダウンの数字を英語で読み上げる
+    
+    Args:
+        text: 読み上げるテキスト ("START!"など)
+    """
+    global _TTS_ENGINE
+    if not _TTS_AVAILABLE:
+        return
+    
+    def _speak():
+        global _TTS_ENGINE
+        with _TTS_LOCK:
+            try:
+                # エンジンの初期化は一度だけ
+                if _TTS_ENGINE is None:
+                    _TTS_ENGINE = pyttsx3.init()
+                    # 音声速度を遅くしてはっきり言わせる
+                    _TTS_ENGINE.setProperty('rate', 180)
+                    # 音量を最大に
+                    _TTS_ENGINE.setProperty('volume', 1.0)
+                
+                _TTS_ENGINE.say(text)
+                _TTS_ENGINE.runAndWait()
+            except Exception as e:
+                # エラーが起きたらエンジンをリセット
+                _TTS_ENGINE = None
+    
+    # 別スレッドで実行
+    thread = threading.Thread(target=_speak, daemon=True)
+    thread.start()
 
 
 def fade_out_bgm(fade_time_ms: int = 1000) -> None:

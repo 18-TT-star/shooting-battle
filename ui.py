@@ -60,7 +60,7 @@ def draw_title_screen(screen, frame_count):
         pygame.draw.circle(screen, star_color, (star_x, star_y), 3)
 
 
-def draw_menu(screen, selected_level, level_cleared):
+def draw_menu(screen, selected_level, level_cleared, level_cleared_no_equipment=None):
     screen.fill((0, 0, 0))
     title_font = jp_font(50)
     title = title_font.render("レベル選択", True, WHITE)
@@ -78,9 +78,20 @@ def draw_menu(screen, selected_level, level_cleared):
         y = base_y + row * line_h
         screen.blit(label, (x, y))
         if len(level_cleared) > i and level_cleared[i]:
-            star = text_surface("★", 38, (255, 215, 0))
-            screen.blit(star, (x + label.get_width() + 10, y))
-    info = text_surface("↑↓: 選択  Enter: 開始  S: セーブ  L: ロード", 20, WHITE)
+            # 装備なしクリアの場合は豪華な星を表示
+            if level_cleared_no_equipment and len(level_cleared_no_equipment) > i and level_cleared_no_equipment[i]:
+                # 豪華な星：グラデーション効果を持つ金色
+                star_base = text_surface("★", 38, (218, 165, 32))  # 深みのある金色
+                star_glow = text_surface("★", 44, (255, 215, 100))  # 明るい金色
+                # 輝きエフェクト（半透明で重ねる）
+                star_glow.set_alpha(80)
+                screen.blit(star_glow, (x + label.get_width() + 7, y - 3))
+                screen.blit(star_base, (x + label.get_width() + 10, y))
+            else:
+                # 通常の星：白色
+                star = text_surface("★", 38, (255, 255, 255))
+                screen.blit(star, (x + label.get_width() + 10, y))
+    info = text_surface("↑↓: 選択  Enter: 開始  E: 装備  S: セーブ  L: ロード", 20, WHITE)
     screen.blit(info, (WIDTH // 2 - info.get_width() // 2, HEIGHT - 60))
 
 
@@ -216,3 +227,125 @@ def draw_save_confirm_dialog(screen, slot_num):
     option_font = jp_font(26)
     yes_text = option_font.render("Enter: はい   ESC: いいえ", True, (200, 200, 200))
     screen.blit(yes_text, (WIDTH // 2 - yes_text.get_width() // 2, HEIGHT // 2 + 20))
+
+
+def draw_equipment_menu(screen, selected_index, equipment_enabled, unlocked_homing, 
+                        unlocked_leaf_shield, unlocked_spread, unlocked_dash, unlocked_hp_boost):
+    """アイテム装備画面を描画
+    
+    Args:
+        screen: 描画先サーフェス
+        selected_index: 選択中のアイテムインデックス
+        equipment_enabled: 各アイテムの有効/無効設定
+        unlocked_*: 各アイテムのアンロック状態
+    """
+    screen.fill((0, 0, 0))
+    
+    # タイトル
+    title_font = jp_font(50)
+    title = title_font.render("アイテム装備", True, WHITE)
+    screen.blit(title, (WIDTH // 2 - title.get_width() // 2, 40))
+    
+    # アイテムリスト
+    items = [
+        {'key': 'homing', 'name': 'ホーミング弾', 'unlocked': unlocked_homing},
+        {'key': 'leaf_shield', 'name': 'リーフシールド', 'unlocked': unlocked_leaf_shield},
+        {'key': 'spread', 'name': '拡散弾(3WAY)', 'unlocked': unlocked_spread},
+        {'key': 'dash', 'name': '緊急回避', 'unlocked': unlocked_dash},
+        {'key': 'hp_boost', 'name': '体力増加', 'unlocked': unlocked_hp_boost}
+    ]
+    
+    item_font = jp_font(32)
+    status_font = jp_font(28)
+    base_y = 140
+    line_h = 70
+    
+    for i, item in enumerate(items):
+        y = base_y + i * line_h
+        
+        # 選択カーソル
+        if i == selected_index:
+            cursor = "▶ "
+            cursor_surf = item_font.render(cursor, True, (255, 255, 100))
+            screen.blit(cursor_surf, (80, y))
+        
+        # アイテム名
+        if item['unlocked']:
+            color = WHITE
+            name_text = item['name']
+        else:
+            color = (80, 80, 80)
+            name_text = "???"
+        
+        name_surf = item_font.render(name_text, True, color)
+        screen.blit(name_surf, (130, y))
+        
+        # 装備状態
+        if item['unlocked']:
+            if equipment_enabled[item['key']]:
+                status = "ON"
+                status_color = (100, 255, 100)
+            else:
+                status = "OFF"
+                status_color = (200, 100, 100)
+            
+            status_surf = status_font.render(status, True, status_color)
+            screen.blit(status_surf, (WIDTH - 150, y + 5))
+    
+    # 操作説明
+    help_font = jp_font(22)
+    help_text = "↑↓: 選択   Enter/Space: 切替   ESC: 戻る"
+    help_surf = help_font.render(help_text, True, WHITE)
+    screen.blit(help_surf, (WIDTH // 2 - help_surf.get_width() // 2, HEIGHT - 60))
+
+
+def draw_pause_menu(screen, selected_index):
+    """ポーズ画面を描画
+    
+    Args:
+        screen: 描画先サーフェス
+        selected_index: 選択中のメニューインデックス (0: 続ける, 1: メニューに戻る)
+    """
+    # 半透明の黒い背景（背景が透けて見える）
+    overlay = pygame.Surface((WIDTH, HEIGHT))
+    overlay.set_alpha(150)  # 透明度を下げて背景をより透けさせる
+    overlay.fill((0, 0, 0))
+    screen.blit(overlay, (0, 0))
+    
+    # タイトル
+    title_font = jp_font(60)
+    title = title_font.render("ポーズ", True, WHITE)
+    screen.blit(title, (WIDTH // 2 - title.get_width() // 2, 80))
+    
+    # ポーズボタンの説明
+    pause_info_font = jp_font(24)
+    pause_info = pause_info_font.render("(ESC または P でポーズ)", True, (200, 200, 200))
+    screen.blit(pause_info, (WIDTH // 2 - pause_info.get_width() // 2, 150))
+    
+    # メニュー項目
+    menu_items = ["続ける", "メニューに戻る"]
+    item_font = jp_font(40)
+    base_y = 260
+    line_h = 80
+    
+    for i, item in enumerate(menu_items):
+        y = base_y + i * line_h
+        
+        # 選択カーソル
+        if i == selected_index:
+            color = (255, 255, 100)
+            cursor = "▶ "
+            cursor_surf = item_font.render(cursor, True, color)
+            screen.blit(cursor_surf, (WIDTH // 2 - 150, y))
+        else:
+            color = (180, 180, 180)
+        
+        item_surf = item_font.render(item, True, color)
+        screen.blit(item_surf, (WIDTH // 2 - item_surf.get_width() // 2, y))
+    
+    # 操作説明
+    help_font = jp_font(22)
+    help_text = "↑↓: 選択   Enter: 決定   ESC/P: ポーズ解除"
+    help_surf = help_font.render(help_text, True, (255, 255, 255))
+    screen.blit(help_surf, (WIDTH // 2 - help_surf.get_width() // 2, HEIGHT - 60))
+

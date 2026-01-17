@@ -112,11 +112,12 @@ def get_save_info(slot: int) -> Optional[Dict[str, Any]]:
         'unlocked_dash': data.get('unlocked_dash', False),
         'unlocked_leaf_shield': data.get('unlocked_leaf_shield', False),
         'unlocked_hp_boost': data.get('unlocked_hp_boost', False),
+        'level_cleared_no_equipment': data.get('level_cleared_no_equipment', [False]*7),
     }
 
 
 def create_save_data(level_cleared, unlocked_homing, unlocked_leaf_shield, 
-                     unlocked_spread, unlocked_dash, unlocked_hp_boost) -> Dict[str, Any]:
+                     unlocked_spread, unlocked_dash, unlocked_hp_boost, level_cleared_no_equipment) -> Dict[str, Any]:
     """
     Create a save data dictionary from current game state.
     
@@ -130,4 +131,5 @@ def create_save_data(level_cleared, unlocked_homing, unlocked_leaf_shield,
         'unlocked_spread': unlocked_spread,
         'unlocked_dash': unlocked_dash,
         'unlocked_hp_boost': unlocked_hp_boost,
+        'level_cleared_no_equipment': level_cleared_no_equipment,
     }
