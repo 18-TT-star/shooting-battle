@@ -18,9 +18,11 @@ Python 3.8 以上
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ■ Windows の場合:
-  1. setup_and_play.py をダブルクリック
-     または
-     コマンドプロンプトで: python setup_and_play.py
+  1. PLAY.bat をダブルクリック
+  
+  ※ setup_and_play.py をダブルクリックすると
+    エディタが開いてしまう場合があります。
+    必ず PLAY.bat を使用してください。
 
 ■ Linux / Mac の場合:
   ターミナルで: python3 setup_and_play.py

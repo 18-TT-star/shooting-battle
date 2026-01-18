@@ -58,9 +58,11 @@ Python 3.8 以上
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ■ Windows の場合:
-  1. setup_and_play.py をダブルクリック
-     または
-     コマンドプロンプトで: python setup_and_play.py
+  1. PLAY.bat をダブルクリック
+  
+  ※ setup_and_play.py をダブルクリックすると
+    エディタが開いてしまう場合があります。
+    必ず PLAY.bat を使用してください。
 
 ■ Linux / Mac の場合:
   ターミナルで: python3 setup_and_play.py
@@ -168,9 +170,43 @@ EOF
 # Windows用バッチファイルを作成
 cat > "$SOURCE_DIR/PLAY.bat" << 'EOF'
 @echo off
+chcp 65001 >nul
 title Bob's Big Adventure
+cls
+
+echo ============================================
+echo   Bob's Big Adventure - 起動中...
+echo ============================================
+echo.
+
+REM Pythonのパスを確認
+where python >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [エラー] Python が見つかりません！
+    echo.
+    echo Python 3.8以上をインストールしてください：
+    echo https://www.python.org/downloads/
+    echo.
+    echo インストール時に "Add Python to PATH" に
+    echo 必ずチェックを入れてください。
+    echo.
+    pause
+    exit /b 1
+)
+
+echo Python を確認しました
+python --version
+echo.
+
+REM ゲームを起動
 python setup_and_play.py
-pause
+
+REM エラーが発生した場合は待機
+if %errorlevel% neq 0 (
+    echo.
+    echo [エラー] ゲームの起動に失敗しました
+    pause
+)
 EOF
 
 # Linux/Mac用シェルスクリプトを作成
