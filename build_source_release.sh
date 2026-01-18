@@ -33,6 +33,7 @@ mkdir -p "$SOURCE_DIR/saves"
 cat > "$SOURCE_DIR/requirements.txt" << 'EOF'
 pygame>=2.0.0
 numpy
+pyttsx3>=2.90
 EOF
 
 # ユーザー向けREADMEを作成

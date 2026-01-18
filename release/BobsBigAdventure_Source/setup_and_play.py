@@ -26,19 +26,45 @@ def install_requirements():
     print("初回セットアップを実行しています...")
     print("=" * 60)
     
-    requirements = ['pygame>=2.0.0', 'numpy']
+    requirements = ['pygame>=2.0.0', 'numpy', 'pyttsx3>=2.90']
     
     for package in requirements:
+        package_name = package.split('>=')[0].split('==')[0]
+        
+        # まずインポートできるか確認
+        try:
+            if package_name == 'pygame':
+                import pygame
+                print(f"✅ {package_name} は既にインストール済みです")
+                continue
+            elif package_name == 'numpy':
+                import numpy
+                print(f"✅ {package_name} は既にインストール済みです")
+                continue
+            elif package_name == 'pyttsx3':
+                import pyttsx3
+                print(f"✅ {package_name} は既にインストール済みです")
+                continue
+        except ImportError:
+            pass
+        
+        # インストールが必要
         print(f"\n📦 {package} をインストール中...")
         try:
+            # まず --user オプションで試す
             subprocess.check_call(
-                [sys.executable, '-m', 'pip', 'install', package, '--quiet'],
-                stdout=subprocess.DEVNULL
+                [sys.executable, '-m', 'pip', 'install', package, '--user', '--quiet'],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
             )
             print(f"✅ {package} インストール完了")
         except subprocess.CalledProcessError:
-            print(f"❌ {package} のインストールに失敗しました")
-            print("インターネット接続を確認してください")
+            # --user が失敗したらシステムパッケージを確認
+            print(f"⚠️  {package} のインストールに失敗しました")
+            print(f"\n以下のコマンドを実行してください:")
+            print(f"  sudo apt install python3-pygame python3-numpy")
+            print(f"または:")
+            print(f"  pip install --user {package}")
             input("\nEnterキーを押して終了...")
             sys.exit(1)
     
@@ -54,6 +80,7 @@ def check_dependencies():
     try:
         import pygame
         import numpy
+        import pyttsx3
         return True
     except ImportError:
         return False

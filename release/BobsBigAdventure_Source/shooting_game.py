@@ -9,9 +9,11 @@ except ImportError:  # Install pygame automatically if missing
 
 try:
     import pyttsx3
-except ImportError:  # Install pyttsx3 automatically if missing
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "pyttsx3>=2.90"])
-    import pyttsx3
+    TTS_AVAILABLE = True
+except ImportError:
+    # pyttsx3 is optional, game works without it
+    pyttsx3 = None
+    TTS_AVAILABLE = False
 
 from constants import (
     WIDTH, HEIGHT,
