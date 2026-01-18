@@ -1,0 +1,2765 @@
+('/home/tt/T.T GAMES/new game2/dist/BobsBigAdventure',
+ False,
+ False,
+ False,
+ None,
+ None,
+ False,
+ False,
+ None,
+ True,
+ False,
+ None,
+ None,
+ None,
+ '/home/tt/T.T GAMES/new game2/build/BobsBigAdventure/BobsBigAdventure.pkg',
+ [('pyi-contents-directory _internal', '', 'OPTION'),
+  ('PYZ-00.pyz',
+   '/home/tt/T.T GAMES/new game2/build/BobsBigAdventure/PYZ-00.pyz',
+   'PYZ'),
+  ('struct',
+   '/home/tt/T.T GAMES/new game2/build/BobsBigAdventure/localpycs/struct.pyc',
+   'PYMODULE'),
+  ('pyimod01_archive',
+   '/home/tt/T.T GAMES/new '
+   'game2/build/BobsBigAdventure/localpycs/pyimod01_archive.pyc',
+   'PYMODULE'),
+  ('pyimod02_importers',
+   '/home/tt/T.T GAMES/new '
+   'game2/build/BobsBigAdventure/localpycs/pyimod02_importers.pyc',
+   'PYMODULE'),
+  ('pyimod03_ctypes',
+   '/home/tt/T.T GAMES/new '
+   'game2/build/BobsBigAdventure/localpycs/pyimod03_ctypes.pyc',
+   'PYMODULE'),
+  ('pyiboot01_bootstrap',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/PyInstaller/loader/pyiboot01_bootstrap.py',
+   'PYSOURCE'),
+  ('pyi_rth_inspect',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/PyInstaller/hooks/rthooks/pyi_rth_inspect.py',
+   'PYSOURCE'),
+  ('pyi_rth_pkgutil',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/PyInstaller/hooks/rthooks/pyi_rth_pkgutil.py',
+   'PYSOURCE'),
+  ('pyi_rth_multiprocessing',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/PyInstaller/hooks/rthooks/pyi_rth_multiprocessing.py',
+   'PYSOURCE'),
+  ('pyi_rth_setuptools',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/PyInstaller/hooks/rthooks/pyi_rth_setuptools.py',
+   'PYSOURCE'),
+  ('pyi_rth_pkgres',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/PyInstaller/hooks/rthooks/pyi_rth_pkgres.py',
+   'PYSOURCE'),
+  ('shooting_game',
+   '/home/tt/T.T GAMES/new game2/shooting_game.py',
+   'PYSOURCE'),
+  ('libpython3.12.so.1.0',
+   '/lib/x86_64-linux-gnu/libpython3.12.so.1.0',
+   'BINARY'),
+  ('python3.12/lib-dynload/resource.cpython-312-x86_64-linux-gnu.so',
+   '/usr/lib/python3.12/lib-dynload/resource.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('python3.12/lib-dynload/_lzma.cpython-312-x86_64-linux-gnu.so',
+   '/usr/lib/python3.12/lib-dynload/_lzma.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('python3.12/lib-dynload/_bz2.cpython-312-x86_64-linux-gnu.so',
+   '/usr/lib/python3.12/lib-dynload/_bz2.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('python3.12/lib-dynload/_ctypes.cpython-312-x86_64-linux-gnu.so',
+   '/usr/lib/python3.12/lib-dynload/_ctypes.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('python3.12/lib-dynload/_contextvars.cpython-312-x86_64-linux-gnu.so',
+   '/usr/lib/python3.12/lib-dynload/_contextvars.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('python3.12/lib-dynload/_ssl.cpython-312-x86_64-linux-gnu.so',
+   '/usr/lib/python3.12/lib-dynload/_ssl.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('python3.12/lib-dynload/_queue.cpython-312-x86_64-linux-gnu.so',
+   '/usr/lib/python3.12/lib-dynload/_queue.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('python3.12/lib-dynload/mmap.cpython-312-x86_64-linux-gnu.so',
+   '/usr/lib/python3.12/lib-dynload/mmap.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('python3.12/lib-dynload/_posixshmem.cpython-312-x86_64-linux-gnu.so',
+   '/usr/lib/python3.12/lib-dynload/_posixshmem.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('python3.12/lib-dynload/_hashlib.cpython-312-x86_64-linux-gnu.so',
+   '/usr/lib/python3.12/lib-dynload/_hashlib.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('python3.12/lib-dynload/_multiprocessing.cpython-312-x86_64-linux-gnu.so',
+   '/usr/lib/python3.12/lib-dynload/_multiprocessing.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('python3.12/lib-dynload/termios.cpython-312-x86_64-linux-gnu.so',
+   '/usr/lib/python3.12/lib-dynload/termios.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('python3.12/lib-dynload/_decimal.cpython-312-x86_64-linux-gnu.so',
+   '/usr/lib/python3.12/lib-dynload/_decimal.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('python3.12/lib-dynload/_asyncio.cpython-312-x86_64-linux-gnu.so',
+   '/usr/lib/python3.12/lib-dynload/_asyncio.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('python3.12/lib-dynload/_json.cpython-312-x86_64-linux-gnu.so',
+   '/usr/lib/python3.12/lib-dynload/_json.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('python3.12/lib-dynload/readline.cpython-312-x86_64-linux-gnu.so',
+   '/usr/lib/python3.12/lib-dynload/readline.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('pygame/transform.cpython-312-x86_64-linux-gnu.so',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/transform.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('pygame/time.cpython-312-x86_64-linux-gnu.so',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/time.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('python3.12/lib-dynload/_testcapi.cpython-312-x86_64-linux-gnu.so',
+   '/usr/lib/python3.12/lib-dynload/_testcapi.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('python3.12/lib-dynload/_testinternalcapi.cpython-312-x86_64-linux-gnu.so',
+   '/usr/lib/python3.12/lib-dynload/_testinternalcapi.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('pygame/surflock.cpython-312-x86_64-linux-gnu.so',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/surflock.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('pygame/surface.cpython-312-x86_64-linux-gnu.so',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/surface.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('pygame/scrap.cpython-312-x86_64-linux-gnu.so',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/scrap.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('pygame/rwobject.cpython-312-x86_64-linux-gnu.so',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/rwobject.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('pygame/rect.cpython-312-x86_64-linux-gnu.so',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/rect.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('pygame/pypm.cpython-312-x86_64-linux-gnu.so',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/pypm.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('pygame/pixelcopy.cpython-312-x86_64-linux-gnu.so',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/pixelcopy.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('pygame/pixelarray.cpython-312-x86_64-linux-gnu.so',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/pixelarray.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('pygame/newbuffer.cpython-312-x86_64-linux-gnu.so',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/newbuffer.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('pygame/mouse.cpython-312-x86_64-linux-gnu.so',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/mouse.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('pygame/mixer_music.cpython-312-x86_64-linux-gnu.so',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/mixer_music.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('pygame/mixer.cpython-312-x86_64-linux-gnu.so',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/mixer.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('pygame/math.cpython-312-x86_64-linux-gnu.so',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/math.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('pygame/mask.cpython-312-x86_64-linux-gnu.so',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/mask.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('pygame/key.cpython-312-x86_64-linux-gnu.so',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/key.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('pygame/joystick.cpython-312-x86_64-linux-gnu.so',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/joystick.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('pygame/imageext.cpython-312-x86_64-linux-gnu.so',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/imageext.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('pygame/image.cpython-312-x86_64-linux-gnu.so',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/image.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('pygame/gfxdraw.cpython-312-x86_64-linux-gnu.so',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/gfxdraw.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('pygame/font.cpython-312-x86_64-linux-gnu.so',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/font.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('pygame/event.cpython-312-x86_64-linux-gnu.so',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/event.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('pygame/draw.cpython-312-x86_64-linux-gnu.so',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/draw.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('pygame/display.cpython-312-x86_64-linux-gnu.so',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/display.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('pygame/constants.cpython-312-x86_64-linux-gnu.so',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/constants.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('pygame/color.cpython-312-x86_64-linux-gnu.so',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/color.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('pygame/bufferproxy.cpython-312-x86_64-linux-gnu.so',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/bufferproxy.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('pygame/base.cpython-312-x86_64-linux-gnu.so',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/base.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('pygame/_sprite.cpython-312-x86_64-linux-gnu.so',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/_sprite.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('pygame/_sdl2/touch.cpython-312-x86_64-linux-gnu.so',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/_sdl2/touch.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('pygame/_sdl2/sdl2.cpython-312-x86_64-linux-gnu.so',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/_sdl2/sdl2.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('pygame/_sdl2/mixer.cpython-312-x86_64-linux-gnu.so',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/_sdl2/mixer.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('pygame/_sdl2/controller.cpython-312-x86_64-linux-gnu.so',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/_sdl2/controller.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('pygame/_sdl2/audio.cpython-312-x86_64-linux-gnu.so',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/_sdl2/audio.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('pygame/_freetype.cpython-312-x86_64-linux-gnu.so',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/_freetype.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('pygame/_camera.cpython-312-x86_64-linux-gnu.so',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/_camera.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('python3.12/lib-dynload/_multibytecodec.cpython-312-x86_64-linux-gnu.so',
+   '/usr/lib/python3.12/lib-dynload/_multibytecodec.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('python3.12/lib-dynload/_codecs_jp.cpython-312-x86_64-linux-gnu.so',
+   '/usr/lib/python3.12/lib-dynload/_codecs_jp.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('python3.12/lib-dynload/_codecs_kr.cpython-312-x86_64-linux-gnu.so',
+   '/usr/lib/python3.12/lib-dynload/_codecs_kr.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('python3.12/lib-dynload/_codecs_iso2022.cpython-312-x86_64-linux-gnu.so',
+   '/usr/lib/python3.12/lib-dynload/_codecs_iso2022.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('python3.12/lib-dynload/_codecs_cn.cpython-312-x86_64-linux-gnu.so',
+   '/usr/lib/python3.12/lib-dynload/_codecs_cn.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('python3.12/lib-dynload/_codecs_tw.cpython-312-x86_64-linux-gnu.so',
+   '/usr/lib/python3.12/lib-dynload/_codecs_tw.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('python3.12/lib-dynload/_codecs_hk.cpython-312-x86_64-linux-gnu.so',
+   '/usr/lib/python3.12/lib-dynload/_codecs_hk.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('pygame/_sdl2/video.cpython-312-x86_64-linux-gnu.so',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/_sdl2/video.cpython-312-x86_64-linux-gnu.so',
+   'EXTENSION'),
+  ('libz.so.1', '/lib/x86_64-linux-gnu/libz.so.1', 'BINARY'),
+  ('libexpat.so.1', '/lib/x86_64-linux-gnu/libexpat.so.1', 'BINARY'),
+  ('liblzma.so.5', '/lib/x86_64-linux-gnu/liblzma.so.5', 'BINARY'),
+  ('libbz2.so.1.0', '/lib/x86_64-linux-gnu/libbz2.so.1.0', 'BINARY'),
+  ('libffi.so.8', '/lib/x86_64-linux-gnu/libffi.so.8', 'BINARY'),
+  ('libssl.so.3', '/lib/x86_64-linux-gnu/libssl.so.3', 'BINARY'),
+  ('libcrypto.so.3', '/lib/x86_64-linux-gnu/libcrypto.so.3', 'BINARY'),
+  ('libtinfo.so.6', '/lib/x86_64-linux-gnu/libtinfo.so.6', 'BINARY'),
+  ('libreadline.so.8', '/lib/x86_64-linux-gnu/libreadline.so.8', 'BINARY'),
+  ('pygame.libs/libSDL2-2-1667c208.0.so.0.2800.4',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/libSDL2-2-1667c208.0.so.0.2800.4',
+   'BINARY'),
+  ('libX11.so.6', '/lib/x86_64-linux-gnu/libX11.so.6', 'BINARY'),
+  ('libXau.so.6', '/lib/x86_64-linux-gnu/libXau.so.6', 'BINARY'),
+  ('libXdmcp.so.6', '/lib/x86_64-linux-gnu/libXdmcp.so.6', 'BINARY'),
+  ('libbsd.so.0', '/lib/x86_64-linux-gnu/libbsd.so.0', 'BINARY'),
+  ('libmd.so.0', '/lib/x86_64-linux-gnu/libmd.so.0', 'BINARY'),
+  ('pygame.libs/libportmidi-6df3607d.so.2.0.3',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/libportmidi-6df3607d.so.2.0.3',
+   'BINARY'),
+  ('pygame.libs/libasound-d80805e8.so.2.0.0',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/libasound-d80805e8.so.2.0.0',
+   'BINARY'),
+  ('pygame.libs/libcap-79733b59.so.2.22',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/libcap-79733b59.so.2.22',
+   'BINARY'),
+  ('pygame.libs/libsndfile-2f719936.so.1.0.34',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/libsndfile-2f719936.so.1.0.34',
+   'BINARY'),
+  ('pygame.libs/libopus-56ba99ed.so.0.8.0',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/libopus-56ba99ed.so.0.8.0',
+   'BINARY'),
+  ('pygame.libs/libdbus-1-5d678da9.so.3.14.14',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/libdbus-1-5d678da9.so.3.14.14',
+   'BINARY'),
+  ('pygame.libs/liblz4-af1653fb.so.1.8.3',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/liblz4-af1653fb.so.1.8.3',
+   'BINARY'),
+  ('pygame.libs/libfluidsynth-3137fad6.so.3.1.1',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/libfluidsynth-3137fad6.so.3.1.1',
+   'BINARY'),
+  ('libgthread-2.0.so.0',
+   '/lib/x86_64-linux-gnu/libgthread-2.0.so.0',
+   'BINARY'),
+  ('pygame.libs/libvorbis-ac399090.so.0.4.9',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/libvorbis-ac399090.so.0.4.9',
+   'BINARY'),
+  ('libpcre2-8.so.0', '/lib/x86_64-linux-gnu/libpcre2-8.so.0', 'BINARY'),
+  ('pygame.libs/libogg-3f4a1572.so.0.8.5',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/libogg-3f4a1572.so.0.8.5',
+   'BINARY'),
+  ('pygame.libs/libbz2-a273e504.so.1.0.6',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/libbz2-a273e504.so.1.0.6',
+   'BINARY'),
+  ('pygame.libs/libopusfile-df4005ff.so.0.4.5',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/libopusfile-df4005ff.so.0.4.5',
+   'BINARY'),
+  ('pygame.libs/libmpg123-fad61782.so.0.47.0',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/libmpg123-fad61782.so.0.47.0',
+   'BINARY'),
+  ('pygame.libs/libvorbisfile-8aced0b7.so.3.3.8',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/libvorbisfile-8aced0b7.so.3.3.8',
+   'BINARY'),
+  ('pygame.libs/libgpg-error-3f09c3c7.so.0.10.0',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/libgpg-error-3f09c3c7.so.0.10.0',
+   'BINARY'),
+  ('pygame.libs/libdw-0-780627ce.176.so',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/libdw-0-780627ce.176.so',
+   'BINARY'),
+  ('pygame.libs/libFLAC-c5c6b3bc.so.8.3.0',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/libFLAC-c5c6b3bc.so.8.3.0',
+   'BINARY'),
+  ('pygame.libs/libpcre-9513aab5.so.1.2.0',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/libpcre-9513aab5.so.1.2.0',
+   'BINARY'),
+  ('pygame.libs/libelf-0-3d9de92a.176.so',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/libelf-0-3d9de92a.176.so',
+   'BINARY'),
+  ('libglib-2.0.so.0', '/lib/x86_64-linux-gnu/libglib-2.0.so.0', 'BINARY'),
+  ('pygame.libs/libpulse-simple-4ba3beb5.so.0.1.1',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/libpulse-simple-4ba3beb5.so.0.1.1',
+   'BINARY'),
+  ('libstdc++.so.6', '/lib/x86_64-linux-gnu/libstdc++.so.6', 'BINARY'),
+  ('pygame.libs/libvorbisenc-bb396c4a.so.2.0.12',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/libvorbisenc-bb396c4a.so.2.0.12',
+   'BINARY'),
+  ('pygame.libs/libselinux-0922c95c.so.1',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/libselinux-0922c95c.so.1',
+   'BINARY'),
+  ('pygame.libs/libgomp-a34b3233.so.1.0.0',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/libgomp-a34b3233.so.1.0.0',
+   'BINARY'),
+  ('pygame.libs/libpulsecommon-14-80414fd3.2.so',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/libpulsecommon-14-80414fd3.2.so',
+   'BINARY'),
+  ('pygame.libs/liblzma-004595ca.so.5.2.2',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/liblzma-004595ca.so.5.2.2',
+   'BINARY'),
+  ('libgcc_s.so.1', '/lib/x86_64-linux-gnu/libgcc_s.so.1', 'BINARY'),
+  ('pygame.libs/libSDL2_mixer-2-673d03d7.0.so.0.600.3',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/libSDL2_mixer-2-673d03d7.0.so.0.600.3',
+   'BINARY'),
+  ('pygame.libs/libpulse-5b5d1e90.so.0.23.0',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/libpulse-5b5d1e90.so.0.23.0',
+   'BINARY'),
+  ('pygame.libs/libsystemd-7fd64813.so.0.6.0',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/libsystemd-7fd64813.so.0.6.0',
+   'BINARY'),
+  ('pygame.libs/libgcrypt-18957bae.so.11.8.2',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/libgcrypt-18957bae.so.11.8.2',
+   'BINARY'),
+  ('pygame.libs/libattr-4f2a9577.so.1.1.0',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/libattr-4f2a9577.so.1.1.0',
+   'BINARY'),
+  ('pygame.libs/libjpeg-4617cdcb.so.62.3.0',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/libjpeg-4617cdcb.so.62.3.0',
+   'BINARY'),
+  ('pygame.libs/libSDL2_image-2-6bbdaa8d.0.so.0.2.3',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/libSDL2_image-2-6bbdaa8d.0.so.0.2.3',
+   'BINARY'),
+  ('pygame.libs/libsharpyuv-5ed6246f.so.0.0.1',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/libsharpyuv-5ed6246f.so.0.0.1',
+   'BINARY'),
+  ('pygame.libs/libtiff-23a934bd.so.5.8.0',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/libtiff-23a934bd.so.5.8.0',
+   'BINARY'),
+  ('pygame.libs/libwebp-3bee5bfa.so.7.1.8',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/libwebp-3bee5bfa.so.7.1.8',
+   'BINARY'),
+  ('pygame.libs/libpng16-bb793e21.so.16.37.0',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/libpng16-bb793e21.so.16.37.0',
+   'BINARY'),
+  ('pygame.libs/libSDL2_ttf-2-e6bdbc24.0.so.0.2000.1',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/libSDL2_ttf-2-e6bdbc24.0.so.0.2000.1',
+   'BINARY'),
+  ('pygame.libs/libbrotlicommon-f54d67a1.so.1.0.9',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/libbrotlicommon-f54d67a1.so.1.0.9',
+   'BINARY'),
+  ('pygame.libs/libfreetype-402bc0e3.so.6.18.3',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/libfreetype-402bc0e3.so.6.18.3',
+   'BINARY'),
+  ('pygame.libs/libharfbuzz-f991c6ff.so.0.50100.0',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/libharfbuzz-f991c6ff.so.0.50100.0',
+   'BINARY'),
+  ('pygame.libs/libbrotlidec-ffc423df.so.1.0.9',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame.libs/libbrotlidec-ffc423df.so.1.0.9',
+   'BINARY'),
+  ('assets/audio/Boom5.wav',
+   '/home/tt/T.T GAMES/new game2/assets/audio/Boom5.wav',
+   'DATA'),
+  ('assets/audio/__init__.py',
+   '/home/tt/T.T GAMES/new game2/assets/audio/__init__.py',
+   'DATA'),
+  ('assets/audio/arabiantechno.mp3',
+   '/home/tt/T.T GAMES/new game2/assets/audio/arabiantechno.mp3',
+   'DATA'),
+  ('assets/audio/hit_enemy.wav',
+   '/home/tt/T.T GAMES/new game2/assets/audio/hit_enemy.wav',
+   'DATA'),
+  ('assets/audio/maou_bgm_cyber44.mp3',
+   '/home/tt/T.T GAMES/new game2/assets/audio/maou_bgm_cyber44.mp3',
+   'DATA'),
+  ('assets/audio/menu_beep.wav',
+   '/home/tt/T.T GAMES/new game2/assets/audio/menu_beep.wav',
+   'DATA'),
+  ('assets/audio/picopiconostalgie.mp3',
+   '/home/tt/T.T GAMES/new game2/assets/audio/picopiconostalgie.mp3',
+   'DATA'),
+  ('assets/audio/reflect_hit.wav',
+   '/home/tt/T.T GAMES/new game2/assets/audio/reflect_hit.wav',
+   'DATA'),
+  ('assets/audio/transform.wav',
+   '/home/tt/T.T GAMES/new game2/assets/audio/transform.wav',
+   'DATA'),
+  ('assets/audio/神隠しの真相_2.mp3',
+   '/home/tt/T.T GAMES/new game2/assets/audio/神隠しの真相_2.mp3',
+   'DATA'),
+  ('pygame-2.6.1.dist-info/INSTALLER',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame-2.6.1.dist-info/INSTALLER',
+   'DATA'),
+  ('pygame-2.6.1.dist-info/METADATA',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame-2.6.1.dist-info/METADATA',
+   'DATA'),
+  ('pygame-2.6.1.dist-info/RECORD',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame-2.6.1.dist-info/RECORD',
+   'DATA'),
+  ('pygame-2.6.1.dist-info/REQUESTED',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame-2.6.1.dist-info/REQUESTED',
+   'DATA'),
+  ('pygame-2.6.1.dist-info/WHEEL',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame-2.6.1.dist-info/WHEEL',
+   'DATA'),
+  ('pygame-2.6.1.dist-info/entry_points.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame-2.6.1.dist-info/entry_points.txt',
+   'DATA'),
+  ('pygame-2.6.1.dist-info/top_level.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame-2.6.1.dist-info/top_level.txt',
+   'DATA'),
+  ('pygame/__init__.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/__init__.py',
+   'DATA'),
+  ('pygame/__init__.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/__init__.pyi',
+   'DATA'),
+  ('pygame/__pyinstaller/__init__.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/__pyinstaller/__init__.py',
+   'DATA'),
+  ('pygame/__pyinstaller/hook-pygame.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/__pyinstaller/hook-pygame.py',
+   'DATA'),
+  ('pygame/_camera_opencv.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/_camera_opencv.py',
+   'DATA'),
+  ('pygame/_camera_vidcapture.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/_camera_vidcapture.py',
+   'DATA'),
+  ('pygame/_common.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/_common.pyi',
+   'DATA'),
+  ('pygame/_sdl2/__init__.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/_sdl2/__init__.py',
+   'DATA'),
+  ('pygame/_sdl2/__init__.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/_sdl2/__init__.pyi',
+   'DATA'),
+  ('pygame/_sdl2/audio.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/_sdl2/audio.pyi',
+   'DATA'),
+  ('pygame/_sdl2/controller.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/_sdl2/controller.pyi',
+   'DATA'),
+  ('pygame/_sdl2/sdl2.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/_sdl2/sdl2.pyi',
+   'DATA'),
+  ('pygame/_sdl2/touch.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/_sdl2/touch.pyi',
+   'DATA'),
+  ('pygame/_sdl2/video.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/_sdl2/video.pyi',
+   'DATA'),
+  ('pygame/base.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/base.pyi',
+   'DATA'),
+  ('pygame/bufferproxy.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/bufferproxy.pyi',
+   'DATA'),
+  ('pygame/camera.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/camera.py',
+   'DATA'),
+  ('pygame/camera.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/camera.pyi',
+   'DATA'),
+  ('pygame/color.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/color.pyi',
+   'DATA'),
+  ('pygame/colordict.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/colordict.py',
+   'DATA'),
+  ('pygame/constants.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/constants.pyi',
+   'DATA'),
+  ('pygame/cursors.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/cursors.py',
+   'DATA'),
+  ('pygame/cursors.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/cursors.pyi',
+   'DATA'),
+  ('pygame/display.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/display.pyi',
+   'DATA'),
+  ('pygame/docs/__main__.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/__main__.py',
+   'DATA'),
+  ('pygame/docs/generated/LGPL.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/LGPL.txt',
+   'DATA'),
+  ('pygame/docs/generated/_images/AdvancedInputOutput1.gif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/AdvancedInputOutput1.gif',
+   'DATA'),
+  ('pygame/docs/generated/_images/AdvancedInputOutput11.gif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/AdvancedInputOutput11.gif',
+   'DATA'),
+  ('pygame/docs/generated/_images/AdvancedInputOutput2.gif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/AdvancedInputOutput2.gif',
+   'DATA'),
+  ('pygame/docs/generated/_images/AdvancedInputOutput21.gif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/AdvancedInputOutput21.gif',
+   'DATA'),
+  ('pygame/docs/generated/_images/AdvancedInputOutput3.gif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/AdvancedInputOutput3.gif',
+   'DATA'),
+  ('pygame/docs/generated/_images/AdvancedInputOutput31.gif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/AdvancedInputOutput31.gif',
+   'DATA'),
+  ('pygame/docs/generated/_images/AdvancedInputOutput4.gif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/AdvancedInputOutput4.gif',
+   'DATA'),
+  ('pygame/docs/generated/_images/AdvancedInputOutput41.gif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/AdvancedInputOutput41.gif',
+   'DATA'),
+  ('pygame/docs/generated/_images/AdvancedInputOutput5.gif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/AdvancedInputOutput5.gif',
+   'DATA'),
+  ('pygame/docs/generated/_images/AdvancedInputOutput51.gif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/AdvancedInputOutput51.gif',
+   'DATA'),
+  ('pygame/docs/generated/_images/AdvancedOutputAlpha1.gif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/AdvancedOutputAlpha1.gif',
+   'DATA'),
+  ('pygame/docs/generated/_images/AdvancedOutputAlpha11.gif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/AdvancedOutputAlpha11.gif',
+   'DATA'),
+  ('pygame/docs/generated/_images/AdvancedOutputAlpha2.gif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/AdvancedOutputAlpha2.gif',
+   'DATA'),
+  ('pygame/docs/generated/_images/AdvancedOutputAlpha21.gif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/AdvancedOutputAlpha21.gif',
+   'DATA'),
+  ('pygame/docs/generated/_images/AdvancedOutputAlpha3.gif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/AdvancedOutputAlpha3.gif',
+   'DATA'),
+  ('pygame/docs/generated/_images/AdvancedOutputAlpha31.gif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/AdvancedOutputAlpha31.gif',
+   'DATA'),
+  ('pygame/docs/generated/_images/AdvancedOutputProcess1.gif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/AdvancedOutputProcess1.gif',
+   'DATA'),
+  ('pygame/docs/generated/_images/AdvancedOutputProcess11.gif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/AdvancedOutputProcess11.gif',
+   'DATA'),
+  ('pygame/docs/generated/_images/AdvancedOutputProcess2.gif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/AdvancedOutputProcess2.gif',
+   'DATA'),
+  ('pygame/docs/generated/_images/AdvancedOutputProcess21.gif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/AdvancedOutputProcess21.gif',
+   'DATA'),
+  ('pygame/docs/generated/_images/AdvancedOutputProcess3.gif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/AdvancedOutputProcess3.gif',
+   'DATA'),
+  ('pygame/docs/generated/_images/AdvancedOutputProcess31.gif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/AdvancedOutputProcess31.gif',
+   'DATA'),
+  ('pygame/docs/generated/_images/AdvancedOutputProcess4.gif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/AdvancedOutputProcess4.gif',
+   'DATA'),
+  ('pygame/docs/generated/_images/AdvancedOutputProcess41.gif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/AdvancedOutputProcess41.gif',
+   'DATA'),
+  ('pygame/docs/generated/_images/AdvancedOutputProcess5.gif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/AdvancedOutputProcess5.gif',
+   'DATA'),
+  ('pygame/docs/generated/_images/AdvancedOutputProcess51.gif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/AdvancedOutputProcess51.gif',
+   'DATA'),
+  ('pygame/docs/generated/_images/AdvancedOutputProcess6.gif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/AdvancedOutputProcess6.gif',
+   'DATA'),
+  ('pygame/docs/generated/_images/AdvancedOutputProcess61.gif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/AdvancedOutputProcess61.gif',
+   'DATA'),
+  ('pygame/docs/generated/_images/Bagic-INPUT-resultscreen.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/Bagic-INPUT-resultscreen.png',
+   'DATA'),
+  ('pygame/docs/generated/_images/Bagic-INPUT-resultscreen1.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/Bagic-INPUT-resultscreen1.png',
+   'DATA'),
+  ('pygame/docs/generated/_images/Bagic-INPUT-sourcecode.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/Bagic-INPUT-sourcecode.png',
+   'DATA'),
+  ('pygame/docs/generated/_images/Bagic-INPUT-sourcecode1.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/Bagic-INPUT-sourcecode1.png',
+   'DATA'),
+  ('pygame/docs/generated/_images/Bagic-PROCESS-resultscreen.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/Bagic-PROCESS-resultscreen.png',
+   'DATA'),
+  ('pygame/docs/generated/_images/Bagic-PROCESS-resultscreen1.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/Bagic-PROCESS-resultscreen1.png',
+   'DATA'),
+  ('pygame/docs/generated/_images/Bagic-PROCESS-sourcecode.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/Bagic-PROCESS-sourcecode.png',
+   'DATA'),
+  ('pygame/docs/generated/_images/Bagic-PROCESS-sourcecode1.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/Bagic-PROCESS-sourcecode1.png',
+   'DATA'),
+  ('pygame/docs/generated/_images/Bagic-ouput-result-screen.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/Bagic-ouput-result-screen.png',
+   'DATA'),
+  ('pygame/docs/generated/_images/Bagic-ouput-result-screen1.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/Bagic-ouput-result-screen1.png',
+   'DATA'),
+  ('pygame/docs/generated/_images/Basic-ouput-sourcecode.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/Basic-ouput-sourcecode.png',
+   'DATA'),
+  ('pygame/docs/generated/_images/Basic-ouput-sourcecode1.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/Basic-ouput-sourcecode1.png',
+   'DATA'),
+  ('pygame/docs/generated/_images/angle_to.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/angle_to.png',
+   'DATA'),
+  ('pygame/docs/generated/_images/camera_average.jpg',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/camera_average.jpg',
+   'DATA'),
+  ('pygame/docs/generated/_images/camera_background.jpg',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/camera_background.jpg',
+   'DATA'),
+  ('pygame/docs/generated/_images/camera_green.jpg',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/camera_green.jpg',
+   'DATA'),
+  ('pygame/docs/generated/_images/camera_hsv.jpg',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/camera_hsv.jpg',
+   'DATA'),
+  ('pygame/docs/generated/_images/camera_mask.jpg',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/camera_mask.jpg',
+   'DATA'),
+  ('pygame/docs/generated/_images/camera_rgb.jpg',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/camera_rgb.jpg',
+   'DATA'),
+  ('pygame/docs/generated/_images/camera_thresh.jpg',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/camera_thresh.jpg',
+   'DATA'),
+  ('pygame/docs/generated/_images/camera_thresholded.jpg',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/camera_thresholded.jpg',
+   'DATA'),
+  ('pygame/docs/generated/_images/camera_yuv.jpg',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/camera_yuv.jpg',
+   'DATA'),
+  ('pygame/docs/generated/_images/chimpshot.gif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/chimpshot.gif',
+   'DATA'),
+  ('pygame/docs/generated/_images/chimpshot1.gif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/chimpshot1.gif',
+   'DATA'),
+  ('pygame/docs/generated/_images/draw_module_example.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/draw_module_example.png',
+   'DATA'),
+  ('pygame/docs/generated/_images/intro_ball.gif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/intro_ball.gif',
+   'DATA'),
+  ('pygame/docs/generated/_images/intro_blade.jpg',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/intro_blade.jpg',
+   'DATA'),
+  ('pygame/docs/generated/_images/intro_freedom.jpg',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/intro_freedom.jpg',
+   'DATA'),
+  ('pygame/docs/generated/_images/introduction-Battleship.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/introduction-Battleship.png',
+   'DATA'),
+  ('pygame/docs/generated/_images/introduction-Battleship1.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/introduction-Battleship1.png',
+   'DATA'),
+  ('pygame/docs/generated/_images/introduction-PuyoPuyo.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/introduction-PuyoPuyo.png',
+   'DATA'),
+  ('pygame/docs/generated/_images/introduction-PuyoPuyo1.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/introduction-PuyoPuyo1.png',
+   'DATA'),
+  ('pygame/docs/generated/_images/introduction-TPS.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/introduction-TPS.png',
+   'DATA'),
+  ('pygame/docs/generated/_images/introduction-TPS1.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/introduction-TPS1.png',
+   'DATA'),
+  ('pygame/docs/generated/_images/joystick_calls.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/joystick_calls.png',
+   'DATA'),
+  ('pygame/docs/generated/_images/pygame_lofi.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/pygame_lofi.png',
+   'DATA'),
+  ('pygame/docs/generated/_images/pygame_logo.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/pygame_logo.png',
+   'DATA'),
+  ('pygame/docs/generated/_images/pygame_powered.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/pygame_powered.png',
+   'DATA'),
+  ('pygame/docs/generated/_images/pygame_powered_lowres.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/pygame_powered_lowres.png',
+   'DATA'),
+  ('pygame/docs/generated/_images/pygame_tiny.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/pygame_tiny.png',
+   'DATA'),
+  ('pygame/docs/generated/_images/surfarray_allblack.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/surfarray_allblack.png',
+   'DATA'),
+  ('pygame/docs/generated/_images/surfarray_flipped.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/surfarray_flipped.png',
+   'DATA'),
+  ('pygame/docs/generated/_images/surfarray_redimg.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/surfarray_redimg.png',
+   'DATA'),
+  ('pygame/docs/generated/_images/surfarray_rgbarray.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/surfarray_rgbarray.png',
+   'DATA'),
+  ('pygame/docs/generated/_images/surfarray_scaledown.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/surfarray_scaledown.png',
+   'DATA'),
+  ('pygame/docs/generated/_images/surfarray_scaleup.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/surfarray_scaleup.png',
+   'DATA'),
+  ('pygame/docs/generated/_images/surfarray_soften.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/surfarray_soften.png',
+   'DATA'),
+  ('pygame/docs/generated/_images/surfarray_striped.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/surfarray_striped.png',
+   'DATA'),
+  ('pygame/docs/generated/_images/surfarray_xfade.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/surfarray_xfade.png',
+   'DATA'),
+  ('pygame/docs/generated/_images/tom_basic.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/tom_basic.png',
+   'DATA'),
+  ('pygame/docs/generated/_images/tom_event-flowchart.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/tom_event-flowchart.png',
+   'DATA'),
+  ('pygame/docs/generated/_images/tom_formulae.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/tom_formulae.png',
+   'DATA'),
+  ('pygame/docs/generated/_images/tom_radians.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_images/tom_radians.png',
+   'DATA'),
+  ('pygame/docs/generated/_sources/c_api.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/c_api.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/filepaths.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/filepaths.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/index.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/index.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/logos.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/logos.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/ref/bufferproxy.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/ref/bufferproxy.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/ref/camera.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/ref/camera.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/ref/cdrom.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/ref/cdrom.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/ref/color.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/ref/color.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/ref/color_list.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/ref/color_list.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/ref/context.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/ref/context.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/ref/cursors.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/ref/cursors.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/ref/display.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/ref/display.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/ref/draw.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/ref/draw.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/ref/event.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/ref/event.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/ref/examples.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/ref/examples.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/ref/fastevent.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/ref/fastevent.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/ref/font.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/ref/font.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/ref/freetype.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/ref/freetype.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/ref/gfxdraw.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/ref/gfxdraw.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/ref/image.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/ref/image.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/ref/joystick.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/ref/joystick.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/ref/key.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/ref/key.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/ref/locals.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/ref/locals.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/ref/mask.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/ref/mask.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/ref/math.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/ref/math.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/ref/midi.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/ref/midi.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/ref/mixer.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/ref/mixer.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/ref/mouse.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/ref/mouse.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/ref/music.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/ref/music.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/ref/overlay.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/ref/overlay.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/ref/pixelarray.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/ref/pixelarray.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/ref/pixelcopy.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/ref/pixelcopy.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/ref/pygame.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/ref/pygame.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/ref/rect.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/ref/rect.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/ref/scrap.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/ref/scrap.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/ref/sdl2_controller.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/ref/sdl2_controller.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/ref/sdl2_video.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/ref/sdl2_video.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/ref/sndarray.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/ref/sndarray.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/ref/sprite.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/ref/sprite.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/ref/surface.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/ref/surface.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/ref/surfarray.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/ref/surfarray.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/ref/tests.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/ref/tests.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/ref/time.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/ref/time.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/ref/touch.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/ref/touch.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_sources/ref/transform.rst.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_sources/ref/transform.rst.txt',
+   'DATA'),
+  ('pygame/docs/generated/_static/_sphinx_javascript_frameworks_compat.js',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_static/_sphinx_javascript_frameworks_compat.js',
+   'DATA'),
+  ('pygame/docs/generated/_static/basic.css',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_static/basic.css',
+   'DATA'),
+  ('pygame/docs/generated/_static/doctools.js',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_static/doctools.js',
+   'DATA'),
+  ('pygame/docs/generated/_static/documentation_options.js',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_static/documentation_options.js',
+   'DATA'),
+  ('pygame/docs/generated/_static/file.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_static/file.png',
+   'DATA'),
+  ('pygame/docs/generated/_static/jquery-3.5.1.js',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_static/jquery-3.5.1.js',
+   'DATA'),
+  ('pygame/docs/generated/_static/jquery-3.6.0.js',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_static/jquery-3.6.0.js',
+   'DATA'),
+  ('pygame/docs/generated/_static/jquery.js',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_static/jquery.js',
+   'DATA'),
+  ('pygame/docs/generated/_static/language_data.js',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_static/language_data.js',
+   'DATA'),
+  ('pygame/docs/generated/_static/legacy_logos.zip',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_static/legacy_logos.zip',
+   'DATA'),
+  ('pygame/docs/generated/_static/minus.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_static/minus.png',
+   'DATA'),
+  ('pygame/docs/generated/_static/plus.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_static/plus.png',
+   'DATA'),
+  ('pygame/docs/generated/_static/pygame.css',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_static/pygame.css',
+   'DATA'),
+  ('pygame/docs/generated/_static/pygame.ico',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_static/pygame.ico',
+   'DATA'),
+  ('pygame/docs/generated/_static/pygame_lofi.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_static/pygame_lofi.png',
+   'DATA'),
+  ('pygame/docs/generated/_static/pygame_lofi.svg',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_static/pygame_lofi.svg',
+   'DATA'),
+  ('pygame/docs/generated/_static/pygame_logo.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_static/pygame_logo.png',
+   'DATA'),
+  ('pygame/docs/generated/_static/pygame_logo.svg',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_static/pygame_logo.svg',
+   'DATA'),
+  ('pygame/docs/generated/_static/pygame_powered.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_static/pygame_powered.png',
+   'DATA'),
+  ('pygame/docs/generated/_static/pygame_powered.svg',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_static/pygame_powered.svg',
+   'DATA'),
+  ('pygame/docs/generated/_static/pygame_powered_lowres.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_static/pygame_powered_lowres.png',
+   'DATA'),
+  ('pygame/docs/generated/_static/pygame_tiny.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_static/pygame_tiny.png',
+   'DATA'),
+  ('pygame/docs/generated/_static/pygments.css',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_static/pygments.css',
+   'DATA'),
+  ('pygame/docs/generated/_static/reset.css',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_static/reset.css',
+   'DATA'),
+  ('pygame/docs/generated/_static/searchtools.js',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_static/searchtools.js',
+   'DATA'),
+  ('pygame/docs/generated/_static/sphinx_highlight.js',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_static/sphinx_highlight.js',
+   'DATA'),
+  ('pygame/docs/generated/_static/tooltip.css',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_static/tooltip.css',
+   'DATA'),
+  ('pygame/docs/generated/_static/underscore-1.13.1.js',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_static/underscore-1.13.1.js',
+   'DATA'),
+  ('pygame/docs/generated/_static/underscore.js',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/_static/underscore.js',
+   'DATA'),
+  ('pygame/docs/generated/c_api.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/c_api.html',
+   'DATA'),
+  ('pygame/docs/generated/c_api/base.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/c_api/base.html',
+   'DATA'),
+  ('pygame/docs/generated/c_api/bufferproxy.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/c_api/bufferproxy.html',
+   'DATA'),
+  ('pygame/docs/generated/c_api/cdrom.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/c_api/cdrom.html',
+   'DATA'),
+  ('pygame/docs/generated/c_api/color.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/c_api/color.html',
+   'DATA'),
+  ('pygame/docs/generated/c_api/display.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/c_api/display.html',
+   'DATA'),
+  ('pygame/docs/generated/c_api/event.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/c_api/event.html',
+   'DATA'),
+  ('pygame/docs/generated/c_api/freetype.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/c_api/freetype.html',
+   'DATA'),
+  ('pygame/docs/generated/c_api/mixer.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/c_api/mixer.html',
+   'DATA'),
+  ('pygame/docs/generated/c_api/rect.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/c_api/rect.html',
+   'DATA'),
+  ('pygame/docs/generated/c_api/rwobject.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/c_api/rwobject.html',
+   'DATA'),
+  ('pygame/docs/generated/c_api/slots.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/c_api/slots.html',
+   'DATA'),
+  ('pygame/docs/generated/c_api/surface.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/c_api/surface.html',
+   'DATA'),
+  ('pygame/docs/generated/c_api/surflock.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/c_api/surflock.html',
+   'DATA'),
+  ('pygame/docs/generated/c_api/version.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/c_api/version.html',
+   'DATA'),
+  ('pygame/docs/generated/filepaths.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/filepaths.html',
+   'DATA'),
+  ('pygame/docs/generated/genindex.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/genindex.html',
+   'DATA'),
+  ('pygame/docs/generated/index.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/index.html',
+   'DATA'),
+  ('pygame/docs/generated/logos.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/logos.html',
+   'DATA'),
+  ('pygame/docs/generated/py-modindex.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/py-modindex.html',
+   'DATA'),
+  ('pygame/docs/generated/ref/bufferproxy.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/ref/bufferproxy.html',
+   'DATA'),
+  ('pygame/docs/generated/ref/camera.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/ref/camera.html',
+   'DATA'),
+  ('pygame/docs/generated/ref/cdrom.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/ref/cdrom.html',
+   'DATA'),
+  ('pygame/docs/generated/ref/color.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/ref/color.html',
+   'DATA'),
+  ('pygame/docs/generated/ref/color_list.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/ref/color_list.html',
+   'DATA'),
+  ('pygame/docs/generated/ref/context.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/ref/context.html',
+   'DATA'),
+  ('pygame/docs/generated/ref/cursors.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/ref/cursors.html',
+   'DATA'),
+  ('pygame/docs/generated/ref/display.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/ref/display.html',
+   'DATA'),
+  ('pygame/docs/generated/ref/draw.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/ref/draw.html',
+   'DATA'),
+  ('pygame/docs/generated/ref/event.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/ref/event.html',
+   'DATA'),
+  ('pygame/docs/generated/ref/examples.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/ref/examples.html',
+   'DATA'),
+  ('pygame/docs/generated/ref/fastevent.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/ref/fastevent.html',
+   'DATA'),
+  ('pygame/docs/generated/ref/font.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/ref/font.html',
+   'DATA'),
+  ('pygame/docs/generated/ref/freetype.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/ref/freetype.html',
+   'DATA'),
+  ('pygame/docs/generated/ref/gfxdraw.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/ref/gfxdraw.html',
+   'DATA'),
+  ('pygame/docs/generated/ref/image.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/ref/image.html',
+   'DATA'),
+  ('pygame/docs/generated/ref/joystick.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/ref/joystick.html',
+   'DATA'),
+  ('pygame/docs/generated/ref/key.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/ref/key.html',
+   'DATA'),
+  ('pygame/docs/generated/ref/locals.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/ref/locals.html',
+   'DATA'),
+  ('pygame/docs/generated/ref/mask.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/ref/mask.html',
+   'DATA'),
+  ('pygame/docs/generated/ref/math.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/ref/math.html',
+   'DATA'),
+  ('pygame/docs/generated/ref/midi.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/ref/midi.html',
+   'DATA'),
+  ('pygame/docs/generated/ref/mixer.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/ref/mixer.html',
+   'DATA'),
+  ('pygame/docs/generated/ref/mouse.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/ref/mouse.html',
+   'DATA'),
+  ('pygame/docs/generated/ref/music.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/ref/music.html',
+   'DATA'),
+  ('pygame/docs/generated/ref/overlay.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/ref/overlay.html',
+   'DATA'),
+  ('pygame/docs/generated/ref/pixelarray.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/ref/pixelarray.html',
+   'DATA'),
+  ('pygame/docs/generated/ref/pixelcopy.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/ref/pixelcopy.html',
+   'DATA'),
+  ('pygame/docs/generated/ref/pygame.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/ref/pygame.html',
+   'DATA'),
+  ('pygame/docs/generated/ref/rect.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/ref/rect.html',
+   'DATA'),
+  ('pygame/docs/generated/ref/scrap.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/ref/scrap.html',
+   'DATA'),
+  ('pygame/docs/generated/ref/sdl2_controller.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/ref/sdl2_controller.html',
+   'DATA'),
+  ('pygame/docs/generated/ref/sdl2_video.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/ref/sdl2_video.html',
+   'DATA'),
+  ('pygame/docs/generated/ref/sndarray.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/ref/sndarray.html',
+   'DATA'),
+  ('pygame/docs/generated/ref/sprite.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/ref/sprite.html',
+   'DATA'),
+  ('pygame/docs/generated/ref/surface.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/ref/surface.html',
+   'DATA'),
+  ('pygame/docs/generated/ref/surfarray.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/ref/surfarray.html',
+   'DATA'),
+  ('pygame/docs/generated/ref/tests.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/ref/tests.html',
+   'DATA'),
+  ('pygame/docs/generated/ref/time.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/ref/time.html',
+   'DATA'),
+  ('pygame/docs/generated/ref/touch.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/ref/touch.html',
+   'DATA'),
+  ('pygame/docs/generated/ref/transform.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/ref/transform.html',
+   'DATA'),
+  ('pygame/docs/generated/search.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/search.html',
+   'DATA'),
+  ('pygame/docs/generated/searchindex.js',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/searchindex.js',
+   'DATA'),
+  ('pygame/docs/generated/tut/CameraIntro.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/tut/CameraIntro.html',
+   'DATA'),
+  ('pygame/docs/generated/tut/ChimpLineByLine.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/tut/ChimpLineByLine.html',
+   'DATA'),
+  ('pygame/docs/generated/tut/DisplayModes.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/tut/DisplayModes.html',
+   'DATA'),
+  ('pygame/docs/generated/tut/ImportInit.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/tut/ImportInit.html',
+   'DATA'),
+  ('pygame/docs/generated/tut/MakeGames.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/tut/MakeGames.html',
+   'DATA'),
+  ('pygame/docs/generated/tut/MoveIt.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/tut/MoveIt.html',
+   'DATA'),
+  ('pygame/docs/generated/tut/PygameIntro.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/tut/PygameIntro.html',
+   'DATA'),
+  ('pygame/docs/generated/tut/SpriteIntro.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/tut/SpriteIntro.html',
+   'DATA'),
+  ('pygame/docs/generated/tut/SurfarrayIntro.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/tut/SurfarrayIntro.html',
+   'DATA'),
+  ('pygame/docs/generated/tut/chimp.py.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/tut/chimp.py.html',
+   'DATA'),
+  ('pygame/docs/generated/tut/newbieguide.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/tut/newbieguide.html',
+   'DATA'),
+  ('pygame/docs/generated/tut/tom_games2.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/tut/tom_games2.html',
+   'DATA'),
+  ('pygame/docs/generated/tut/tom_games3.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/tut/tom_games3.html',
+   'DATA'),
+  ('pygame/docs/generated/tut/tom_games4.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/tut/tom_games4.html',
+   'DATA'),
+  ('pygame/docs/generated/tut/tom_games5.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/tut/tom_games5.html',
+   'DATA'),
+  ('pygame/docs/generated/tut/tom_games6.html',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/docs/generated/tut/tom_games6.html',
+   'DATA'),
+  ('pygame/draw.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/draw.pyi',
+   'DATA'),
+  ('pygame/draw_py.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/draw_py.py',
+   'DATA'),
+  ('pygame/event.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/event.pyi',
+   'DATA'),
+  ('pygame/examples/README.rst',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/README.rst',
+   'DATA'),
+  ('pygame/examples/__init__.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/__init__.py',
+   'DATA'),
+  ('pygame/examples/aacircle.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/aacircle.py',
+   'DATA'),
+  ('pygame/examples/aliens.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/aliens.py',
+   'DATA'),
+  ('pygame/examples/arraydemo.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/arraydemo.py',
+   'DATA'),
+  ('pygame/examples/audiocapture.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/audiocapture.py',
+   'DATA'),
+  ('pygame/examples/blend_fill.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/blend_fill.py',
+   'DATA'),
+  ('pygame/examples/blit_blends.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/blit_blends.py',
+   'DATA'),
+  ('pygame/examples/camera.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/camera.py',
+   'DATA'),
+  ('pygame/examples/chimp.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/chimp.py',
+   'DATA'),
+  ('pygame/examples/cursors.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/cursors.py',
+   'DATA'),
+  ('pygame/examples/data/BGR.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/BGR.png',
+   'DATA'),
+  ('pygame/examples/data/alien1.gif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/alien1.gif',
+   'DATA'),
+  ('pygame/examples/data/alien1.jpg',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/alien1.jpg',
+   'DATA'),
+  ('pygame/examples/data/alien1.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/alien1.png',
+   'DATA'),
+  ('pygame/examples/data/alien2.gif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/alien2.gif',
+   'DATA'),
+  ('pygame/examples/data/alien2.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/alien2.png',
+   'DATA'),
+  ('pygame/examples/data/alien3.gif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/alien3.gif',
+   'DATA'),
+  ('pygame/examples/data/alien3.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/alien3.png',
+   'DATA'),
+  ('pygame/examples/data/arraydemo.bmp',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/arraydemo.bmp',
+   'DATA'),
+  ('pygame/examples/data/asprite.bmp',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/asprite.bmp',
+   'DATA'),
+  ('pygame/examples/data/background.gif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/background.gif',
+   'DATA'),
+  ('pygame/examples/data/black.ppm',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/black.ppm',
+   'DATA'),
+  ('pygame/examples/data/blue.gif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/blue.gif',
+   'DATA'),
+  ('pygame/examples/data/blue.mpg',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/blue.mpg',
+   'DATA'),
+  ('pygame/examples/data/bomb.gif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/bomb.gif',
+   'DATA'),
+  ('pygame/examples/data/boom.wav',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/boom.wav',
+   'DATA'),
+  ('pygame/examples/data/brick.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/brick.png',
+   'DATA'),
+  ('pygame/examples/data/car_door.wav',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/car_door.wav',
+   'DATA'),
+  ('pygame/examples/data/chimp.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/chimp.png',
+   'DATA'),
+  ('pygame/examples/data/city.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/city.png',
+   'DATA'),
+  ('pygame/examples/data/crimson.pnm',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/crimson.pnm',
+   'DATA'),
+  ('pygame/examples/data/cursor.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/cursor.png',
+   'DATA'),
+  ('pygame/examples/data/danger.gif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/danger.gif',
+   'DATA'),
+  ('pygame/examples/data/explosion1.gif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/explosion1.gif',
+   'DATA'),
+  ('pygame/examples/data/fist.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/fist.png',
+   'DATA'),
+  ('pygame/examples/data/green.pcx',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/green.pcx',
+   'DATA'),
+  ('pygame/examples/data/grey.pgm',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/grey.pgm',
+   'DATA'),
+  ('pygame/examples/data/house_lo.mp3',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/house_lo.mp3',
+   'DATA'),
+  ('pygame/examples/data/house_lo.ogg',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/house_lo.ogg',
+   'DATA'),
+  ('pygame/examples/data/house_lo.wav',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/house_lo.wav',
+   'DATA'),
+  ('pygame/examples/data/laplacian.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/laplacian.png',
+   'DATA'),
+  ('pygame/examples/data/liquid.bmp',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/liquid.bmp',
+   'DATA'),
+  ('pygame/examples/data/midikeys.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/midikeys.png',
+   'DATA'),
+  ('pygame/examples/data/player1.gif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/player1.gif',
+   'DATA'),
+  ('pygame/examples/data/punch.wav',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/punch.wav',
+   'DATA'),
+  ('pygame/examples/data/purple.xpm',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/purple.xpm',
+   'DATA'),
+  ('pygame/examples/data/red.jpg',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/red.jpg',
+   'DATA'),
+  ('pygame/examples/data/sans.ttf',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/sans.ttf',
+   'DATA'),
+  ('pygame/examples/data/scarlet.webp',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/scarlet.webp',
+   'DATA'),
+  ('pygame/examples/data/secosmic_lo.wav',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/secosmic_lo.wav',
+   'DATA'),
+  ('pygame/examples/data/shot.gif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/shot.gif',
+   'DATA'),
+  ('pygame/examples/data/static.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/static.png',
+   'DATA'),
+  ('pygame/examples/data/teal.svg',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/teal.svg',
+   'DATA'),
+  ('pygame/examples/data/turquoise.tif',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/turquoise.tif',
+   'DATA'),
+  ('pygame/examples/data/whiff.wav',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/whiff.wav',
+   'DATA'),
+  ('pygame/examples/data/yellow.tga',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/data/yellow.tga',
+   'DATA'),
+  ('pygame/examples/dropevent.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/dropevent.py',
+   'DATA'),
+  ('pygame/examples/eventlist.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/eventlist.py',
+   'DATA'),
+  ('pygame/examples/font_viewer.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/font_viewer.py',
+   'DATA'),
+  ('pygame/examples/fonty.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/fonty.py',
+   'DATA'),
+  ('pygame/examples/freetype_misc.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/freetype_misc.py',
+   'DATA'),
+  ('pygame/examples/glcube.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/glcube.py',
+   'DATA'),
+  ('pygame/examples/go_over_there.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/go_over_there.py',
+   'DATA'),
+  ('pygame/examples/grid.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/grid.py',
+   'DATA'),
+  ('pygame/examples/headless_no_windows_needed.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/headless_no_windows_needed.py',
+   'DATA'),
+  ('pygame/examples/joystick.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/joystick.py',
+   'DATA'),
+  ('pygame/examples/liquid.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/liquid.py',
+   'DATA'),
+  ('pygame/examples/mask.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/mask.py',
+   'DATA'),
+  ('pygame/examples/midi.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/midi.py',
+   'DATA'),
+  ('pygame/examples/moveit.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/moveit.py',
+   'DATA'),
+  ('pygame/examples/music_drop_fade.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/music_drop_fade.py',
+   'DATA'),
+  ('pygame/examples/pixelarray.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/pixelarray.py',
+   'DATA'),
+  ('pygame/examples/playmus.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/playmus.py',
+   'DATA'),
+  ('pygame/examples/resizing_new.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/resizing_new.py',
+   'DATA'),
+  ('pygame/examples/scaletest.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/scaletest.py',
+   'DATA'),
+  ('pygame/examples/scrap_clipboard.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/scrap_clipboard.py',
+   'DATA'),
+  ('pygame/examples/scroll.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/scroll.py',
+   'DATA'),
+  ('pygame/examples/setmodescale.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/setmodescale.py',
+   'DATA'),
+  ('pygame/examples/sound.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/sound.py',
+   'DATA'),
+  ('pygame/examples/sound_array_demos.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/sound_array_demos.py',
+   'DATA'),
+  ('pygame/examples/sprite_texture.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/sprite_texture.py',
+   'DATA'),
+  ('pygame/examples/stars.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/stars.py',
+   'DATA'),
+  ('pygame/examples/testsprite.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/testsprite.py',
+   'DATA'),
+  ('pygame/examples/textinput.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/textinput.py',
+   'DATA'),
+  ('pygame/examples/vgrade.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/vgrade.py',
+   'DATA'),
+  ('pygame/examples/video.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/examples/video.py',
+   'DATA'),
+  ('pygame/fastevent.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/fastevent.py',
+   'DATA'),
+  ('pygame/fastevent.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/fastevent.pyi',
+   'DATA'),
+  ('pygame/font.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/font.pyi',
+   'DATA'),
+  ('pygame/freesansbold.ttf',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/freesansbold.ttf',
+   'DATA'),
+  ('pygame/freetype.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/freetype.py',
+   'DATA'),
+  ('pygame/freetype.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/freetype.pyi',
+   'DATA'),
+  ('pygame/ftfont.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/ftfont.py',
+   'DATA'),
+  ('pygame/gfxdraw.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/gfxdraw.pyi',
+   'DATA'),
+  ('pygame/image.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/image.pyi',
+   'DATA'),
+  ('pygame/joystick.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/joystick.pyi',
+   'DATA'),
+  ('pygame/key.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/key.pyi',
+   'DATA'),
+  ('pygame/locals.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/locals.py',
+   'DATA'),
+  ('pygame/locals.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/locals.pyi',
+   'DATA'),
+  ('pygame/macosx.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/macosx.py',
+   'DATA'),
+  ('pygame/mask.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/mask.pyi',
+   'DATA'),
+  ('pygame/math.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/math.pyi',
+   'DATA'),
+  ('pygame/midi.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/midi.py',
+   'DATA'),
+  ('pygame/midi.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/midi.pyi',
+   'DATA'),
+  ('pygame/mixer.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/mixer.pyi',
+   'DATA'),
+  ('pygame/mixer_music.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/mixer_music.pyi',
+   'DATA'),
+  ('pygame/mouse.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/mouse.pyi',
+   'DATA'),
+  ('pygame/pixelarray.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/pixelarray.pyi',
+   'DATA'),
+  ('pygame/pixelcopy.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/pixelcopy.pyi',
+   'DATA'),
+  ('pygame/pkgdata.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/pkgdata.py',
+   'DATA'),
+  ('pygame/py.typed',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/py.typed',
+   'DATA'),
+  ('pygame/pygame.ico',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/pygame.ico',
+   'DATA'),
+  ('pygame/pygame_icon.bmp',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/pygame_icon.bmp',
+   'DATA'),
+  ('pygame/pygame_icon.icns',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/pygame_icon.icns',
+   'DATA'),
+  ('pygame/pygame_icon_mac.bmp',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/pygame_icon_mac.bmp',
+   'DATA'),
+  ('pygame/rect.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/rect.pyi',
+   'DATA'),
+  ('pygame/rwobject.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/rwobject.pyi',
+   'DATA'),
+  ('pygame/scrap.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/scrap.pyi',
+   'DATA'),
+  ('pygame/sndarray.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/sndarray.py',
+   'DATA'),
+  ('pygame/sndarray.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/sndarray.pyi',
+   'DATA'),
+  ('pygame/sprite.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/sprite.py',
+   'DATA'),
+  ('pygame/sprite.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/sprite.pyi',
+   'DATA'),
+  ('pygame/surface.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/surface.pyi',
+   'DATA'),
+  ('pygame/surfarray.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/surfarray.py',
+   'DATA'),
+  ('pygame/surfarray.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/surfarray.pyi',
+   'DATA'),
+  ('pygame/surflock.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/surflock.pyi',
+   'DATA'),
+  ('pygame/sysfont.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/sysfont.py',
+   'DATA'),
+  ('pygame/tests/__init__.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/__init__.py',
+   'DATA'),
+  ('pygame/tests/__main__.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/__main__.py',
+   'DATA'),
+  ('pygame/tests/base_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/base_test.py',
+   'DATA'),
+  ('pygame/tests/blit_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/blit_test.py',
+   'DATA'),
+  ('pygame/tests/bufferproxy_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/bufferproxy_test.py',
+   'DATA'),
+  ('pygame/tests/camera_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/camera_test.py',
+   'DATA'),
+  ('pygame/tests/color_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/color_test.py',
+   'DATA'),
+  ('pygame/tests/constants_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/constants_test.py',
+   'DATA'),
+  ('pygame/tests/controller_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/controller_test.py',
+   'DATA'),
+  ('pygame/tests/cursors_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/cursors_test.py',
+   'DATA'),
+  ('pygame/tests/display_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/display_test.py',
+   'DATA'),
+  ('pygame/tests/docs_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/docs_test.py',
+   'DATA'),
+  ('pygame/tests/draw_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/draw_test.py',
+   'DATA'),
+  ('pygame/tests/event_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/event_test.py',
+   'DATA'),
+  ('pygame/tests/fixtures/fonts/A_PyGameMono-8.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/fixtures/fonts/A_PyGameMono-8.png',
+   'DATA'),
+  ('pygame/tests/fixtures/fonts/PlayfairDisplaySemibold.ttf',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/fixtures/fonts/PlayfairDisplaySemibold.ttf',
+   'DATA'),
+  ('pygame/tests/fixtures/fonts/PyGameMono-18-100dpi.bdf',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/fixtures/fonts/PyGameMono-18-100dpi.bdf',
+   'DATA'),
+  ('pygame/tests/fixtures/fonts/PyGameMono-18-75dpi.bdf',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/fixtures/fonts/PyGameMono-18-75dpi.bdf',
+   'DATA'),
+  ('pygame/tests/fixtures/fonts/PyGameMono-8.bdf',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/fixtures/fonts/PyGameMono-8.bdf',
+   'DATA'),
+  ('pygame/tests/fixtures/fonts/PyGameMono.otf',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/fixtures/fonts/PyGameMono.otf',
+   'DATA'),
+  ('pygame/tests/fixtures/fonts/test_fixed.otf',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/fixtures/fonts/test_fixed.otf',
+   'DATA'),
+  ('pygame/tests/fixtures/fonts/test_sans.ttf',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/fixtures/fonts/test_sans.ttf',
+   'DATA'),
+  ('pygame/tests/fixtures/fonts/u13079_PyGameMono-8.png',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/fixtures/fonts/u13079_PyGameMono-8.png',
+   'DATA'),
+  ('pygame/tests/fixtures/xbm_cursors/white_sizing.xbm',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/fixtures/xbm_cursors/white_sizing.xbm',
+   'DATA'),
+  ('pygame/tests/fixtures/xbm_cursors/white_sizing_mask.xbm',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/fixtures/xbm_cursors/white_sizing_mask.xbm',
+   'DATA'),
+  ('pygame/tests/font_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/font_test.py',
+   'DATA'),
+  ('pygame/tests/freetype_tags.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/freetype_tags.py',
+   'DATA'),
+  ('pygame/tests/freetype_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/freetype_test.py',
+   'DATA'),
+  ('pygame/tests/ftfont_tags.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/ftfont_tags.py',
+   'DATA'),
+  ('pygame/tests/ftfont_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/ftfont_test.py',
+   'DATA'),
+  ('pygame/tests/gfxdraw_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/gfxdraw_test.py',
+   'DATA'),
+  ('pygame/tests/image__save_gl_surface_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/image__save_gl_surface_test.py',
+   'DATA'),
+  ('pygame/tests/image_tags.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/image_tags.py',
+   'DATA'),
+  ('pygame/tests/image_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/image_test.py',
+   'DATA'),
+  ('pygame/tests/imageext_tags.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/imageext_tags.py',
+   'DATA'),
+  ('pygame/tests/imageext_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/imageext_test.py',
+   'DATA'),
+  ('pygame/tests/joystick_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/joystick_test.py',
+   'DATA'),
+  ('pygame/tests/key_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/key_test.py',
+   'DATA'),
+  ('pygame/tests/locals_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/locals_test.py',
+   'DATA'),
+  ('pygame/tests/mask_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/mask_test.py',
+   'DATA'),
+  ('pygame/tests/math_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/math_test.py',
+   'DATA'),
+  ('pygame/tests/midi_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/midi_test.py',
+   'DATA'),
+  ('pygame/tests/mixer_music_tags.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/mixer_music_tags.py',
+   'DATA'),
+  ('pygame/tests/mixer_music_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/mixer_music_test.py',
+   'DATA'),
+  ('pygame/tests/mixer_tags.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/mixer_tags.py',
+   'DATA'),
+  ('pygame/tests/mixer_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/mixer_test.py',
+   'DATA'),
+  ('pygame/tests/mouse_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/mouse_test.py',
+   'DATA'),
+  ('pygame/tests/pixelarray_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/pixelarray_test.py',
+   'DATA'),
+  ('pygame/tests/pixelcopy_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/pixelcopy_test.py',
+   'DATA'),
+  ('pygame/tests/rect_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/rect_test.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/__init__.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/__init__.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/all_ok/__init__.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/all_ok/__init__.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/all_ok/fake_2_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/all_ok/fake_2_test.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/all_ok/fake_3_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/all_ok/fake_3_test.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/all_ok/fake_4_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/all_ok/fake_4_test.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/all_ok/fake_5_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/all_ok/fake_5_test.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/all_ok/fake_6_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/all_ok/fake_6_test.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/all_ok/no_assertions__ret_code_of_1__test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/all_ok/no_assertions__ret_code_of_1__test.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/all_ok/zero_tests_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/all_ok/zero_tests_test.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/everything/__init__.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/everything/__init__.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/everything/fake_2_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/everything/fake_2_test.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/everything/incomplete_todo_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/everything/incomplete_todo_test.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/everything/magic_tag_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/everything/magic_tag_test.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/everything/sleep_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/everything/sleep_test.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/exclude/__init__.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/exclude/__init__.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/exclude/fake_2_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/exclude/fake_2_test.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/exclude/invisible_tag_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/exclude/invisible_tag_test.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/exclude/magic_tag_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/exclude/magic_tag_test.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/failures1/__init__.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/failures1/__init__.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/failures1/fake_2_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/failures1/fake_2_test.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/failures1/fake_3_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/failures1/fake_3_test.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/failures1/fake_4_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/failures1/fake_4_test.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/incomplete/__init__.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/incomplete/__init__.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/incomplete/fake_2_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/incomplete/fake_2_test.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/incomplete/fake_3_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/incomplete/fake_3_test.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/incomplete_todo/__init__.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/incomplete_todo/__init__.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/incomplete_todo/fake_2_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/incomplete_todo/fake_2_test.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/incomplete_todo/fake_3_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/incomplete_todo/fake_3_test.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/infinite_loop/__init__.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/infinite_loop/__init__.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/infinite_loop/fake_1_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/infinite_loop/fake_1_test.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/infinite_loop/fake_2_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/infinite_loop/fake_2_test.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/print_stderr/__init__.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/print_stderr/__init__.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/print_stderr/fake_2_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/print_stderr/fake_2_test.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/print_stderr/fake_3_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/print_stderr/fake_3_test.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/print_stderr/fake_4_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/print_stderr/fake_4_test.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/print_stdout/__init__.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/print_stdout/__init__.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/print_stdout/fake_2_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/print_stdout/fake_2_test.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/print_stdout/fake_3_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/print_stdout/fake_3_test.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/print_stdout/fake_4_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/print_stdout/fake_4_test.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/run_tests__test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/run_tests__test.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/timeout/__init__.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/timeout/__init__.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/timeout/fake_2_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/timeout/fake_2_test.py',
+   'DATA'),
+  ('pygame/tests/run_tests__tests/timeout/sleep_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/run_tests__tests/timeout/sleep_test.py',
+   'DATA'),
+  ('pygame/tests/rwobject_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/rwobject_test.py',
+   'DATA'),
+  ('pygame/tests/scrap_tags.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/scrap_tags.py',
+   'DATA'),
+  ('pygame/tests/scrap_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/scrap_test.py',
+   'DATA'),
+  ('pygame/tests/sndarray_tags.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/sndarray_tags.py',
+   'DATA'),
+  ('pygame/tests/sndarray_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/sndarray_test.py',
+   'DATA'),
+  ('pygame/tests/sprite_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/sprite_test.py',
+   'DATA'),
+  ('pygame/tests/surface_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/surface_test.py',
+   'DATA'),
+  ('pygame/tests/surfarray_tags.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/surfarray_tags.py',
+   'DATA'),
+  ('pygame/tests/surfarray_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/surfarray_test.py',
+   'DATA'),
+  ('pygame/tests/surflock_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/surflock_test.py',
+   'DATA'),
+  ('pygame/tests/sysfont_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/sysfont_test.py',
+   'DATA'),
+  ('pygame/tests/test_utils/__init__.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/test_utils/__init__.py',
+   'DATA'),
+  ('pygame/tests/test_utils/arrinter.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/test_utils/arrinter.py',
+   'DATA'),
+  ('pygame/tests/test_utils/async_sub.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/test_utils/async_sub.py',
+   'DATA'),
+  ('pygame/tests/test_utils/buftools.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/test_utils/buftools.py',
+   'DATA'),
+  ('pygame/tests/test_utils/endian.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/test_utils/endian.py',
+   'DATA'),
+  ('pygame/tests/test_utils/png.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/test_utils/png.py',
+   'DATA'),
+  ('pygame/tests/test_utils/run_tests.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/test_utils/run_tests.py',
+   'DATA'),
+  ('pygame/tests/test_utils/test_machinery.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/test_utils/test_machinery.py',
+   'DATA'),
+  ('pygame/tests/test_utils/test_runner.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/test_utils/test_runner.py',
+   'DATA'),
+  ('pygame/tests/threads_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/threads_test.py',
+   'DATA'),
+  ('pygame/tests/time_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/time_test.py',
+   'DATA'),
+  ('pygame/tests/touch_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/touch_test.py',
+   'DATA'),
+  ('pygame/tests/transform_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/transform_test.py',
+   'DATA'),
+  ('pygame/tests/version_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/version_test.py',
+   'DATA'),
+  ('pygame/tests/video_test.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/tests/video_test.py',
+   'DATA'),
+  ('pygame/threads/__init__.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/threads/__init__.py',
+   'DATA'),
+  ('pygame/time.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/time.pyi',
+   'DATA'),
+  ('pygame/transform.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/transform.pyi',
+   'DATA'),
+  ('pygame/version.py',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/version.py',
+   'DATA'),
+  ('pygame/version.pyi',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/pygame/version.pyi',
+   'DATA'),
+  ('setuptools/_vendor/importlib_metadata-8.0.0.dist-info/WHEEL',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/setuptools/_vendor/importlib_metadata-8.0.0.dist-info/WHEEL',
+   'DATA'),
+  ('setuptools/_vendor/importlib_metadata-8.0.0.dist-info/top_level.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/setuptools/_vendor/importlib_metadata-8.0.0.dist-info/top_level.txt',
+   'DATA'),
+  ('setuptools/_vendor/importlib_metadata-8.0.0.dist-info/LICENSE',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/setuptools/_vendor/importlib_metadata-8.0.0.dist-info/LICENSE',
+   'DATA'),
+  ('setuptools/_vendor/importlib_metadata-8.0.0.dist-info/RECORD',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/setuptools/_vendor/importlib_metadata-8.0.0.dist-info/RECORD',
+   'DATA'),
+  ('setuptools/_vendor/importlib_metadata-8.0.0.dist-info/REQUESTED',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/setuptools/_vendor/importlib_metadata-8.0.0.dist-info/REQUESTED',
+   'DATA'),
+  ('setuptools/_vendor/importlib_metadata-8.0.0.dist-info/INSTALLER',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/setuptools/_vendor/importlib_metadata-8.0.0.dist-info/INSTALLER',
+   'DATA'),
+  ('setuptools/_vendor/importlib_metadata-8.0.0.dist-info/METADATA',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/setuptools/_vendor/importlib_metadata-8.0.0.dist-info/METADATA',
+   'DATA'),
+  ('setuptools/_vendor/jaraco/text/Lorem ipsum.txt',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/setuptools/_vendor/jaraco/text/Lorem '
+   'ipsum.txt',
+   'DATA'),
+  ('base_library.zip',
+   '/home/tt/T.T GAMES/new game2/build/BobsBigAdventure/base_library.zip',
+   'DATA'),
+  ('libSDL2-2-1667c208.0.so.0.2800.4',
+   'pygame.libs/libSDL2-2-1667c208.0.so.0.2800.4',
+   'SYMLINK'),
+  ('libportmidi-6df3607d.so.2.0.3',
+   'pygame.libs/libportmidi-6df3607d.so.2.0.3',
+   'SYMLINK'),
+  ('libasound-d80805e8.so.2.0.0',
+   'pygame.libs/libasound-d80805e8.so.2.0.0',
+   'SYMLINK'),
+  ('libcap-79733b59.so.2.22', 'pygame.libs/libcap-79733b59.so.2.22', 'SYMLINK'),
+  ('libsndfile-2f719936.so.1.0.34',
+   'pygame.libs/libsndfile-2f719936.so.1.0.34',
+   'SYMLINK'),
+  ('libopus-56ba99ed.so.0.8.0',
+   'pygame.libs/libopus-56ba99ed.so.0.8.0',
+   'SYMLINK'),
+  ('libdbus-1-5d678da9.so.3.14.14',
+   'pygame.libs/libdbus-1-5d678da9.so.3.14.14',
+   'SYMLINK'),
+  ('liblz4-af1653fb.so.1.8.3',
+   'pygame.libs/liblz4-af1653fb.so.1.8.3',
+   'SYMLINK'),
+  ('libfluidsynth-3137fad6.so.3.1.1',
+   'pygame.libs/libfluidsynth-3137fad6.so.3.1.1',
+   'SYMLINK'),
+  ('libvorbis-ac399090.so.0.4.9',
+   'pygame.libs/libvorbis-ac399090.so.0.4.9',
+   'SYMLINK'),
+  ('libogg-3f4a1572.so.0.8.5',
+   'pygame.libs/libogg-3f4a1572.so.0.8.5',
+   'SYMLINK'),
+  ('libbz2-a273e504.so.1.0.6',
+   'pygame.libs/libbz2-a273e504.so.1.0.6',
+   'SYMLINK'),
+  ('libopusfile-df4005ff.so.0.4.5',
+   'pygame.libs/libopusfile-df4005ff.so.0.4.5',
+   'SYMLINK'),
+  ('libmpg123-fad61782.so.0.47.0',
+   'pygame.libs/libmpg123-fad61782.so.0.47.0',
+   'SYMLINK'),
+  ('libvorbisfile-8aced0b7.so.3.3.8',
+   'pygame.libs/libvorbisfile-8aced0b7.so.3.3.8',
+   'SYMLINK'),
+  ('libgpg-error-3f09c3c7.so.0.10.0',
+   'pygame.libs/libgpg-error-3f09c3c7.so.0.10.0',
+   'SYMLINK'),
+  ('libdw-0-780627ce.176.so', 'pygame.libs/libdw-0-780627ce.176.so', 'SYMLINK'),
+  ('libFLAC-c5c6b3bc.so.8.3.0',
+   'pygame.libs/libFLAC-c5c6b3bc.so.8.3.0',
+   'SYMLINK'),
+  ('libpcre-9513aab5.so.1.2.0',
+   'pygame.libs/libpcre-9513aab5.so.1.2.0',
+   'SYMLINK'),
+  ('libelf-0-3d9de92a.176.so',
+   'pygame.libs/libelf-0-3d9de92a.176.so',
+   'SYMLINK'),
+  ('libpulse-simple-4ba3beb5.so.0.1.1',
+   'pygame.libs/libpulse-simple-4ba3beb5.so.0.1.1',
+   'SYMLINK'),
+  ('libvorbisenc-bb396c4a.so.2.0.12',
+   'pygame.libs/libvorbisenc-bb396c4a.so.2.0.12',
+   'SYMLINK'),
+  ('libselinux-0922c95c.so.1',
+   'pygame.libs/libselinux-0922c95c.so.1',
+   'SYMLINK'),
+  ('libgomp-a34b3233.so.1.0.0',
+   'pygame.libs/libgomp-a34b3233.so.1.0.0',
+   'SYMLINK'),
+  ('libpulsecommon-14-80414fd3.2.so',
+   'pygame.libs/libpulsecommon-14-80414fd3.2.so',
+   'SYMLINK'),
+  ('liblzma-004595ca.so.5.2.2',
+   'pygame.libs/liblzma-004595ca.so.5.2.2',
+   'SYMLINK'),
+  ('libSDL2_mixer-2-673d03d7.0.so.0.600.3',
+   'pygame.libs/libSDL2_mixer-2-673d03d7.0.so.0.600.3',
+   'SYMLINK'),
+  ('libpulse-5b5d1e90.so.0.23.0',
+   'pygame.libs/libpulse-5b5d1e90.so.0.23.0',
+   'SYMLINK'),
+  ('libsystemd-7fd64813.so.0.6.0',
+   'pygame.libs/libsystemd-7fd64813.so.0.6.0',
+   'SYMLINK'),
+  ('libgcrypt-18957bae.so.11.8.2',
+   'pygame.libs/libgcrypt-18957bae.so.11.8.2',
+   'SYMLINK'),
+  ('libattr-4f2a9577.so.1.1.0',
+   'pygame.libs/libattr-4f2a9577.so.1.1.0',
+   'SYMLINK'),
+  ('libjpeg-4617cdcb.so.62.3.0',
+   'pygame.libs/libjpeg-4617cdcb.so.62.3.0',
+   'SYMLINK'),
+  ('libSDL2_image-2-6bbdaa8d.0.so.0.2.3',
+   'pygame.libs/libSDL2_image-2-6bbdaa8d.0.so.0.2.3',
+   'SYMLINK'),
+  ('libsharpyuv-5ed6246f.so.0.0.1',
+   'pygame.libs/libsharpyuv-5ed6246f.so.0.0.1',
+   'SYMLINK'),
+  ('libtiff-23a934bd.so.5.8.0',
+   'pygame.libs/libtiff-23a934bd.so.5.8.0',
+   'SYMLINK'),
+  ('libwebp-3bee5bfa.so.7.1.8',
+   'pygame.libs/libwebp-3bee5bfa.so.7.1.8',
+   'SYMLINK'),
+  ('libpng16-bb793e21.so.16.37.0',
+   'pygame.libs/libpng16-bb793e21.so.16.37.0',
+   'SYMLINK'),
+  ('libSDL2_ttf-2-e6bdbc24.0.so.0.2000.1',
+   'pygame.libs/libSDL2_ttf-2-e6bdbc24.0.so.0.2000.1',
+   'SYMLINK'),
+  ('libbrotlicommon-f54d67a1.so.1.0.9',
+   'pygame.libs/libbrotlicommon-f54d67a1.so.1.0.9',
+   'SYMLINK'),
+  ('libfreetype-402bc0e3.so.6.18.3',
+   'pygame.libs/libfreetype-402bc0e3.so.6.18.3',
+   'SYMLINK'),
+  ('libharfbuzz-f991c6ff.so.0.50100.0',
+   'pygame.libs/libharfbuzz-f991c6ff.so.0.50100.0',
+   'SYMLINK'),
+  ('libbrotlidec-ffc423df.so.1.0.9',
+   'pygame.libs/libbrotlidec-ffc423df.so.1.0.9',
+   'SYMLINK')],
+ [],
+ False,
+ False,
+ 1768723271,
+ [('run',
+   '/home/tt/T.T GAMES/new '
+   'game2/.venv/lib/python3.12/site-packages/PyInstaller/bootloader/Linux-64bit-intel/run',
+   'EXECUTABLE')],
+ '/lib/x86_64-linux-gnu/libpython3.12.so.1.0')
