@@ -1,11 +1,17 @@
 import sys, random, math, subprocess, copy, colorsys
 
-# --- Auto-install required packages (pygame) at startup ---
+# --- Auto-install required packages at startup ---
 try:
     import pygame
 except ImportError:  # Install pygame automatically if missing
     subprocess.check_call([sys.executable, "-m", "pip", "install", "pygame>=2.0.0"])
     import pygame
+
+try:
+    import pyttsx3
+except ImportError:  # Install pyttsx3 automatically if missing
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "pyttsx3>=2.90"])
+    import pyttsx3
 
 from constants import (
     WIDTH, HEIGHT,
@@ -213,6 +219,7 @@ save_load_selected_slot = 1  # 選択中のセーブスロット
 save_confirm_mode = False  # 上書き確認モード
 level_cleared = [False]*7  # 0..6
 level_cleared_no_equipment = [False]*7  # 装備なしでクリアした場合True（豪華な星用）
+level_cleared_rainbow_star = [False]*7  # 星ボスを装備なし・phase1から通しでクリアした場合True（虹の星用）
 boss6_phase2_checkpoint = False  # ボス6のphase2チェックポイント（リトライ用）
 
 from ui import draw_menu, draw_end_menu, draw_title_screen, draw_save_load_menu, draw_save_confirm_dialog, draw_equipment_menu, draw_pause_menu
@@ -804,15 +811,15 @@ def update_colorful_star_attack(boss_state, player_rect, bullets):
     # リーフシールド貫通追尾弾：30フレームごとに発射
     homing_interval = 30
     if timer % homing_interval == 15:  # オフセットをつけて交互に発射
-        # プレイヤーが何も装備していない場合は発射しない
+        # プレイヤーが装備を使用している場合のみ発射
         # equipment_enabledは外部スコープから参照（グローバル変数）
-        has_any_equipment = any([
-            unlocked_homing and equipment_enabled.get('homing', False),
-            unlocked_leaf_shield and equipment_enabled.get('leaf_shield', False),
-            unlocked_spread and equipment_enabled.get('spread', False),
-            unlocked_dash and equipment_enabled.get('dash', False),
-            unlocked_hp_boost and equipment_enabled.get('hp_boost', False)
-        ])
+        has_any_equipment = (
+            (unlocked_homing and equipment_enabled.get('homing', False)) or
+            (unlocked_leaf_shield and equipment_enabled.get('leaf_shield', False)) or
+            (unlocked_spread and equipment_enabled.get('spread', False)) or
+            (unlocked_dash and equipment_enabled.get('dash', False)) or
+            (unlocked_hp_boost and equipment_enabled.get('hp_boost', False))
+        )
         
         if has_any_equipment:
             # プレイヤーの方向に初期速度を設定
@@ -1329,6 +1336,7 @@ leaf_angle = 0.0
 has_spread = False
 has_dash = False
 boss_attack_timer = 0
+boss_info = None  # ボス情報（初期値）
 unlocked_homing = False
 unlocked_leaf_shield = False
 unlocked_spread = False
@@ -1338,7 +1346,6 @@ reward_granted = False
 leaf_orb_positions = []
 frame_count = 0  # フレームカウンタ（ダッシュ二度押し判定などに使用）
 fire_cooldown = 0  # 連射クールダウン（フレーム）
-debug_infinite_hp = False
 boss_music_played = False
 
 # アイテム装備画面
@@ -1357,6 +1364,20 @@ equipment_enabled = {
 paused = False
 pause_selected = 0  # 0: 続ける, 1: メニューに戻る
 
+# 真エンディング判定関数
+def check_true_ending():
+    """真エンディング条件：ボス1-5が全て金の星、ボス6が虹の星"""
+    if len(level_cleared_no_equipment) < 7 or len(level_cleared_rainbow_star) < 7:
+        return False
+    # ボス1-5が全て金の星
+    for i in range(1, 6):
+        if not level_cleared_no_equipment[i]:
+            return False
+    # ボス6が虹の星
+    if not level_cleared_rainbow_star[6]:
+        return False
+    return True
+
 while True:
     events = pygame.event.get()
     
@@ -1367,7 +1388,9 @@ while True:
             play_bgm("picopiconostalgie", volume=0.4)
         # phase2チェックポイントをリセット
         boss6_phase2_checkpoint = False
-        draw_title_screen(screen, frame_count)
+        # 真エンディング判定
+        true_ending_achieved = check_true_ending()
+        draw_title_screen(screen, frame_count, true_ending_achieved)
         present_frame()
         for event in events:
             if event.type == pygame.QUIT:
@@ -1409,7 +1432,7 @@ while True:
                         # セーブ実行
                         save_data = create_save_data(
                             level_cleared, unlocked_homing, unlocked_leaf_shield,
-                            unlocked_spread, unlocked_dash, unlocked_hp_boost, level_cleared_no_equipment
+                            unlocked_spread, unlocked_dash, unlocked_hp_boost, level_cleared_no_equipment, level_cleared_rainbow_star, equipment_enabled
                         )
                         if save_game(save_load_selected_slot, save_data):
                             print(f"セーブ完了: スロット {save_load_selected_slot}")
@@ -1446,7 +1469,7 @@ while True:
                             # 新規セーブ（確認不要）
                             save_data = create_save_data(
                                 level_cleared, unlocked_homing, unlocked_leaf_shield,
-                                unlocked_spread, unlocked_dash, unlocked_hp_boost, level_cleared_no_equipment
+                                unlocked_spread, unlocked_dash, unlocked_hp_boost, level_cleared_no_equipment, level_cleared_rainbow_star, equipment_enabled
                             )
                             if save_game(save_load_selected_slot, save_data):
                                 print(f"セーブ完了: スロット {save_load_selected_slot}")
@@ -1458,11 +1481,32 @@ while True:
                         if loaded_data:
                             level_cleared = loaded_data.get('level_cleared', [False]*7)
                             level_cleared_no_equipment = loaded_data.get('level_cleared_no_equipment', [False]*7)
+                            level_cleared_rainbow_star = loaded_data.get('level_cleared_rainbow_star', [False]*7)
+                            
+                            # 古いセーブデータとの互換性：既存のクリア済みレベルで装備なし情報がない場合、金色の星扱いにする
+                            if 'level_cleared_no_equipment' not in loaded_data:
+                                for i in range(len(level_cleared)):
+                                    if level_cleared[i]:
+                                        level_cleared_no_equipment[i] = True
+                            
                             unlocked_homing = loaded_data.get('unlocked_homing', False)
                             unlocked_leaf_shield = loaded_data.get('unlocked_leaf_shield', False)
                             unlocked_spread = loaded_data.get('unlocked_spread', False)
                             unlocked_dash = loaded_data.get('unlocked_dash', False)
                             unlocked_hp_boost = loaded_data.get('unlocked_hp_boost', False)
+                            
+                            # 装備のオンオフ状態を復元（古いセーブデータとの互換性のためデフォルトはTrue）
+                            if 'equipment_enabled' in loaded_data:
+                                equipment_enabled = loaded_data.get('equipment_enabled')
+                            else:
+                                # 古いセーブデータの場合は全てTrueにする
+                                equipment_enabled = {
+                                    'homing': True,
+                                    'leaf_shield': True,
+                                    'spread': True,
+                                    'dash': True,
+                                    'hp_boost': True
+                                }
                             
                             # アンロックされたものを有効化
                             has_homing = unlocked_homing
@@ -1528,12 +1572,20 @@ while True:
         boss6_phase2_checkpoint = False
         # BGMは継続再生（stop_music()を削除）
         boss_music_played = False
-        draw_menu(screen, selected_level, level_cleared, level_cleared_no_equipment)
+        # 真エンディング判定
+        true_ending_achieved = check_true_ending()
+        draw_menu(screen, selected_level, level_cleared, level_cleared_no_equipment, level_cleared_rainbow_star, true_ending_achieved)
         present_frame()
         for event in events:
             if event.type == pygame.QUIT:
                 pygame.quit(); sys.exit()
             if event.type == pygame.KEYDOWN:
+                # Tキーでタイトル画面に戻る
+                if event.key == pygame.K_t:
+                    menu_mode = False
+                    title_mode = True
+                    play_menu_beep()
+                    continue
                 # Eキーで装備画面へ
                 if event.key == pygame.K_e:
                     menu_mode = False
@@ -1565,21 +1617,6 @@ while True:
                     if selected_level < 1:
                         selected_level = 6
                     play_menu_beep()  # メニュー移動音
-                if event.key == pygame.K_i:
-                    unlocked_homing = True
-                    unlocked_leaf_shield = True
-                    unlocked_spread = True
-                    unlocked_dash = True
-                    unlocked_hp_boost = True
-                    has_homing = True
-                    has_leaf_shield = True
-                    has_spread = True
-                    has_dash = True
-                    player_lives = max(player_lives, 5)
-                if event.key == pygame.K_h:
-                    debug_infinite_hp = not debug_infinite_hp
-                    if debug_infinite_hp:
-                        player_lives = max(player_lives, 5 if (unlocked_hp_boost and equipment_enabled['hp_boost']) else 3)
                 if event.key == pygame.K_RETURN:
                     boss_template = level_list[selected_level]["boss"]
                     boss_info = copy.deepcopy(boss_template) if boss_template else None
@@ -2130,21 +2167,6 @@ while True:
         for event in events:
             if event.type == pygame.QUIT:
                 pygame.quit(); sys.exit()
-                if event.type == pygame.KEYDOWN and event.key == pygame.K_i:
-                    unlocked_homing = True
-                    unlocked_leaf_shield = True
-                    unlocked_spread = True
-                    unlocked_dash = True
-                    unlocked_hp_boost = True
-                    has_homing = True
-                    has_leaf_shield = True
-                    has_spread = True
-                    has_dash = True
-                    player_lives = max(player_lives, 5)
-                if event.type == pygame.KEYDOWN and event.key == pygame.K_h:
-                    debug_infinite_hp = not debug_infinite_hp
-                    if debug_infinite_hp:
-                        player_lives = max(player_lives, 5 if (unlocked_hp_boost and equipment_enabled['hp_boost']) else 3)
         continue
     if waiting_for_space:
         screen.fill(BLACK)
@@ -2246,21 +2268,6 @@ while True:
                 # Q で即終了（ポーズ中でも可）
                 if event.key == pygame.K_q:
                     pygame.quit(); sys.exit()
-                if event.key == pygame.K_i:
-                    unlocked_homing = True
-                    unlocked_leaf_shield = True
-                    unlocked_spread = True
-                    unlocked_dash = True
-                    unlocked_hp_boost = True
-                    has_homing = True
-                    has_leaf_shield = True
-                    has_spread = True
-                    has_dash = True
-                    player_lives = max(player_lives, 5)
-                if event.key == pygame.K_h:
-                    debug_infinite_hp = not debug_infinite_hp
-                    if debug_infinite_hp:
-                        player_lives = max(player_lives, 5 if (unlocked_hp_boost and equipment_enabled['hp_boost']) else 3)
                 # 武器切替（V）
                 if event.key == pygame.K_v:
                     available = ["normal"]
@@ -2273,69 +2280,6 @@ while True:
                         bullet_type = available[(i+1) % len(available)]
                     except ValueError:
                         bullet_type = available[0]
-                # デバッグ: T でボス即撃破
-                if event.key == pygame.K_t and boss_alive:
-                    if boss_info and boss_info.get('name') == '赤バツボス':
-                        cross_mode = boss_info.get('cross_phase_mode', 'phase1')
-                        if cross_mode == 'phase1':
-                            boss_info['cross_phase1_hp'] = 0
-                            boss_info['cross_phase_mode'] = 'transition_explosion'
-                            boss_info['cross_transition_timer'] = 0
-                            boss_info['cross_phase2_intro_timer'] = 0
-                            boss_info['cross_blackout_alpha'] = 0
-                            boss_info['cross_phase2_started'] = False
-                            boss_info['cross_phase2_settings_applied'] = False
-                            boss_info['cross_star_state'] = 'transition'
-                            boss_info['cross_star_progress'] = 0.0
-                            boss_info['cross_star_rotation'] = 0.0
-                            boss_info['cross_attack_timer'] = 0
-                            boss_info['cross_wall_attack'] = None
-                            boss_info['cross_falls'] = []
-                            boss_info['cross_last_pattern'] = None
-                            phase2_hp = boss_info.get('cross_phase2_hp')
-                            if not phase2_hp:
-                                phase2_hp = boss_info.get('hp', boss_hp)
-                            boss_info['cross_phase2_hp'] = phase2_hp
-                            boss_info['cross_active_hp_max'] = max(1, phase2_hp)
-                            boss_info['hp'] = phase2_hp
-                            boss_hp = phase2_hp
-                        elif cross_mode == 'phase2':
-                            # 虹星形態中: 体力を50%に削ってフルスクリーンモードへ
-                            active_max = boss_info.get('cross_active_hp_max', boss_hp)
-                            target_hp = max(1, active_max * 0.5)
-                            boss_info['cross_phase2_hp'] = target_hp
-                            boss_info['hp'] = target_hp
-                            boss_hp = target_hp
-                            # フルスクリーンをアンロック＆有効化
-                            fullscreen_unlocked = True
-                            if not is_fullscreen:
-                                set_display_mode(True)
-                            boss_info['cross_phase2_fullscreen_done'] = True
-                            # フルスクリーンモード状態を設定
-                            boss_info['cross_phase_mode'] = 'fullscreen_starstorm'
-                            boss_info['cross_phase2_state'] = 'fullscreen_starstorm'
-                            # 攻撃タイマーをリセット
-                            boss_info['cross_attack_timer'] = 0
-                            boss_info['cross_phase2_timer'] = 0
-                            # デバッグモードでは保護期間をスキップ
-                            boss_info['fullscreen_initialized'] = True
-                            boss_info['fullscreen_wait_timer'] = 300  # 保護期間を即座に終了
-                            boss_info['fullscreen_invincible'] = False  # 無敵解除
-                            # ワープ状態を初期化
-                            boss_info['fullscreen_warp_state'] = 'warning'
-                            boss_info['fullscreen_warp_timer'] = 0
-                        else:
-                            boss_info['cross_phase2_hp'] = 0
-                            boss_info['hp'] = 0
-                            boss_hp = 0
-                            boss_alive = False
-                            boss_explosion_timer = 0
-                            explosion_pos = (boss_x, boss_y)
-                    else:
-                        boss_hp = 0
-                        boss_alive = False
-                        boss_explosion_timer = 0
-                        explosion_pos = (boss_x, boss_y)
                 # ダッシュ（左右キーの二度押し）: 反転中は左右を入れ替える
                 if event.key == pygame.K_LEFT:
                     dir_key = 'right' if controls_inverted else 'left'
@@ -2385,14 +2329,13 @@ while True:
                     half = max(1, boss_info.get('hline_thick', 26)//2)
                     # プレイヤー矩形と横帯の交差判定
                     if (y - half) <= player.bottom and (y + half) >= player.top:
-                        if not debug_infinite_hp:
-                            player_lives -= 1
+                        player_lives -= 1
                         player_invincible = True
                         player_invincible_timer = 0
                         explosion_timer = 0
                         explosion_pos = (player.centerx, player.centery)
                         reset_boss_hazards_after_player_hit(boss_info)
-            # 楕円ボス ビームの当たり判定（発射中のみ）
+                        # 楕円ボス ビームの当たり判定（発射中のみ）
             if boss_info and boss_info.get('name') == '楕円ボス':
                 for side in ('left','right'):
                     beam = boss_info.get(f'{side}_beam')
@@ -2412,15 +2355,14 @@ while True:
                     dist2 = (px-cx)**2 + (py-cy)**2
                     thick = 14
                     if dist2 <= (thick//2 + max(player.width, player.height)//2)**2:
-                        if not debug_infinite_hp:
-                            player_lives -= 1
+                        player_lives -= 1
                         player_invincible = True
                         player_invincible_timer = 0
                         explosion_timer = 0
                         explosion_pos = (player.centerx, player.centery)
                         # ビームで被弾したフレームは他の衝突判定をスキップ（多重減少防止）
                         break
-            # 赤バツボスの落下パーツとの当たり判定
+                        # 赤バツボスの落下パーツとの当たり判定
             if boss_info and boss_info.get('name') == '赤バツボス':
                 for fall in list(boss_info.get('cross_falls', [])):
                     rect = fall.get('rect')
@@ -2438,8 +2380,7 @@ while True:
                     else:
                         hit_rect = None
                     if hit_rect and hit_rect.colliderect(player):
-                        if not debug_infinite_hp:
-                            player_lives -= 1
+                        player_lives -= 1
                         player_invincible = True
                         player_invincible_timer = 0
                         explosion_timer = 0
@@ -2453,8 +2394,7 @@ while True:
                         for spear in wall_attack.get('spears', []):
                             rect = spear.get('rect')
                             if rect and rect.colliderect(player):
-                                if not debug_infinite_hp:
-                                    player_lives -= 1
+                                player_lives -= 1
                                 player_invincible = True
                                 player_invincible_timer = 0
                                 explosion_timer = 0
@@ -2471,8 +2411,7 @@ while True:
                 for bullet in bullets:
                     if (bullet.get("reflect", False) or bullet.get("type") == "enemy") and not bullet.get('harmless'):
                         if player.colliderect(bullet["rect"]):
-                            if not debug_infinite_hp:
-                                player_lives -= 1
+                            player_lives -= 1
                             player_invincible = True
                             player_invincible_timer = 0
                             explosion_timer = 0
@@ -2485,8 +2424,7 @@ while True:
                 for bullet in bullets:
                     if (bullet.get("reflect", False) or bullet.get("type") == "enemy") and not bullet.get('harmless'):
                         if player2.colliderect(bullet["rect"]):
-                            if not debug_infinite_hp:
-                                player_lives -= 1
+                            player_lives -= 1
                             player_invincible = True
                             player_invincible_timer = 0
                             explosion_timer = 0
@@ -2502,8 +2440,7 @@ while True:
                 dx = player.centerx - boss_x
                 dy = player.centery - boss_y
                 if dx*dx + dy*dy < (boss_radius + max(player.width, player.height)//2)**2:
-                    if not debug_infinite_hp:
-                        player_lives -= 1
+                    player_lives -= 1
                     player_invincible = True
                     player_invincible_timer = 0
                     explosion_timer = 0
@@ -2530,8 +2467,7 @@ while True:
                         dist2 = (px-cx)**2 + (py-cy)**2
                         thick = max(3, s.get('thick', 6))
                         if dist2 <= (thick+6)**2:  # やや広めに
-                            if not debug_infinite_hp:
-                                player_lives -= 1
+                            player_lives -= 1
                             player_invincible = True
                             player_invincible_timer = 0
                             explosion_timer = 0
@@ -2539,7 +2475,7 @@ while True:
                             reset_boss_hazards_after_player_hit(boss_info)
                             break
     
-            # 側面レーザーとの接触判定
+                            # 側面レーザーとの接触判定
             lasers = boss_info.get('side_lasers', []) if boss_info and boss_info.get('name') == '三日月形ボス' else []
             if lasers and not player_invincible:
                 px, py = player.centerx, player.centery
@@ -2562,8 +2498,7 @@ while True:
                     cx = ax + vx * t
                     cy = ay + vy * t
                     if (px - cx)**2 + (py - cy)**2 <= (width / 2 + 8)**2:
-                        if not debug_infinite_hp:
-                            player_lives -= 1
+                        player_lives -= 1
                         player_invincible = True
                         player_invincible_timer = 0
                         explosion_timer = 0
@@ -2592,8 +2527,7 @@ while True:
                     cx = ax + vx * t
                     cy = ay + vy * t
                     if (px2 - cx)**2 + (py2 - cy)**2 <= (width / 2 + 8)**2:
-                        if not debug_infinite_hp:
-                            player_lives -= 1
+                        player_lives -= 1
                         player_invincible = True
                         player_invincible_timer = 0
                         explosion_timer = 0
@@ -2606,7 +2540,7 @@ while True:
         # 無敵時間管理
         if player_invincible:
             player_invincible_timer += 1
-        if player_invincible_timer >= PLAYER_INVINCIBLE_DURATION and (globals().get('dash_state') or {'invincible_timer':0})['invincible_timer'] <= 0:
+            if player_invincible_timer >= PLAYER_INVINCIBLE_DURATION and (globals().get('dash_state') or {'invincible_timer':0})['invincible_timer'] <= 0:
                 player_invincible = False
     
         # 爆発表示管理
@@ -2631,6 +2565,24 @@ while True:
                     reward_text = "体力増加! 次回から残機が5に"
                 elif boss_info["name"] == "赤バツボス":
                     reward_text = None
+            
+            # 星マーク（報酬アンロック前に判定）
+            if result == "win":
+                level_cleared[selected_level] = True
+                # 装備を1つも使用していない場合は豪華な星（アンロックの有無は問わない）
+                has_any_equipped = (
+                    (unlocked_homing and equipment_enabled.get('homing', False)) or
+                    (unlocked_leaf_shield and equipment_enabled.get('leaf_shield', False)) or
+                    (unlocked_spread and equipment_enabled.get('spread', False)) or
+                    (unlocked_dash and equipment_enabled.get('dash', False)) or
+                    (unlocked_hp_boost and equipment_enabled.get('hp_boost', False))
+                )
+                if not has_any_equipped:
+                    level_cleared_no_equipment[selected_level] = True
+                    # 星ボス（レベル6）を装備なし・phase1から通しでクリアした場合は虹の星
+                    if selected_level == 6 and not boss6_phase2_checkpoint:
+                        level_cleared_rainbow_star[selected_level] = True
+            
             # 報酬アンロック（セッション内持続）
             if result == "win" and boss_info:
                 if boss_info["name"] == "Boss A":
@@ -2645,21 +2597,6 @@ while True:
                     unlocked_hp_boost = True
                 elif boss_info["name"] == "赤バツボス":
                     pass
-            # 星マーク
-            if result == "win":
-                level_cleared[selected_level] = True
-                # 装備が1つでもアンロックされている状態で、装備を1つも使用していない場合は豪華な星
-                has_any_unlocked = (unlocked_homing or unlocked_leaf_shield or unlocked_spread 
-                                   or unlocked_dash or unlocked_hp_boost)
-                has_any_equipped = (
-                    (unlocked_homing and equipment_enabled.get('homing', False)) or
-                    (unlocked_leaf_shield and equipment_enabled.get('leaf_shield', False)) or
-                    (unlocked_spread and equipment_enabled.get('spread', False)) or
-                    (unlocked_dash and equipment_enabled.get('dash', False)) or
-                    (unlocked_hp_boost and equipment_enabled.get('hp_boost', False))
-                )
-                if has_any_unlocked and not has_any_equipped:
-                    level_cleared_no_equipment[selected_level] = True
             # 爆発表示（最後の爆発）
             for i in range(EXPLOSION_DURATION):
                 screen.fill(BLACK)
@@ -2766,7 +2703,7 @@ while True:
                 if menu_mode or retry or title_mode:
                     break
             continue
-        # ゲームロジック更新ここまで（ポーズ中はスキップ）
+    # ゲームロジック更新ここまで（ポーズ中はスキップ）
 
     # 描画（ポーズ中でも実行）
     screen.fill(BLACK)
@@ -6590,15 +6527,14 @@ while True:
                 for bullet in bullets:
                     if bullet.get("reflect", False) or bullet.get("type") == "enemy":
                         if player.colliderect(bullet["rect"]):
-                            if not debug_infinite_hp:
                                 player_lives -= 1
-                            player_invincible = True
-                            player_invincible_timer = 0
-                            explosion_timer = 0
-                            explosion_pos = (player.centerx, player.centery)
-                            reset_boss_hazards_after_player_hit(boss_info)
-                            bullets.remove(bullet)
-                            break
+                                player_invincible = True
+                                player_invincible_timer = 0
+                                explosion_timer = 0
+                                explosion_pos = (player.centerx, player.centery)
+                                reset_boss_hazards_after_player_hit(boss_info)
+                                bullets.remove(bullet)
+                                break
                 if boss_info and boss_info.get('name') == '赤バツボス':
                     moon_beams = boss_info.get('cross_phase2_moon_beams', [])
                     if moon_beams:
@@ -6613,8 +6549,7 @@ while True:
                                 continue
                             dist, _, _ = distance_point_to_segment(px, py, origin[0], origin[1], target[0], target[1])
                             if dist <= beam.get('hit_radius', 16) + cushion:
-                                if not debug_infinite_hp:
-                                    player_lives -= 1
+                                player_lives -= 1
                                 player_invincible = True
                                 player_invincible_timer = 0
                                 explosion_timer = 0
@@ -6639,22 +6574,20 @@ while True:
                             if not p.get('alive', True):
                                 continue
                             if hit_crescent_point(player.centerx, player.centery, p['x'], p['y'], p.get('r', int(boss_radius*0.8)), p.get('face','right'), max(player.width, player.height)//2):
-                                if not debug_infinite_hp:
-                                    player_lives -= 1
+                                player_lives -= 1
                                 player_invincible = True
                                 player_invincible_timer = 0
                                 explosion_timer = 0
                                 explosion_pos = (player.centerx, player.centery)
                                 reset_boss_hazards_after_player_hit(boss_info)
                                 break
-                        # P2 も接触判定
+                                # P2 も接触判定
                         if player2:
                             for p in boss_info['parts']:
                                 if not p.get('alive', True):
                                     continue
                                 if hit_crescent_point(player2.centerx, player2.centery, p['x'], p['y'], p.get('r', int(boss_radius*0.8)), p.get('face','right' if p['x'] < WIDTH//2 else 'left'), max(player2.width, player2.height)//2):
-                                    if not debug_infinite_hp:
-                                        player_lives -= 1
+                                    player_lives -= 1
                                     player_invincible = True
                                     player_invincible_timer = 0
                                     explosion_timer = 0
@@ -6666,45 +6599,42 @@ while True:
                     else:
                         bx = player.centerx; by = player.centery
                         if hit_crescent_point(bx, by, boss_x, boss_y, boss_radius, 'right', max(player.width, player.height)//2):
-                            if not debug_infinite_hp:
                                 player_lives -= 1
-                            player_invincible = True
-                            player_invincible_timer = 0
-                            explosion_timer = 0
-                            explosion_pos = (player.centerx, player.centery)
-                            reset_boss_hazards_after_player_hit(boss_info)
-                    # 追加: 斬撃当たり判定
+                                player_invincible = True
+                                player_invincible_timer = 0
+                                explosion_timer = 0
+                                explosion_pos = (player.centerx, player.centery)
+                                reset_boss_hazards_after_player_hit(boss_info)
+                                # 追加: 斬撃当たり判定
                     for sl in boss_info.get('active_slashes', []):
                         if sl['rect'].colliderect(player):
-                            if not debug_infinite_hp:
                                 player_lives -= 1
-                            player_invincible = True
-                            player_invincible_timer = 0
-                            explosion_timer = 0
-                            explosion_pos = (player.centerx, player.centery)
-                            reset_boss_hazards_after_player_hit(boss_info)
+                                player_invincible = True
+                                player_invincible_timer = 0
+                                explosion_timer = 0
+                                explosion_pos = (player.centerx, player.centery)
+                                reset_boss_hazards_after_player_hit(boss_info)
                 else:
                     # 三日月形ボスでない通常ボス接触判定
                     dx = player.centerx - boss_x
                     dy = player.centery - boss_y
                     if dx*dx + dy*dy < (boss_radius + max(player.width, player.height)//2)**2:
-                        if not debug_infinite_hp:
-                            player_lives -= 1
+                        player_lives -= 1
                         player_invincible = True
                         player_invincible_timer = 0
                         explosion_timer = 0
                         explosion_pos = (player.centerx, player.centery)
                         reset_boss_hazards_after_player_hit(boss_info)
     
-            # 無敵時間管理
-            if player_invincible:
-                player_invincible_timer += 1
-            if player_invincible_timer >= PLAYER_INVINCIBLE_DURATION and (globals().get('dash_state') or {'invincible_timer':0})['invincible_timer'] <= 0:
-                    player_invincible = False
+                    # 無敵時間管理
+                    if player_invincible:
+                        player_invincible_timer += 1
+                        if player_invincible_timer >= PLAYER_INVINCIBLE_DURATION and (globals().get('dash_state') or {'invincible_timer':0})['invincible_timer'] <= 0:
+                            player_invincible = False
     
-            # 爆発表示管理
-            if explosion_timer < EXPLOSION_DURATION and explosion_pos:
-                explosion_timer += 1
+                    # 爆発表示管理
+                    if explosion_timer < EXPLOSION_DURATION and explosion_pos:
+                        explosion_timer += 1
     
         
     
