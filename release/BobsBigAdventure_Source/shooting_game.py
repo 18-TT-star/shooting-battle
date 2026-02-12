@@ -2551,7 +2551,7 @@ while True:
     
         # ゲームオーバー・クリア判定
         if player_lives <= 0 or (not boss_alive and boss_explosion_timer >= BOSS_EXPLOSION_DURATION):
-            result = "win" if not boss_alive else "lose"
+            result = "win" if not boss_alive else "l　　　ose"
             reward_text = None
             # 報酬文
             if result == "win" and boss_info and not level_cleared[selected_level]:
@@ -3600,6 +3600,10 @@ while True:
                 for b in bullets:
                     is_enemy_like = (b.get('type') == 'enemy') or b.get('reflect', False) or b.get('subtype') in ('crescent','mini_hito')
                     if is_enemy_like:
+                        # unclearableフラグがある弾はリーフシールドで防げない
+                        if b.get('unclearable', False):
+                            filtered_bullets.append(b)
+                            continue
                         rect = b.get('rect')
                         if not rect:
                             filtered_bullets.append(b)
@@ -3883,6 +3887,9 @@ while True:
                                         if not is_fullscreen:
                                             set_display_mode(True)
                                         boss_info['cross_phase2_fullscreen_done'] = True
+                                        # フルスクリーン移行時に全ての弾を消去
+                                        bullets.clear()
+                                        cleaned_bullets.clear()
                                 boss_explosion_pos.append((bx, by))
                                 play_enemy_hit()
                                 if boss_hp <= 0:

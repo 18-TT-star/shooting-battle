@@ -2,12 +2,15 @@
 """
 Bob's Big Adventure - 自動セットアップ＆起動スクリプト
 Windows / Linux / Mac 対応
+仮想環境を自動作成してクリーンな環境で実行
 """
 
 import subprocess
 import sys
 import os
 from pathlib import Path
+
+VENV_DIR = Path('.venv')
 
 def check_python_version():
     """Python バージョンチェック"""
@@ -20,51 +23,63 @@ def check_python_version():
         input("Enterキーを押して終了...")
         sys.exit(1)
 
-def install_requirements():
-    """必要なライブラリをインストール"""
+def create_venv():
+    """仮想環境を作成"""
     print("\n" + "=" * 60)
-    print("初回セットアップを実行しています...")
+    print("仮想環境を作成しています...")
     print("=" * 60)
     
+    try:
+        subprocess.check_call(
+            [sys.executable, '-m', 'venv', str(VENV_DIR)],
+            stdout=subprocess.DEVNULL
+        )
+        print("✅ 仮想環境の作成が完了しました")
+    except subprocess.CalledProcessError as e:
+        print(f"❌ 仮想環境の作成に失敗しました: {e}")
+        print("\n以下を試してください:")
+        print("  Ubuntu/Debian: sudo apt install python3-venv")
+        print("  または: python3 -m pip install --user virtualenv")
+        input("\nEnterキーを押して終了...")
+        sys.exit(1)
+
+def get_venv_python():
+    """仮想環境のPythonパスを取得"""
+    if os.name == 'nt':  # Windows
+        return VENV_DIR / 'Scripts' / 'python.exe'
+    else:  # Linux / Mac
+        return VENV_DIR / 'bin' / 'python'
+
+def get_venv_pip():
+    """仮想環境のpipパスを取得"""
+    if os.name == 'nt':  # Windows
+        return VENV_DIR / 'Scripts' / 'pip.exe'
+    else:  # Linux / Mac
+        return VENV_DIR / 'bin' / 'pip'
+
+def install_requirements():
+    """必要なライブラリを仮想環境にインストール"""
+    print("\n" + "=" * 60)
+    print("必要なライブラリをインストールしています...")
+    print("=" * 60)
+    
+    venv_pip = get_venv_pip()
     requirements = ['pygame>=2.0.0', 'numpy', 'pyttsx3>=2.90']
     
     for package in requirements:
         package_name = package.split('>=')[0].split('==')[0]
-        
-        # まずインポートできるか確認
-        try:
-            if package_name == 'pygame':
-                import pygame
-                print(f"✅ {package_name} は既にインストール済みです")
-                continue
-            elif package_name == 'numpy':
-                import numpy
-                print(f"✅ {package_name} は既にインストール済みです")
-                continue
-            elif package_name == 'pyttsx3':
-                import pyttsx3
-                print(f"✅ {package_name} は既にインストール済みです")
-                continue
-        except ImportError:
-            pass
-        
-        # インストールが必要
         print(f"\n📦 {package} をインストール中...")
+        
         try:
-            # まず --user オプションで試す
             subprocess.check_call(
-                [sys.executable, '-m', 'pip', 'install', package, '--user', '--quiet'],
+                [str(venv_pip), 'install', package, '--quiet'],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL
             )
             print(f"✅ {package} インストール完了")
         except subprocess.CalledProcessError:
-            # --user が失敗したらシステムパッケージを確認
             print(f"⚠️  {package} のインストールに失敗しました")
-            print(f"\n以下のコマンドを実行してください:")
-            print(f"  sudo apt install python3-pygame python3-numpy")
-            print(f"または:")
-            print(f"  pip install --user {package}")
+            print(f"\nインターネット接続を確認してください")
             input("\nEnterキーを押して終了...")
             sys.exit(1)
     
@@ -75,18 +90,26 @@ def install_requirements():
     print("✨ セットアップが完了しました！")
     print("=" * 60)
 
-def check_dependencies():
-    """依存ライブラリがインストール済みかチェック"""
+def check_venv_ready():
+    """仮想環境が準備できているかチェック"""
+    venv_python = get_venv_python()
+    if not venv_python.exists():
+        return False
+    
+    # 仮想環境内のライブラリチェック
     try:
-        import pygame
-        import numpy
-        import pyttsx3
-        return True
-    except ImportError:
+        result = subprocess.run(
+            [str(venv_python), '-c', 
+             'import pygame; import numpy; import pyttsx3'],
+            capture_output=True,
+            timeout=5
+        )
+        return result.returncode == 0
+    except:
         return False
 
 def launch_game():
-    """ゲームを起動"""
+    """ゲームを仮想環境のPythonで起動"""
     print("\n🚀 ゲームを起動しています...\n")
     
     game_file = Path('shooting_game.py')
@@ -98,9 +121,11 @@ def launch_game():
         input("\nEnterキーを押して終了...")
         sys.exit(1)
     
+    venv_python = get_venv_python()
+    
     try:
-        # ゲームを起動
-        subprocess.run([sys.executable, str(game_file)])
+        # 仮想環境のPythonでゲームを起動
+        subprocess.run([str(venv_python), str(game_file)])
     except KeyboardInterrupt:
         print("\n\nゲームを終了しました")
     except Exception as e:
@@ -119,11 +144,16 @@ def main():
     # Python バージョンチェック
     check_python_version()
     
-    # 初回セットアップチェック
-    setup_marker = Path('.setup_complete')
-    if not setup_marker.exists() or not check_dependencies():
+    # 仮想環境の確認と作成
+    if not VENV_DIR.exists():
+        print("\n初回セットアップを開始します...")
+        create_venv()
         install_requirements()
         print("\n次回からは自動的にゲームが起動します")
+        input("\nEnterキーを押してゲームを起動...")
+    elif not check_venv_ready():
+        print("\n仮想環境が不完全です。再セットアップします...")
+        install_requirements()
         input("\nEnterキーを押してゲームを起動...")
     
     # ゲーム起動

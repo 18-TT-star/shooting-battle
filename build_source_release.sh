@@ -21,6 +21,7 @@ cp ui.py "$SOURCE_DIR/"
 cp fonts.py "$SOURCE_DIR/"
 cp constants.py "$SOURCE_DIR/"
 cp save_system.py "$SOURCE_DIR/"
+cp music.py "$SOURCE_DIR/"
 cp setup_and_play.py "$SOURCE_DIR/"
 
 # assetsフォルダをコピー
@@ -110,6 +111,15 @@ Python 3.8 以上
 3つのセーブスロットが使用可能です。
 
 
+【仮想環境について】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+初回起動時に .venv フォルダ（仮想環境）が自動作成されます。
+これにより、システムPythonに影響を与えずにゲームを実行できます。
+
+※ .venv フォルダは削除しないでください。
+  削除すると次回起動時に再セットアップが必要になります。
+
+
 【トラブルシューティング】
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -137,6 +147,8 @@ A: setup_and_play.py を使って起動してください
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 BobsBigAdventure_Source/
 ├── setup_and_play.py      ← これを実行！
+├── PLAY.bat               (Windows用ランチャー)
+├── PLAY.sh                (Linux/Mac用ランチャー)
 ├── shooting_game.py        (メインプログラム)
 ├── player.py
 ├── bullet.py
@@ -145,10 +157,12 @@ BobsBigAdventure_Source/
 ├── fonts.py
 ├── constants.py
 ├── save_system.py
+├── music.py
 ├── requirements.txt
 ├── assets/                 (音楽・フォント)
 │   └── audio/
-└── saves/                  (セーブデータ)
+├── saves/                  (セーブデータ)
+└── .venv/                  (仮想環境・初回起動時に自動作成)
 
 
 【動作環境】
